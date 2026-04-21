@@ -156,7 +156,7 @@ export default function Home() {
     setMode(newMode);
 
     void settingsService.updateStudyConfig({
-      mode: newMode === 'grammar' ? 'GRAMMAR_ONLY' : 'WORD_ONLY'
+      mode: newMode === 'grammar' ? 'GRAMMAR_ONLY' : 'WORDS_ONLY'
     });
   };
 

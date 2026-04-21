@@ -7,34 +7,22 @@ import { buildFsrsDeterministicSeed } from '@/lib/services/fsrsSeed';
 type LeechAction = Extract<RatingAction, { type: 'leech' }>;
 type RequeueAction = Extract<RatingAction, { type: 'requeue' }>;
 
-function getLearningDay(date: Date, resetHour: number): number {
-  const localHour = date.getHours();
-  const targetDate = new Date(date);
-
-  if (localHour < resetHour) {
-    targetDate.setDate(targetDate.getDate() - 1);
-  }
-
-  const year = targetDate.getFullYear();
-  const month = targetDate.getMonth();
-  const day = targetDate.getDate();
-  const noon = new Date(year, month, day, 12, 0, 0);
-
-  return Math.floor(noon.getTime() / 86400000);
-}
-
 function getElapsedDays(progress: UserProgress, now: Date, resetHour: number): number {
   const lastReviewDate = progress.last_review ? new Date(progress.last_review) : null;
   if (!lastReviewDate) {
     return 0;
   }
 
-  const nowDay = getLearningDay(now, resetHour);
-  const lastDay = getLearningDay(lastReviewDate, resetHour);
-
-  return Math.max(0, nowDay - lastDay);
+  // Use exact continuous time like Android/Server
+  return Math.max(0, (now.getTime() - lastReviewDate.getTime()) / 86400000);
 }
 
+/**
+ * [FOR OPTIMISTIC UI PREVIEW ONLY]
+ * NOTE: The logic in this file calculates the FSRS state client-side for immediate UI feedback.
+ * The true Logic Authority resides in the database via the `fn_process_review_atomic_v3` RPC,
+ * which independently runs the FSRS algorithm using the rating provided by the client.
+ */
 export const ratingProcessor = {
   buildLeechUpdate(progress: UserProgress, action: LeechAction, now: Date, epochDay: number): Partial<UserProgress> {
     const skips = action.action === 'skip';
@@ -62,14 +50,14 @@ export const ratingProcessor = {
       : null;
     const newState = fsrs.step(currentState, rating, elapsedDays);
 
+    // [Logic Authority] Alignment with Supabase RPC: increment reps on every review
+    const newReps = progress.reps + 1;
     let interval: number;
-    let newReps: number;
 
     if (rating === FsrsRating.Again) {
-      newReps = progress.reps;
-      interval = fsrs.nextIntervalDays(newState.stability);
+      interval = 1; // Default to 1 day for Again in optimistic UI
     } else {
-      newReps = progress.reps + 1;
+      // [Fuzz Seed] Use the OLD reps count to match server-side seed calculation
       const seed = buildFsrsDeterministicSeed(progress.id, progress.reps);
       interval = fsrs.nextIntervalDaysWithFuzz(newState.stability, seed);
     }

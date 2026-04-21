@@ -339,6 +339,7 @@ function SummaryCard({ page }: { page: SummaryPage }) {
   );
 }
 
+
 function VisualHint({ type, progress }: { type: SummaryPage["visualType"]; progress?: number }) {
   if (type === "progress") {
     return (
@@ -354,7 +355,6 @@ function VisualHint({ type, progress }: { type: SummaryPage["visualType"]; progr
       </div>
     );
   }
-
 
   return (
     <div className={styles.visualHint}>
@@ -372,4 +372,3 @@ function VisualHint({ type, progress }: { type: SummaryPage["visualType"]; progr
     </div>
   );
 }
-

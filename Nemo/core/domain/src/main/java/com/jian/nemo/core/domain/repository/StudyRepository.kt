@@ -35,4 +35,14 @@ interface StudyRepository {
      * 强制触发一次同步 (处理 Outbox 积压)
      */
     suspend fun syncPendingTasks()
+
+    /**
+     * 暂停项目 (不再出现，state = -1)
+     */
+    suspend fun suspendItem(itemId: String, itemType: String)
+
+    /**
+     * 今日暂缓 (今日不再出现)
+     */
+    suspend fun buryItem(itemId: String, itemType: String, epochDay: Long)
 }

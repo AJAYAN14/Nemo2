@@ -26,6 +26,8 @@ import com.jian.nemo.core.domain.repository.StudyRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
+import com.jian.nemo.core.domain.model.RatingAction
 
 @Singleton
 class StudyRepositoryImpl @Inject constructor(
@@ -54,30 +56,78 @@ class StudyRepositoryImpl @Inject constructor(
         // [FOR OPTIMISTIC UI PREVIEW ONLY]
         // 这里的计算仅用于乐观 UI 更新和离线占位。真正的 FSRS 核心逻辑由服务端的 
         // fn_process_review_atomic_v3 (Logic Authority) 负责计算。
-        val elapsedDays = calculateElapsedDays(progress.lastReview, now)
-        val currentState = Fsrs6Algorithm.MemoryState(progress.stability, progress.difficulty)
-        val newState = algorithm.step(currentState, rating, elapsedDays)
-        
+        val learningSteps = listOf(1, 10)
+        val relearningSteps = listOf(10)
+
+        val ratingAction = algorithm.evaluateRatingAction(
+            state = progress.state,
+            lapses = progress.lapses,
+            currentStep = progress.learningStep,
+            rating = rating,
+            learningSteps = learningSteps,
+            relearningSteps = relearningSteps
+        )
+
         val newReps = if (rating == 1) progress.reps else progress.reps + 1
         val newLapses = if (rating == 1) progress.lapses + 1 else progress.lapses
-        
-        // [Offline Compensation] Accurate local Fuzz calculation for Optimistic UI
-        val intervalDays = if (rating == 1) {
-            0 // Again falls back to due immediately
-        } else {
-            val seed = algorithm.buildFsrsDeterministicSeed(progress.id, progress.reps)
-            algorithm.nextIntervalDaysWithFuzz(newState.stability, seed)
+
+        val nextReviewInstant: Instant
+        val newStateInt: Int
+        val newLearningStep: Int
+        val finalStability: Double
+        val finalDifficulty: Double
+
+        when (ratingAction) {
+            is RatingAction.Graduate -> {
+                newStateInt = if (rating == 1) 3 else 2
+                newLearningStep = 0
+                
+                val elapsedDays = calculateElapsedDays(progress.lastReview, now)
+                val currentState = Fsrs6Algorithm.MemoryState(progress.stability, progress.difficulty)
+                val newState = algorithm.step(currentState, rating, elapsedDays)
+                
+                finalStability = newState.stability
+                finalDifficulty = newState.difficulty
+                
+                val intervalDays = if (rating == 1) {
+                    0 
+                } else {
+                    val seed = algorithm.buildFsrsDeterministicSeed(progress.id, progress.reps)
+                    algorithm.nextIntervalDaysWithFuzz(newState.stability, seed)
+                }
+                nextReviewInstant = now.plus(intervalDays.days)
+            }
+            is RatingAction.Requeue -> {
+                newStateInt = if (progress.state == 0) 1 else progress.state
+                newLearningStep = ratingAction.nextStep
+                nextReviewInstant = now.plus(ratingAction.delayMins.minutes)
+                
+                // For sub-day steps, we still update memory state if there was elapsed time
+                val elapsedDays = calculateElapsedDays(progress.lastReview, now)
+                val currentState = Fsrs6Algorithm.MemoryState(progress.stability, progress.difficulty)
+                val newState = algorithm.step(currentState, rating, elapsedDays)
+                
+                finalStability = newState.stability
+                finalDifficulty = newState.difficulty
+            }
+            is RatingAction.Leech -> {
+                newStateInt = -1 // Suspended
+                newLearningStep = 0
+                nextReviewInstant = now.plus(ratingAction.fallbackDelay.minutes)
+                finalStability = progress.stability
+                finalDifficulty = progress.difficulty
+            }
         }
-        val nextReview = now.plus(intervalDays.days)
 
         val localUpdated = progress.copy(
-            stability = newState.stability,
-            difficulty = newState.difficulty,
-            state = if (rating == 1) (if (progress.state >= 2) 3 else 1) else 2,
+            stability = finalStability,
+            difficulty = finalDifficulty,
+            state = newStateInt,
+            learningStep = newLearningStep,
             reps = newReps,
             lapses = newLapses,
             lastReview = now.toString(),
-            nextReview = nextReview.toString()
+            nextReview = nextReviewInstant.toString()
         )
 
         // 2. 更新本地 Room (秒开)
@@ -106,6 +156,57 @@ class StudyRepositoryImpl @Inject constructor(
     
     override fun stopRealtimeSync() {
         syncManager.stopRealtimeSync()
+    }
+
+    override suspend fun suspendItem(itemId: String, itemType: String) {
+        val progress = userProgressDao.getByItem(itemType, itemId) ?: return
+        val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
+
+        // 1. 本地更新
+        userProgressDao.updateProgressState(itemId, itemType, -1, now)
+
+        // 2. 异步同步到 Supabase
+        scope.launch {
+            try {
+                supabase.postgrest["user_progress"]
+                    .update({
+                        set("state", -1)
+                        set("updated_at", now)
+                    }) {
+                        filter { eq("id", progress.id) }
+                    }
+            } catch (e: Exception) {
+                println("暂停同步失败: ${e.message}")
+            }
+        }
+    }
+
+    override suspend fun buryItem(itemId: String, itemType: String, epochDay: Long) {
+        val progress = userProgressDao.getByItem(itemType, itemId) ?: return
+        val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
+        val buriedUntil = epochDay + 1
+
+        // 1. 本地更新
+        val updated = progress.copy(
+            buriedUntil = buriedUntil.toString(),
+            updatedAt = now
+        )
+        userProgressDao.insert(updated)
+
+        // 2. 异步同步
+        scope.launch {
+            try {
+                supabase.postgrest["user_progress"]
+                    .update({
+                        set("buried_until", buriedUntil)
+                        set("updated_at", now)
+                    }) {
+                        filter { eq("id", progress.id) }
+                    }
+            } catch (e: Exception) {
+                println("Bury 同步失败: ${e.message}")
+            }
+        }
     }
 
     override suspend fun syncPendingTasks() {

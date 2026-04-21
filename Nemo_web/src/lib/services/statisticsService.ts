@@ -11,13 +11,13 @@ export const statisticsService = {
   getLearningDay(date: Date = new Date(), resetHour: number = 4): number {
     // 1. Convert to UTC timestamp
     const utcTs = date.getTime();
-    
+
     // 2. Adjust for user's timezone offset and reset hour
     // We want the day to change at resetHour local time.
     // Logic: (LocalTime - ResetHour) -> Floor to Day
     const timezoneOffsetMs = date.getTimezoneOffset() * 60000;
     const localAdjustedTs = utcTs - timezoneOffsetMs - (resetHour * 3600000);
-    
+
     return Math.floor(localAdjustedTs / 86400000);
   },
 
@@ -601,7 +601,7 @@ export const statisticsService = {
 
   async getMemoryPanorama(userId: string) {
     await this.ensureSession();
-    
+
     const fetchTierCount = async (min: number, max: number | null) => {
       let q = supabase
         .from('user_progress')

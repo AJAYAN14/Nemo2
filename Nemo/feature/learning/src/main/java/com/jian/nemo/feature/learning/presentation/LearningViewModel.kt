@@ -1642,28 +1642,20 @@ class LearningViewModel @Inject constructor(
      * 今日暂缓此项 (Bury)
      * 持久化到数据库，今日不再出现 (直到 resetHour)
      */
-    private fun buryCurrentItem() {
+    fun buryCurrentItem() {
         val currentItem = getCurrentItem() ?: return
-        println("今日暂缓 (Bury): ${currentItem.displayName}")
+        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+        println("今日暂缓 (Bury): ${currentItem.displayName} (Day: $today)")
 
         viewModelScope.launch {
-            // 1. 持久化暂停状态 (buriedUntilDay)
-            val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
             try {
-                when (currentItem) {
-                    is LearningItem.WordItem -> {
-                        val updatedWord = currentItem.word.copy(buriedUntilDay = today)
-                        updateWordUseCase(updatedWord)
-                        println("[持久化] 单词已Bury: ${currentItem.displayName} (Until: $today)")
-                    }
-                    is LearningItem.GrammarItem -> {
-                        val updatedGrammar = currentItem.grammar.copy(buriedUntilDay = today)
-                        updateGrammarUseCase(updatedGrammar)
-                        println("[持久化] 语法已Bury: ${currentItem.displayName} (Until: $today)")
-                    }
-                }
+                studyRepository.buryItem(
+                    itemId = currentItem.id,
+                    itemType = if (currentItem is LearningItem.WordItem) "word" else "grammar",
+                    epochDay = today.toLong()
+                )
             } catch (e: Exception) {
-                println("[持久化] Bury失败: ${e.message}")
+                println("Bury 失败: ${e.message}")
             }
 
             // 2. 从各类内存状态中移除
@@ -1680,26 +1672,13 @@ class LearningViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 执行暂停逻辑
-     * - 更新 DB 状态为 Suspended (isSkipped = true)
-     * - 移出当前会话队列
-     */
     private suspend fun suspendItem(item: LearningItem) {
-        // 1. 持久化暂停状态
+        // 1. 持久化暂停状态 (使用统一的 StudyRepository 接口，不再操作 Word/Grammar 表)
         try {
-            when (item) {
-                is LearningItem.WordItem -> {
-                    val updatedWord = item.word.copy(isSkipped = true)
-                    updateWordUseCase(updatedWord)
-                    println("[持久化] 单词已暂停: ${item.displayName}")
-                }
-                is LearningItem.GrammarItem -> {
-                    val updatedGrammar = item.grammar.copy(isSkipped = true)
-                    updateGrammarUseCase(updatedGrammar)
-                    println("[持久化] 语法已暂停: ${item.displayName}")
-                }
-            }
+            studyRepository.suspendItem(
+                itemId = item.id,
+                itemType = if (item is LearningItem.WordItem) "word" else "grammar"
+            )
         } catch (e: Exception) {
             println("[持久化] 暂停失败: ${e.message}")
             // 即使持久化失败，也继续在内存中移除，避免阻塞用户

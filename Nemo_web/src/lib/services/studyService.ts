@@ -403,7 +403,7 @@ export const studyService = {
 
   /**
    * Universal review handler that ensures absolute persistence to DB.
-   * Matches FSRS 6 behavior from Android core.
+   * [Logic Authority] 遵循 rules.md: 3.B，不再由客户端计算稳定性/难度
    */
   async processReview(
     userId: string,
@@ -415,74 +415,36 @@ export const studyService = {
     const { item, rating } = result;
     const progress = item.progress;
 
-    srsService.applyRuntimeConfig(config);
-
-    const action = srsService.evaluateRatingAction(item, rating, config);
-    const now = new Date();
-    let updateData: Partial<UserProgress>;
-
-    if (action.type === 'leech') {
-      updateData = ratingProcessor.buildLeechUpdate(progress, action, now, epochDay);
-    } else if (action.type === 'graduate') {
-      updateData = ratingProcessor.buildGraduateUpdate(
-        progress,
-        rating,
-        now,
-        config.resetHour || 4
-      ).updateData;
-    } else {
-      updateData = ratingProcessor.buildRequeueUpdate(progress, rating, action, now, config.resetHour || 4);
-    }
-
-    const isFirstReviewToday = !progress.last_review || 
-      this.getLearningDay(new Date(progress.last_review), config.resetHour || 4) < epochDay;
-
-    const studyField = getCompletionStudyDeltaField(item.type, progress.state, progress.reps, action.type);
-
+    // WEB EXCELLENCE: 保持 requestId 的唯一性以便幂等处理
     const requestId = requestIdOverride ?? (
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+        : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`
     );
+
+    // 确定统计字段
+    const action = srsService.evaluateRatingAction(item, rating, config);
+    const studyField = getCompletionStudyDeltaField(item.type, progress.state, progress.reps, action.type);
 
     const rpcParams = {
       p_user_id: userId,
       p_progress_id: progress.id,
-      p_item_type: item.type,
-      p_item_id: Number(item.content.id),
       p_rating: rating,
-      p_prev_stability: progress.stability,
-      p_prev_difficulty: progress.difficulty,
-      p_prev_state: Number(progress.state),
-      p_prev_learning_step: Number(progress.learning_step ?? 0),
-      p_prev_buried_until: Number(progress.buried_until ?? 0),
-      p_next_stability: Number(updateData.stability ?? progress.stability),
-      p_next_difficulty: Number(updateData.difficulty ?? progress.difficulty),
-      p_next_elapsed_days: Number(updateData.elapsed_days ?? progress.elapsed_days),
-      p_next_scheduled_days: Number(updateData.scheduled_days ?? progress.scheduled_days),
-      p_next_reps: Number(updateData.reps ?? progress.reps),
-      p_next_lapses: Number(updateData.lapses ?? progress.lapses),
-      p_next_state: Number(updateData.state ?? progress.state),
-      p_next_learning_step: Number(updateData.learning_step ?? progress.learning_step ?? 0),
-      p_next_last_review: (updateData.last_review ?? progress.last_review) || null,
-      p_next_review: (updateData.next_review ?? progress.next_review) || null,
-      p_next_buried_until: Number(updateData.buried_until ?? progress.buried_until ?? 0),
+      p_request_id: requestId,
       p_epoch_day: studyField ? epochDay : null,
       p_study_field: studyField ?? null,
-      p_study_delta: (studyField && isFirstReviewToday) ? 1 : 0,
-      p_request_id: requestId,
       p_expected_last_review: progress.last_review
     };
 
-    console.log('[StudyService.processReview] Calling RPC fn_process_review_atomic with:', rpcParams);
+    console.log('[StudyService.processReview] Calling RPC fn_process_review_atomic_v3 with:', rpcParams);
 
-    const rpcResult = await supabase.rpc('fn_process_review_atomic', rpcParams);
+    const rpcResult = await supabase.rpc('fn_process_review_atomic_v3', rpcParams);
 
     if (rpcResult.error) throw rpcResult.error;
 
     const updated = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
     if (!updated) {
-      throw new Error('[StudyService.processReview] Atomic RPC returned empty payload');
+      throw new Error('[StudyService.processReview] Atomic RPC (v3) returned empty payload');
     }
 
     return updated as UserProgress;

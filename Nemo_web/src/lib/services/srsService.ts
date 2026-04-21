@@ -35,35 +35,14 @@ function clampTargetRetention(value: number | undefined): number {
   return Math.min(0.99, Math.max(0.7, Number(value)));
 }
 
-function getLearningDay(date: Date, resetHour: number): number {
-  const localHour = date.getHours();
-  const targetDate = new Date(date);
-
-  if (localHour < resetHour) {
-    targetDate.setDate(targetDate.getDate() - 1);
-  }
-
-  const noon = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate(),
-    12,
-    0,
-    0
-  );
-
-  return Math.floor(noon.getTime() / 86400000);
-}
-
 function getElapsedDays(lastReview: string | null, now: Date, resetHour: number): number {
   if (!lastReview) {
     return 0;
   }
 
-  const nowDay = getLearningDay(now, resetHour);
-  const lastDay = getLearningDay(new Date(lastReview), resetHour);
-
-  return Math.max(0, nowDay - lastDay);
+  const lastReviewDate = new Date(lastReview);
+  // Use exact continuous time like Android/Server
+  return Math.max(0, (now.getTime() - lastReviewDate.getTime()) / 86400000);
 }
 
 export const fsrs = new FsrsAlgorithm();
@@ -71,6 +50,10 @@ export const fsrs = new FsrsAlgorithm();
 /**
  * srsService - Pure SRS logic and FSRS 6 engine coordination.
  * Decoupled from Database/Supabase for better testability and performance.
+ * 
+ * [FOR OPTIMISTIC UI PREVIEW ONLY]
+ * This logic is used by the frontend to provide zero-latency UI updates. 
+ * The actual source of truth for SRS math is the `fn_process_review_atomic_v3` RPC in Supabase.
  */
 export const srsService = {
   applyRuntimeConfig(config: StudyConfig): void {

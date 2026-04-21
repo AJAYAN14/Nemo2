@@ -15,7 +15,7 @@ data class UserProgress(
     val scheduledDays: Int,
     val reps: Int,
     val lapses: Int,
-    val state: Int, // 0:New, 1:Learning, 2:Review, 3:Relearning
+    val state: Int, // 0:New, 1:Learning, 2:Review, 3:Relearning, -1:Suspended/Leech
     val learningStep: Int,
     val lastReview: String?,
     val nextReview: String?,

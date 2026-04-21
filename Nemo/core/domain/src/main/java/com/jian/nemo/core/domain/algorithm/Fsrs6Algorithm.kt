@@ -1,5 +1,7 @@
 package com.jian.nemo.core.domain.algorithm
 
+import com.jian.nemo.core.domain.model.RatingAction
+import com.jian.nemo.core.domain.model.UserProgress
 import kotlin.math.*
 
 /**
@@ -29,6 +31,8 @@ class Fsrs6Algorithm(
             FuzzRange(7.0, 20.0, 0.1),
             FuzzRange(20.0, Double.POSITIVE_INFINITY, 0.05)
         )
+
+        private const val DAY_MINUTES = 24 * 60
     }
 
     private data class FuzzRange(val start: Double, val end: Double, val factor: Double)
@@ -221,5 +225,89 @@ class Fsrs6Algorithm(
         }
         val safeReps = max(0, reps).toLong()
         return (hash + safeReps) and 0xFFFFFFFFL
+    }
+
+    /**
+     * Determine whether a rating should advance a short-term step or graduate.
+     * Ported from Web's srsService.evaluateRatingAction.
+     */
+    fun evaluateRatingAction(
+        state: Int,
+        lapses: Int,
+        currentStep: Int,
+        rating: Int, // 1: Again, 2: Hard, 3: Good, 4: Easy
+        learningSteps: List<Int>,
+        relearningSteps: List<Int>,
+        leechThreshold: Int = 8,
+        leechAction: String = "skip"
+    ): RatingAction {
+        val isRelearning = state == 3
+        val isReview = state == 2
+
+        // Leech check: only applies to graduated cards (Review or Relearning).
+        if (rating == 1 && (isReview || isRelearning)) {
+            val currentLapses = lapses + 1
+            val halfThreshold = ceil(leechThreshold.toDouble() / 2.0).toInt()
+            val isLeech = currentLapses >= leechThreshold && (currentLapses - leechThreshold) % halfThreshold == 0
+
+            if (isLeech) {
+                return RatingAction.Leech(
+                    action = leechAction,
+                    fallbackDelay = relearningSteps.firstOrNull() ?: 10
+                )
+            }
+        }
+
+        // Hybrid state machine
+        if (isReview) {
+            return if (rating == 1) {
+                RatingAction.Requeue(nextStep = 0, delayMins = relearningSteps.firstOrNull() ?: 10)
+            } else {
+                RatingAction.Graduate
+            }
+        }
+
+        val steps = if (isRelearning) relearningSteps else learningSteps
+        val safeCurrentStep = max(0, currentStep)
+
+        return when (rating) {
+            1 -> { // Again
+                RatingAction.Requeue(nextStep = 0, delayMins = steps.firstOrNull() ?: 1)
+            }
+            2 -> { // Hard
+                val currentDelay = steps.getOrNull(safeCurrentStep) ?: steps.firstOrNull() ?: 1
+                val delay = if (safeCurrentStep == 0) {
+                    hardDelayMinsForFirstStep(currentDelay, steps.getOrNull(1))
+                } else {
+                    currentDelay
+                }
+                RatingAction.Requeue(nextStep = safeCurrentStep, delayMins = delay)
+            }
+            3 -> { // Good
+                if (safeCurrentStep < steps.size - 1) {
+                    RatingAction.Requeue(nextStep = safeCurrentStep + 1, delayMins = steps[safeCurrentStep + 1])
+                } else {
+                    RatingAction.Graduate
+                }
+            }
+            else -> { // Easy (4) graduates immediately
+                RatingAction.Graduate
+            }
+        }
+    }
+
+    private fun hardDelayMinsForFirstStep(againMins: Int, nextMins: Int?): Int {
+        if (nextMins != null && nextMins > 0) {
+            return maybeRoundInDaysMinutes((againMins + nextMins) / 2)
+        }
+        val increased = min(againMins * 1.5, (againMins + DAY_MINUTES).toDouble())
+        return maybeRoundInDaysMinutes(increased.toInt())
+    }
+
+    private fun maybeRoundInDaysMinutes(delayMins: Int): Int {
+        if (delayMins > DAY_MINUTES) {
+            return max(DAY_MINUTES, (delayMins.toDouble() / DAY_MINUTES.toDouble()).roundToInt() * DAY_MINUTES)
+        }
+        return delayMins
     }
 }
