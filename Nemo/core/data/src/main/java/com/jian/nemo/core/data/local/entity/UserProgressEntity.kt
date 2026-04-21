@@ -30,7 +30,7 @@ data class UserProgressEntity(
     val itemType: String, // 'word' | 'grammar'
 
     @ColumnInfo(name = "item_id")
-    val itemId: String,
+    val itemId: Long,
 
     // ========== FSRS State (Calculated by Server RPC) ==========
     
@@ -67,7 +67,7 @@ data class UserProgressEntity(
     val nextReview: String? = null,
 
     @ColumnInfo(name = "buried_until")
-    val buriedUntil: String? = null,
+    val buriedUntil: Long = 0,
 
     @ColumnInfo(name = "is_favorite")
     val isFavorite: Boolean = false,

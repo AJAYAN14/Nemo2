@@ -15,11 +15,7 @@ import com.jian.nemo.core.domain.repository.WordRepository
 import com.jian.nemo.core.domain.service.SrsCalculator
 import com.jian.nemo.core.domain.usecase.grammar.GetDueGrammarsUseCase
 import com.jian.nemo.core.domain.usecase.grammar.UpdateGrammarUseCase
-import com.jian.nemo.core.domain.usecase.review.ProcessReviewResultUseCase
-import com.jian.nemo.core.domain.usecase.word.GetDueWordsUseCase
-import com.jian.nemo.core.domain.usecase.word.UpdateWordUseCase
-import com.jian.nemo.feature.learning.domain.LearningQueueManager
-import com.jian.nemo.feature.learning.domain.LearningScheduler
+import com.jian.nemo.core.domain.repository.StudyRepository
 import com.jian.nemo.feature.learning.domain.SrsIntervalPreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -83,7 +79,7 @@ class ReviewViewModelRegressionTest {
     @Test
     fun `due list should be globally mixed by due day`() = runTest {
         val dueWord = Word(
-            id = 1,
+            id = "1",
             japanese = "行く",
             hiragana = "いく",
             chinese = "去",
@@ -98,7 +94,7 @@ class ReviewViewModelRegressionTest {
             lastModifiedTime = 0L
         )
         val dueGrammar = Grammar(
-            id = 2,
+            id = "2",
             grammar = "〜ている",
             grammarLevel = "N5",
             usages = listOf(
@@ -181,7 +177,7 @@ class ReviewViewModelRegressionTest {
         leechAction: String = "skip"
     ): Harness {
         val defaultDueWord = Word(
-            id = 1,
+            id = "1",
             japanese = "行く",
             hiragana = "いく",
             chinese = "去",
@@ -214,19 +210,12 @@ class ReviewViewModelRegressionTest {
 
         val getDueWordsUseCase = GetDueWordsUseCase(wordRepository, settingsRepository)
         val getDueGrammarsUseCase = GetDueGrammarsUseCase(grammarRepository, settingsRepository)
-        val processReviewResultUseCase = ProcessReviewResultUseCase(
-            wordRepository = wordRepository,
-            grammarRepository = grammarRepository,
-            settingsRepository = settingsRepository,
-            studyRecordRepository = studyRecordRepository,
-            reviewLogRepository = reviewLogRepository,
-            srsCalculator = srsCalculator
-        )
+        val studyRepository = noOpProxy<StudyRepository>()
 
         val vm = ReviewViewModel(
             getDueWordsUseCase = getDueWordsUseCase,
             getDueGrammarsUseCase = getDueGrammarsUseCase,
-            processReviewResultUseCase = processReviewResultUseCase,
+            studyRepository = studyRepository,
             srsCalculator = srsCalculator,
             settingsRepository = settingsRepository,
             learningScheduler = LearningScheduler(),
@@ -274,8 +263,8 @@ class ReviewViewModelRegressionTest {
                 "getLearnAheadLimitFlow" -> flowOf(learnAheadLimitMinutes)
                 "getLeechThresholdFlow" -> flowOf(leechThreshold)
                 "getLeechActionFlow" -> flowOf(leechAction)
-                "getWordLapsesFlow" -> flowOf(emptyMap<Int, Int>())
-                "getGrammarLapsesFlow" -> flowOf(emptyMap<Int, Int>())
+                "getWordLapsesFlow" -> flowOf(emptyMap<String, Int>())
+                "getGrammarLapsesFlow" -> flowOf(emptyMap<String, Int>())
                 "incrementWordLapse", "incrementGrammarLapse" -> Unit
                 else -> defaultReturn(methodName)
             }

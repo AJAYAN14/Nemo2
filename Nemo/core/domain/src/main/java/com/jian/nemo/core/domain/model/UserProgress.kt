@@ -8,7 +8,7 @@ data class UserProgress(
     val id: String, // UUID
     val userId: String,
     val itemType: String, // 'word' | 'grammar'
-    val itemId: String,
+    val itemId: Long,
     val stability: Double,
     val difficulty: Double,
     val elapsedDays: Int,
@@ -19,7 +19,7 @@ data class UserProgress(
     val learningStep: Int,
     val lastReview: String?,
     val nextReview: String?,
-    val buriedUntil: String?,
+    val buriedUntil: Long,
     val level: String,
     val createdAt: String
 )

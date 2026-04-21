@@ -36,7 +36,7 @@ object GrammarMapper {
             firstLearnedDate = state?.createdAt?.let { DateTimeUtils.isoToEpochDay(it) },
             isFavorite = state?.isFavorite ?: false,
             isSkipped = state?.state == -1,
-            buriedUntilDay = state?.buriedUntil?.let { DateTimeUtils.isoToEpochDay(it) } ?: 0L,
+            buriedUntilDay = state?.buriedUntil ?: 0L,
             lastModifiedTime = state?.updatedAt?.let { DateTimeUtils.isoToMillis(it) } ?: 0L
         )
     }
@@ -92,7 +92,7 @@ object GrammarMapper {
             id = "${userId}_grammar_${id}",
             userId = userId,
             itemType = "grammar",
-            itemId = id,
+            itemId = id.toLongOrNull() ?: 0L,
             reps = repetitionCount,
             stability = stability,
             difficulty = difficulty,
@@ -104,7 +104,7 @@ object GrammarMapper {
             nextReview = DateTimeUtils.epochDayToIso(nextReviewDate),
             lastReview = lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
             isFavorite = isFavorite,
-            buriedUntil = if (buriedUntilDay > 0) DateTimeUtils.epochDayToIso(buriedUntilDay) else null,
+            buriedUntil = buriedUntilDay,
             updatedAt = DateTimeUtils.millisToIso(lastModifiedTime),
             level = grammarLevel,
             createdAt = firstLearnedDate?.let { DateTimeUtils.epochDayToIso(it) } ?: DateTimeUtils.millisToIso(lastModifiedTime)

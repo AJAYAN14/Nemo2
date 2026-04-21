@@ -19,7 +19,7 @@ interface StudyRepository {
      * @param itemType 'word' | 'grammar'
      * @param rating 1:Again, 2:Hard, 3:Good, 4:Easy
      */
-    suspend fun processReview(itemId: String, itemType: String, rating: Int)
+    suspend fun processReview(itemId: Long, itemType: String, rating: Int)
 
     /**
      * 开始实时监听云端变更
@@ -39,10 +39,30 @@ interface StudyRepository {
     /**
      * 暂停项目 (不再出现，state = -1)
      */
-    suspend fun suspendItem(itemId: String, itemType: String)
+    suspend fun suspendItem(itemId: Long, itemType: String)
+
+    /**
+     * 取消暂停项目 (恢复到新学状态，state = 0)
+     */
+    suspend fun unsuspendItem(itemId: Long, itemType: String)
 
     /**
      * 今日暂缓 (今日不再出现)
      */
-    suspend fun buryItem(itemId: String, itemType: String, epochDay: Long)
+    suspend fun buryItem(itemId: Long, itemType: String, epochDay: Long)
+
+    /**
+     * 切换收藏状态
+     */
+    suspend fun toggleFavorite(itemId: Long, itemType: String, isFavorite: Boolean)
+
+    /**
+     * 重置所有进度
+     */
+    suspend fun resetAllProgress(itemType: String)
+
+    /**
+     * 清空所有收藏
+     */
+    suspend fun clearAllFavorites(itemType: String)
 }

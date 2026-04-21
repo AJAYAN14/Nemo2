@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 22,
-    "identityHash": "ee7edd5e8c3a28569ba518c746440ecc",
+    "identityHash": "e16430697a16779b01bf8ba3e593e1a1",
     "entities": [
       {
         "tableName": "words",
@@ -863,7 +863,7 @@
       },
       {
         "tableName": "user_progress",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `user_id` TEXT NOT NULL, `item_type` TEXT NOT NULL, `item_id` TEXT NOT NULL, `stability` REAL NOT NULL, `difficulty` REAL NOT NULL, `elapsed_days` INTEGER NOT NULL, `scheduled_days` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `state` INTEGER NOT NULL, `learning_step` INTEGER NOT NULL, `last_review` TEXT, `next_review` TEXT, `buried_until` TEXT, `is_favorite` INTEGER NOT NULL, `level` TEXT NOT NULL, `created_at` TEXT NOT NULL, `updated_at` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `user_id` TEXT NOT NULL, `item_type` TEXT NOT NULL, `item_id` INTEGER NOT NULL, `stability` REAL NOT NULL, `difficulty` REAL NOT NULL, `elapsed_days` INTEGER NOT NULL, `scheduled_days` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `state` INTEGER NOT NULL, `learning_step` INTEGER NOT NULL, `last_review` TEXT, `next_review` TEXT, `buried_until` INTEGER NOT NULL, `is_favorite` INTEGER NOT NULL, `level` TEXT NOT NULL, `created_at` TEXT NOT NULL, `updated_at` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -886,7 +886,7 @@
           {
             "fieldPath": "itemId",
             "columnName": "item_id",
-            "affinity": "TEXT",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -952,8 +952,8 @@
           {
             "fieldPath": "buriedUntil",
             "columnName": "buried_until",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "isFavorite",
@@ -1020,7 +1020,7 @@
       },
       {
         "tableName": "sync_outbox",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `item_id` TEXT NOT NULL, `item_type` TEXT NOT NULL, `rating` INTEGER NOT NULL, `created_at` TEXT NOT NULL, `is_syncing` INTEGER NOT NULL, `attempts` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `item_id` INTEGER NOT NULL, `item_type` TEXT NOT NULL, `rating` INTEGER NOT NULL, `created_at` TEXT NOT NULL, `is_syncing` INTEGER NOT NULL, `attempts` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1031,7 +1031,7 @@
           {
             "fieldPath": "itemId",
             "columnName": "item_id",
-            "affinity": "TEXT",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -1208,7 +1208,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ee7edd5e8c3a28569ba518c746440ecc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e16430697a16779b01bf8ba3e593e1a1')"
     ]
   }
 }

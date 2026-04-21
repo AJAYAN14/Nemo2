@@ -228,6 +228,14 @@ class Fsrs6Algorithm(
     }
 
     /**
+     * Overload for numeric IDs (Standard in Web Nemo2)
+     */
+    fun buildFsrsDeterministicSeed(cardId: Long, reps: Int): Long {
+        val safeReps = max(0, reps).toLong()
+        return (cardId + safeReps) and 0xFFFFFFFFL
+    }
+
+    /**
      * Determine whether a rating should advance a short-term step or graduate.
      * Ported from Web's srsService.evaluateRatingAction.
      */

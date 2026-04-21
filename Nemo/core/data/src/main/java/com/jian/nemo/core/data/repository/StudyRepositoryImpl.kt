@@ -48,7 +48,7 @@ class StudyRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun processReview(itemId: String, itemType: String, rating: Int) {
+    override suspend fun processReview(itemId: Long, itemType: String, rating: Int) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
         val now = Clock.System.now()
         
@@ -68,7 +68,7 @@ class StudyRepositoryImpl @Inject constructor(
             relearningSteps = relearningSteps
         )
 
-        val newReps = if (rating == 1) progress.reps else progress.reps + 1
+        val newReps = progress.reps + 1
         val newLapses = if (rating == 1) progress.lapses + 1 else progress.lapses
 
         val nextReviewInstant: Instant
@@ -98,7 +98,11 @@ class StudyRepositoryImpl @Inject constructor(
                 nextReviewInstant = now.plus(intervalDays.days)
             }
             is RatingAction.Requeue -> {
-                newStateInt = if (progress.state == 0) 1 else progress.state
+                newStateInt = if (rating == 1) {
+                    if (progress.state == 2 || progress.state == 3) 3 else 1
+                } else {
+                    if (progress.state == 0) 1 else progress.state
+                }
                 newLearningStep = ratingAction.nextStep
                 nextReviewInstant = now.plus(ratingAction.delayMins.minutes)
                 
@@ -158,7 +162,7 @@ class StudyRepositoryImpl @Inject constructor(
         syncManager.stopRealtimeSync()
     }
 
-    override suspend fun suspendItem(itemId: String, itemType: String) {
+    override suspend fun suspendItem(itemId: Long, itemType: String) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
         val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
 
@@ -181,14 +185,37 @@ class StudyRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun buryItem(itemId: String, itemType: String, epochDay: Long) {
+    override suspend fun unsuspendItem(itemId: Long, itemType: String) {
+        val progress = userProgressDao.getByItem(itemType, itemId) ?: return
+        val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
+
+        // 1. 本地更新 (恢复到 New 状态)
+        userProgressDao.updateProgressState(itemId, itemType, 0, now)
+
+        // 2. 异步同步
+        scope.launch {
+            try {
+                supabase.postgrest["user_progress"]
+                    .update({
+                        set("state", 0)
+                        set("updated_at", now)
+                    }) {
+                        filter { eq("id", progress.id) }
+                    }
+            } catch (e: Exception) {
+                println("取消暂停同步失败: ${e.message}")
+            }
+        }
+    }
+
+    override suspend fun buryItem(itemId: Long, itemType: String, epochDay: Long) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
         val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
         val buriedUntil = epochDay + 1
 
         // 1. 本地更新
         val updated = progress.copy(
-            buriedUntil = buriedUntil.toString(),
+            buriedUntil = buriedUntil,
             updatedAt = now
         )
         userProgressDao.insert(updated)
@@ -262,6 +289,89 @@ class StudyRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun toggleFavorite(itemId: Long, itemType: String, isFavorite: Boolean) {
+        val progress = userProgressDao.getByItem(itemType, itemId) ?: return
+        val now = Clock.System.now().toString()
+
+        // 1. 本地更新
+        userProgressDao.updateFavoriteStatus(itemId, itemType, isFavorite, now)
+
+        // 2. 异步同步
+        scope.launch {
+            try {
+                supabase.postgrest["user_progress"]
+                    .update({
+                        set("is_favorite", isFavorite)
+                        set("updated_at", now)
+                    }) {
+                        filter { eq("id", progress.id) }
+                    }
+            } catch (e: Exception) {
+                println("收藏状态同步失败: ${e.message}")
+            }
+        }
+    }
+
+    override suspend fun resetAllProgress(itemType: String) {
+        val now = Clock.System.now().toString()
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
+
+        // 1. 本地重置
+        userProgressDao.resetAllProgress(itemType, now)
+
+        // 2. 异步同步到服务器 (由于是全量重置，建议调用 RPC 或批量更新)
+        scope.launch {
+            try {
+                // 重置逻辑：将该类型下该用户的所有进度 state 设为 0，并清空 FSRS 字段
+                supabase.postgrest["user_progress"]
+                    .update({
+                        set("state", 0)
+                        set("stability", 0.0)
+                        set("difficulty", 0.0)
+                        set("reps", 0)
+                        set("lapses", 0)
+                        set("learning_step", 0)
+                        set("last_review", null as String?)
+                        set("next_review", now)
+                        set("updated_at", now)
+                    }) {
+                        filter {
+                            eq("user_id", userId)
+                            eq("item_type", itemType)
+                        }
+                    }
+            } catch (e: Exception) {
+                println("进度重置同步失败: ${e.message}")
+            }
+        }
+    }
+
+    override suspend fun clearAllFavorites(itemType: String) {
+        val now = Clock.System.now().toString()
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
+
+        // 1. 本地清空
+        userProgressDao.clearAllFavorites(itemType, now)
+
+        // 2. 异步同步
+        scope.launch {
+            try {
+                supabase.postgrest["user_progress"]
+                    .update({
+                        set("is_favorite", false)
+                        set("updated_at", now)
+                    }) {
+                        filter {
+                            eq("user_id", userId)
+                            eq("item_type", itemType)
+                        }
+                    }
+            } catch (e: Exception) {
+                println("清空收藏同步失败: ${e.message}")
+            }
+        }
+    }
+
     private fun calculateElapsedDays(lastReview: String?, now: Instant): Double {
         if (lastReview == null) return 0.0
         val last = Instant.parse(lastReview)
@@ -273,6 +383,26 @@ class StudyRepositoryImpl @Inject constructor(
 // ========== Mapper Extensions ==========
 
 fun UserProgressEntity.toDomain() = UserProgress(
+    id = this.id,
+    userId = this.userId,
+    itemType = this.itemType,
+    itemId = this.itemId,
+    stability = this.stability,
+    difficulty = this.difficulty,
+    elapsedDays = this.elapsedDays,
+    scheduledDays = this.scheduledDays,
+    reps = this.reps,
+    lapses = this.lapses,
+    state = this.state,
+    learningStep = this.learningStep,
+    lastReview = this.lastReview,
+    nextReview = this.nextReview,
+    buriedUntil = this.buriedUntil,
+    level = this.level,
+    createdAt = this.createdAt
+)
+
+fun UserProgress.toEntity() = UserProgressEntity(
     id = this.id,
     userId = this.userId,
     itemType = this.itemType,

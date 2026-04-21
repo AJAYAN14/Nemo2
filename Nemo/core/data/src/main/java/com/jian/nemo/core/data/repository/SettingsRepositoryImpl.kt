@@ -1087,7 +1087,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 // Use physical delete for cleanup
                 wordDao.deleteByIds(toDeleteIds)
                 // 同步清理对应的状态表
-                userProgressDao.deleteByItemIds(toDeleteIds, "word")
+                userProgressDao.deleteByItemIds(toDeleteIds.map { it.toLongOrNull() ?: 0L }, "word")
                 deletedCount += toDeleteIds.size
             }
         } catch (e: Exception) {
@@ -1104,7 +1104,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Found ${toDeleteIds.size} duplicate grammars. Deleting...")
                 grammarDao.deleteByIds(toDeleteIds)
                 // 同步清理对应的状态表
-                userProgressDao.deleteByItemIds(toDeleteIds, "grammar")
+                userProgressDao.deleteByItemIds(toDeleteIds.map { it.toLongOrNull() ?: 0L }, "grammar")
                 deletedCount += toDeleteIds.size
             }
         } catch (e: Exception) {

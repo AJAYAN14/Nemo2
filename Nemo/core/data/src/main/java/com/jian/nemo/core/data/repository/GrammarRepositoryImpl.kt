@@ -20,6 +20,7 @@ import javax.inject.Singleton
 class GrammarRepositoryImpl @Inject constructor(
     private val grammarDao: GrammarDao,
     private val userProgressDao: UserProgressDao,
+    private val studyRepository: com.jian.nemo.core.domain.repository.StudyRepository,
     private val syncManager: com.jian.nemo.core.data.manager.SupabaseSyncManager
 ) : GrammarRepository {
 
@@ -227,8 +228,8 @@ class GrammarRepositoryImpl @Inject constructor(
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.updateFavoriteStatus(grammarId, "grammar", isFavorite, nowIso)
+            val itemId = grammarId.toLongOrNull() ?: 0L
+            studyRepository.toggleFavorite(itemId, "grammar", isFavorite)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -237,8 +238,8 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override suspend fun markAsSkipped(grammarId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.updateProgressState(grammarId, "grammar", -1, nowIso)
+            val itemId = grammarId.toLongOrNull() ?: 0L
+            studyRepository.suspendItem(itemId, "grammar")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -247,8 +248,8 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override suspend fun unmarkAsSkipped(grammarId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.updateProgressState(grammarId, "grammar", 0, nowIso)
+            val itemId = grammarId.toLongOrNull() ?: 0L
+            studyRepository.unsuspendItem(itemId, "grammar")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -259,8 +260,7 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override suspend fun resetAllProgress(): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.resetAllProgress("grammar", nowIso)
+            studyRepository.resetAllProgress("grammar")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -269,8 +269,7 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override suspend fun clearAllFavorites(): Result<Unit> {
         return try {
-            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.clearAllFavorites("grammar", nowIso)
+            studyRepository.clearAllFavorites("grammar")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)

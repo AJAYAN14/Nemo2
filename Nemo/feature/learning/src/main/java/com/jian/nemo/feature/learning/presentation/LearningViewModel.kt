@@ -910,7 +910,7 @@ class LearningViewModel @Inject constructor(
                     quality == 5 -> {
                         println("熟词速通: ${currentItem.displayName}")
                         _learningSteps.remove(currentItem.id)
-                        studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", 5)
+                        studyRepository.processReview(currentItem.id.toLongOrNull() ?: 0L, if (currentItem is LearningItem.WordItem) "word" else "grammar", 5)
                         handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                     }
 
@@ -946,7 +946,7 @@ class LearningViewModel @Inject constructor(
                             )
                             handleScheduleResult(result)
                         } else {
-                            studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", quality)
+                            studyRepository.processReview(currentItem.id.toLongOrNull() ?: 0L, if (currentItem is LearningItem.WordItem) "word" else "grammar", quality)
                             handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                         }
                     }
@@ -1079,7 +1079,7 @@ class LearningViewModel @Inject constructor(
                 if (!result.item.isNew && result.quality < 5) {
                     processRelearningGraduation(result.item)
                 } else {
-                    studyRepository.processReview(result.item.id, if (result.item is LearningItem.WordItem) "word" else "grammar", result.quality)
+                    studyRepository.processReview(result.item.id.toLongOrNull() ?: 0L, if (result.item is LearningItem.WordItem) "word" else "grammar", result.quality)
                     handleSrsUpdateResult(Result.Success(Unit), result.item.isNew, isLapse = false)
                 }
             }
@@ -1650,7 +1650,7 @@ class LearningViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 studyRepository.buryItem(
-                    itemId = currentItem.id,
+                    itemId = currentItem.id.toLongOrNull() ?: 0L,
                     itemType = if (currentItem is LearningItem.WordItem) "word" else "grammar",
                     epochDay = today.toLong()
                 )
@@ -1676,7 +1676,7 @@ class LearningViewModel @Inject constructor(
         // 1. 持久化暂停状态 (使用统一的 StudyRepository 接口，不再操作 Word/Grammar 表)
         try {
             studyRepository.suspendItem(
-                itemId = item.id,
+                itemId = item.id.toLongOrNull() ?: 0L,
                 itemType = if (item is LearningItem.WordItem) "word" else "grammar"
             )
         } catch (e: Exception) {

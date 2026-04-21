@@ -11,7 +11,7 @@ import com.jian.nemo.core.domain.repository.StudyRecordRepository
 import com.jian.nemo.core.domain.service.SrsCalculator
 import com.jian.nemo.core.domain.usecase.grammar.GetDueGrammarsUseCase
 import com.jian.nemo.core.domain.usecase.grammar.UpdateGrammarUseCase
-import com.jian.nemo.core.domain.usecase.review.ProcessReviewResultUseCase
+import com.jian.nemo.core.domain.repository.StudyRepository
 import com.jian.nemo.core.domain.usecase.word.GetDueWordsUseCase
 import com.jian.nemo.core.domain.usecase.word.UpdateWordUseCase
 import com.jian.nemo.feature.learning.domain.LearningQueueManager
@@ -61,15 +61,15 @@ data class ReviewUiState(
 class ReviewViewModel @Inject constructor(
     private val getDueWordsUseCase: GetDueWordsUseCase,
     private val getDueGrammarsUseCase: GetDueGrammarsUseCase,
-    private val processReviewResultUseCase: ProcessReviewResultUseCase,
+    private val studyRecordRepository: StudyRecordRepository,
+    private val learningQueueManager: LearningQueueManager,
+    private val studyRepository: StudyRepository,
     private val srsCalculator: SrsCalculator,
     private val settingsRepository: SettingsRepository,
     private val learningScheduler: LearningScheduler,
     private val srsIntervalPreview: SrsIntervalPreview,
     private val updateWordUseCase: UpdateWordUseCase,
-    private val updateGrammarUseCase: UpdateGrammarUseCase,
-    private val studyRecordRepository: StudyRecordRepository,
-    private val learningQueueManager: LearningQueueManager
+    private val updateGrammarUseCase: UpdateGrammarUseCase
 ) : ViewModel() {
 
     companion object {
@@ -332,14 +332,11 @@ class ReviewViewModel @Inject constructor(
      * 使用 ProcessReviewResultUseCase 完成完整的 SRS + 统计 + 日志
      */
     private suspend fun processDirectSrs(item: ReviewPreviewItem, quality: Int) {
-        when (item) {
-            is ReviewPreviewItem.WordItem -> {
-                processReviewResultUseCase.processWord(item.word, quality)
-            }
-            is ReviewPreviewItem.GrammarItem -> {
-                processReviewResultUseCase.processGrammar(item.grammar, quality)
-            }
-        }
+        studyRepository.processReview(
+            itemId = item.itemId.toLongOrNull() ?: 0L,
+            itemType = if (item is ReviewPreviewItem.WordItem) "word" else "grammar",
+            rating = quality
+        )
 
         println("📝 复习SRS更新: ${item.displayName}, quality=$quality")
 

@@ -23,6 +23,7 @@ class WordRepositoryImpl @Inject constructor(
     private val wordDao: WordDao,
     private val userProgressDao: UserProgressDao,
     private val testRecordDao: TestRecordDao,
+    private val studyRepository: com.jian.nemo.core.domain.repository.StudyRepository,
     private val syncManager: com.jian.nemo.core.data.manager.SupabaseSyncManager
 ) : WordRepository {
 
@@ -32,22 +33,23 @@ class WordRepositoryImpl @Inject constructor(
     private suspend fun mapWithStudyState(entities: List<WordEntity>): List<Word> {
         if (entities.isEmpty()) return emptyList()
 
-        val itemIds = entities.map { it.id }
+        val itemIds = entities.map { it.id.toLongOrNull() ?: 0L }
         val statesById = userProgressDao
             .getProgressByItemIds(itemIds, "word")
             .associateBy { it.itemId }
 
         return entities.map { entity ->
-            WordMapper.toDomainModel(entity, statesById[entity.id])
+            WordMapper.toDomainModel(entity, statesById[entity.id.toLongOrNull() ?: 0L])
         }
     }
 
     // ========== 查询实现 ==========
 
     override fun getWordById(id: String): Flow<Word?> {
+        val itemId = id.toLongOrNull() ?: 0L
         return combine(
             wordDao.getById(id),
-            userProgressDao.getProgressByItemIdFlow(id, "word")
+            userProgressDao.getProgressByItemIdFlow(itemId, "word")
         ) { entity, state ->
             entity?.let { WordMapper.toDomainModel(it, state) }
         }
@@ -367,8 +369,8 @@ class WordRepositoryImpl @Inject constructor(
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         return@withContext try {
-            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.updateFavoriteStatus(wordId, "word", isFavorite, nowIso)
+            val itemId = wordId.toLongOrNull() ?: 0L
+            studyRepository.toggleFavorite(itemId, "word", isFavorite)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -377,9 +379,8 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun markAsSkipped(wordId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
-            // Suspend corresponds to state = -1
-            userProgressDao.updateProgressState(wordId, "word", -1, nowIso)
+            val itemId = wordId.toLongOrNull() ?: 0L
+            studyRepository.suspendItem(itemId, "word")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -388,9 +389,8 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun unmarkAsSkipped(wordId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
-            // Unsuspend corresponds to state = 0
-            userProgressDao.updateProgressState(wordId, "word", 0, nowIso)
+            val itemId = wordId.toLongOrNull() ?: 0L
+            studyRepository.unsuspendItem(itemId, "word")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -401,8 +401,7 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun resetAllProgress(): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.resetAllProgress("word", nowIso)
+            studyRepository.resetAllProgress("word")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -411,8 +410,7 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun clearAllFavorites(): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
-            userProgressDao.clearAllFavorites("word", nowIso)
+            studyRepository.clearAllFavorites("word")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
