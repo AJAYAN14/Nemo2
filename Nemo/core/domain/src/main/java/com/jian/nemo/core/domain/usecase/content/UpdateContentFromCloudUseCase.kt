@@ -23,11 +23,14 @@ class UpdateContentFromCloudUseCase @Inject constructor(
         if (remoteVersion <= lastVersion) return null
 
         for (level in levels) {
-            contentRepository.downloadWordJson(level)?.let { json ->
-                contentUpdateApplier.applyWordsFromJson(level, json)
+            val words = contentRepository.fetchRemoteWords(level)
+            if (words.isNotEmpty()) {
+                contentUpdateApplier.applyWords(level, words)
             }
-            contentRepository.downloadGrammarJson(level)?.let { json ->
-                contentUpdateApplier.applyGrammarsFromJson(level, json)
+            
+            val grammars = contentRepository.fetchRemoteGrammars(level)
+            if (grammars.isNotEmpty()) {
+                contentUpdateApplier.applyGrammars(level, grammars)
             }
         }
 

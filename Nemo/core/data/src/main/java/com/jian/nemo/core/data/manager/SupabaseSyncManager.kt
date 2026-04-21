@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import com.jian.nemo.core.domain.model.sync.SyncMode
+import com.jian.nemo.core.data.model.sync.SyncMetadata
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.room.withTransaction
@@ -44,8 +45,10 @@ class SupabaseSyncManager @Inject constructor(
     private val favoriteQuestionDao: FavoriteQuestionDao,
     private val settingsRepository: SettingsRepository,
     private val database: NemoDatabase,
-    private val syncMetadata: com.jian.nemo.core.data.model.sync.SyncMetadata,
-    private val dataSeedService: DataSeedService
+    private val syncMetadata: SyncMetadata,
+    private val dataSeedService: DataSeedService,
+    private val contentRepository: com.jian.nemo.core.domain.repository.ContentRepository,
+    private val contentUpdateApplier: com.jian.nemo.core.domain.repository.ContentUpdateApplier
 ) {
     private val syncMutex = kotlinx.coroutines.sync.Mutex()
     companion object {
@@ -87,6 +90,10 @@ class SupabaseSyncManager @Inject constructor(
             // 0. 核心依赖检查：确保本地词库已初始化（防止重装后外键报错）
             emit(SyncProgress.Running("正在准备本地库...", 0, 0))
             dataSeedService.ensureDataSeeded()
+
+            // 0.0 字典内容同步：拉取云端单词/语法表更新
+            emit(SyncProgress.Running("正在同步云端词库...", 0, 0))
+            syncDictionary()
 
             // 0.1 时间校验 (RPC)
             try {
@@ -1004,6 +1011,50 @@ class SupabaseSyncManager @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "远程数据擦除过程发生异常", e)
             false
+        }
+    }
+
+    /**
+     * 同步词库字典 (Words & Grammars)
+     * 从 Supabase dictionary_words 和 dictionary_grammars 表拉取数据并合并到本地
+     */
+    private suspend fun syncDictionary() {
+        try {
+            val levels = listOf("N1", "N2", "N3", "N4", "N5")
+            
+            // 检查内容版本
+            val remoteVersion = contentRepository.getRemoteContentVersion()
+            val lastVersion = settingsRepository.getLastContentVersion()
+            
+            if (remoteVersion != null && remoteVersion <= lastVersion) {
+                Log.d(TAG, "本地词库版本已是最新 ($lastVersion)，跳过增量更新")
+                return
+            }
+
+            levels.forEach { level ->
+                Log.d(TAG, "正在同步词库等级: $level")
+                
+                // 1. 同步单词
+                val remoteWords = contentRepository.fetchRemoteWords(level)
+                if (remoteWords.isNotEmpty()) {
+                    contentUpdateApplier.applyWords(level, remoteWords)
+                }
+
+                // 2. 同步语法
+                val remoteGrammars = contentRepository.fetchRemoteGrammars(level)
+                if (remoteGrammars.isNotEmpty()) {
+                    contentUpdateApplier.applyGrammars(level, remoteGrammars)
+                }
+            }
+
+            // 更新本地版本号
+            if (remoteVersion != null) {
+                settingsRepository.setLastContentVersion(remoteVersion)
+            }
+            Log.i(TAG, "🎉 词库字典同步完成")
+        } catch (e: Exception) {
+            Log.e(TAG, "词库字典同步失败: ${e.message}", e)
+            // 字典同步失败不应中断进度同步，仅记录日志
         }
     }
 }

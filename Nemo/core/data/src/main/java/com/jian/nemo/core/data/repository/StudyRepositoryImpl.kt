@@ -16,27 +16,37 @@ import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
+import com.jian.nemo.core.common.di.ApplicationScope
+import com.jian.nemo.core.domain.model.UserProgress
+import com.jian.nemo.core.domain.repository.StudyRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.days
 
 @Singleton
 class StudyRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val userProgressDao: UserProgressDao,
     private val syncOutboxDao: SyncOutboxDao,
-    private val scope: CoroutineScope
+    @ApplicationScope private val scope: CoroutineScope
 ) : StudyRepository {
 
     private val algorithm = Fsrs6Algorithm()
     private var realtimeChannel: io.github.jan.supabase.realtime.RealtimeChannel? = null
 
-    override fun getDueItemsFlow(): Flow<List<UserProgressEntity>> {
+    override fun getDueItemsFlow(): Flow<List<UserProgress>> {
         val now = Clock.System.now().toString()
         val currentEpochDay = System.currentTimeMillis() / 86400000
-        return userProgressDao.getDueItemsFlow(now, currentEpochDay)
+        return userProgressDao.getDueItemsFlow(now, currentEpochDay).map { list ->
+            list.map { it.toDomain() }
+        }
     }
 
     override suspend fun processReview(itemId: Int, itemType: String, rating: Int) {
@@ -49,7 +59,7 @@ class StudyRepositoryImpl @Inject constructor(
         val newState = algorithm.step(currentState, rating, elapsedDays)
         
         // 注意：这里为了简化，暂不计算 Fuzz，等 RPC 返回最终结果
-        val nextReview = now.plus(java.time.Duration.ofDays(1)) // 临时占位
+        val nextReview = now.plus(1.days) // 临时占位
 
         val localUpdated = progress.copy(
             stability = newState.stability,
@@ -93,11 +103,11 @@ class StudyRepositoryImpl @Inject constructor(
             changeFlow.collect { action ->
                 when (action) {
                     is PostgresAction.Update -> {
-                        val updated = action.decodeRecord<UserProgressEntity>()
+                        val updated = Json.decodeFromJsonElement<UserProgressEntity>(action.record)
                         userProgressDao.insertOrUpdate(updated)
                     }
                     is PostgresAction.Insert -> {
-                        val inserted = action.decodeRecord<UserProgressEntity>()
+                        val inserted = Json.decodeFromJsonElement<UserProgressEntity>(action.record)
                         userProgressDao.insertOrUpdate(inserted)
                     }
                     is PostgresAction.Delete -> {
@@ -155,7 +165,7 @@ class StudyRepositoryImpl @Inject constructor(
                     prevDifficulty = progress.difficulty,
                     prevState = progress.state,
                     prevLearningStep = progress.learningStep,
-                    prevBuriedUntil = progress.buried_until,
+                    prevBuriedUntil = progress.buriedUntil,
                     nextStability = nextState.stability,
                     nextDifficulty = nextState.difficulty,
                     nextElapsedDays = elapsedDays.toInt(),
@@ -165,7 +175,7 @@ class StudyRepositoryImpl @Inject constructor(
                     nextState = if (task.rating == 1) 3 else 2, // 简化逻辑
                     nextLearningStep = 0,
                     nextLastReview = now.toString(),
-                    nextReview = (now + java.time.Duration.ofDays(interval.toLong())).toString(),
+                    nextReview = (now + interval.days).toString(),
                     nextBuriedUntil = 0,
                     epochDay = (now.toEpochMilliseconds() / 86400000).toInt(),
                     studyField = if (task.itemType == "word") "reviewed_words" else "reviewed_grammars",
@@ -175,7 +185,7 @@ class StudyRepositoryImpl @Inject constructor(
                 )
 
                 // 3. 执行 RPC
-                val response = supabase.postgrest.rpc("fn_process_review_atomic", params)
+                val response = supabase.postgrest.rpc("fn_process_review_atomic", Json.encodeToJsonElement(params).jsonObject)
                 
                 // 4. 同步成功，删除任务并更新本地
                 // 注意：这里由于 Realtime 会自动推回更新，所以我们其实可以只删任务，
@@ -197,4 +207,24 @@ class StudyRepositoryImpl @Inject constructor(
     }
 }
 
-// 注意：RPC 参数 DTO 需要在外部或内部定义，为了保持逻辑清晰，我将单独创建一个文件处理 RPC DTO
+// ========== Mapper Extensions ==========
+
+fun UserProgressEntity.toDomain() = UserProgress(
+    id = this.id,
+    userId = this.userId,
+    itemType = this.itemType,
+    itemId = this.itemId,
+    stability = this.stability,
+    difficulty = this.difficulty,
+    elapsedDays = this.elapsedDays,
+    scheduledDays = this.scheduledDays,
+    reps = this.reps,
+    lapses = this.lapses,
+    state = this.state,
+    learningStep = this.learningStep,
+    lastReview = this.lastReview,
+    nextReview = this.nextReview,
+    buriedUntil = this.buriedUntil,
+    level = this.level,
+    createdAt = this.createdAt
+)

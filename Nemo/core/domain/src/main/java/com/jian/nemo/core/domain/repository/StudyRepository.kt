@@ -1,6 +1,6 @@
 package com.jian.nemo.core.domain.repository
 
-import com.jian.nemo.core.data.local.entity.UserProgressEntity
+import com.jian.nemo.core.domain.model.UserProgress
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -11,7 +11,7 @@ interface StudyRepository {
     /**
      * 获取到期的复习项目 (响应式 Flow)
      */
-    fun getDueItemsFlow(): Flow<List<UserProgressEntity>>
+    fun getDueItemsFlow(): Flow<List<UserProgress>>
 
     /**
      * 提交复习评分

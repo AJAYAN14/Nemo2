@@ -538,7 +538,7 @@ interface GrammarDao {
      * 将指定等级下，不在给定 ID 列表中的语法标记为已下架
      */
     @Query("UPDATE grammars SET is_delisted = 1 WHERE UPPER(grammar_level) = UPPER(:level) AND id NOT IN (:jsonIds)")
-    suspend fun markMissingAsDelisted(level: String, jsonIds: List<Int>): Int
+    suspend fun markMissingAsDelistedById(level: String, jsonIds: List<Int>): Int
 }
 
 data class GrammarReviewForecastTuple(

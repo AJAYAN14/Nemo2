@@ -606,6 +606,12 @@ interface WordDao {
     suspend fun getDuplicateKeepIds(): List<Int>
 
     /**
+     * 将指定等级下，不在给定 ID 列表中的单词标记为已下架
+     */
+    @Query("UPDATE words SET is_delisted = 1 WHERE level = :level AND id NOT IN (:ids)")
+    suspend fun markMissingAsDelistedById(level: String, ids: List<Int>): Int
+
+    /**
      * 将指定等级下，不在给定日语原文列表中的单词标记为已下架
      * 用于云更新时的「静默下架」逻辑（处理 JSON 中直接删除行的情况）
      */
