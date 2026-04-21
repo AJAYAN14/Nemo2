@@ -1,0 +1,114 @@
+.androidFinishedContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* 1. Hero Rings */
+.heroContainer {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.outerRing {
+  width: 160px;
+  height: 160px;
+  background-color: rgba(16, 185, 129, 0.1); /* Emerald Alpha */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.innerRing {
+  width: 110px;
+  height: 110px;
+  background-color: rgba(16, 185, 129, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkIcon {
+  color: #10b981; /* Emerald */
+}
+
+/* 2. Text Content */
+.textContent {
+  margin-bottom: 2.5rem;
+}
+
+.finishTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.finishSubtitle {
+  font-size: 1rem;
+  color: #6B7280;
+  max-width: 300px;
+}
+
+/* 3. Quote Card */
+.quoteCard {
+  width: 100%;
+  max-width: 400px;
+}
+
+.quoteContent {
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.quoteIcon {
+  color: #9CA3AF;
+  opacity: 0.5;
+}
+
+.quoteText {
+  font-size: 1.1rem;
+  color: #111827;
+  font-style: italic;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* 4. Action Buttons */
+.actionContainer {
+  margin-top: 3rem;
+}
+
+.homeButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: #4F46E5; /* Indigo */
+  color: white;
+  border: 1px solid #4F46E5;
+  border-radius: 50px;
+  padding: 0.875rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  /* Transitions are handled by Framer Motion in component now, but keeping a fallback */
+  transition: transform 0.1s ease;
+}

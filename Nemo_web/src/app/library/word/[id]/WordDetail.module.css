@@ -1,0 +1,100 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem 6rem;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 150ms ease;
+  margin-bottom: 1rem;
+}
+
+.backBtn:hover {
+  color: var(--primary);
+}
+
+.section {
+  margin-bottom: 3rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  color: var(--foreground);
+}
+
+.sectionHeader h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.meaningCard {
+  background: #F9FAFB;
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  border: var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.meaning {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--foreground);
+  line-height: 1.2;
+}
+
+.tags {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.levelTag {
+  background: var(--foreground);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.posTag {
+  background: #E5E7EB;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.exampleList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.loading, .error, .noExamples {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .meaning {
+    font-size: 1.5rem;
+  }
+}

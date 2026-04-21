@@ -1,0 +1,121 @@
+.overlay {
+  background-color: rgba(0, 0, 0, 0.4);
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  animation: fadeIn 0.2s ease;
+}
+
+.modalContent {
+  background-color: white;
+  border-radius: 16px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 400px;
+  max-height: 85vh;
+  padding: 24px;
+  z-index: 51;
+  border: 1px solid #E5E7EB;
+  animation: scaleIn 0.2s ease;
+  outline: none;
+}
+
+.drawerContent {
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 51;
+  max-height: 90vh;
+  outline: none;
+  padding: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+}
+
+.drawerHandle {
+  width: 36px;
+  height: 4px;
+  background-color: #E5E7EB;
+  border-radius: 99px;
+  margin: 0 auto 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #6B7280;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.option {
+  width: 100%;
+  padding: 14px 16px;
+  background: #F9FAFB;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.option:hover {
+  background: #F3F4F6;
+}
+
+.option.selected {
+  background: #EEF2FF;
+  border-color: #4F46E5;
+  color: #4F46E5;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background-color: #4F46E5;
+  border-radius: 99px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

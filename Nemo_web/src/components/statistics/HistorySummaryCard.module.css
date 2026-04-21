@@ -1,0 +1,35 @@
+.card {
+  padding: 24px;
+  background: white;
+  border-radius: 26px;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  gap: 16px;
+}
+
+.statItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  border-radius: 20px;
+  background-color: var(--item-bg);
+}
+
+.value {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--item-color);
+  line-height: 1;
+}
+
+.label {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  opacity: 0.8;
+}

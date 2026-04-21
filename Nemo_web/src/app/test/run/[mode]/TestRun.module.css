@@ -1,0 +1,328 @@
+.container {
+  min-height: 100vh;
+  background-color: #F9FAFB;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  font-family: 'Inter', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  margin-bottom: 2rem;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  color: #374151;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.iconButton:hover {
+  background-color: #F3F4F6;
+}
+
+.progress {
+  font-weight: 600;
+  color: #4F46E5;
+  font-size: 1.1rem;
+}
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #EF4444;
+  font-weight: 500;
+  background: #FEE2E2;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.questionCard {
+  width: 100%;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+}
+
+.prompt {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.hint {
+  font-size: 1.2rem;
+  color: #6B7280;
+  margin-bottom: 3rem;
+  height: 1.5rem;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.optionButton {
+  background: white;
+  border: 1px solid #E5E7EB;
+  padding: 1.2rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.optionButton:hover {
+  border-color: #4F46E5;
+  background-color: #F5F3FF;
+  transform: translateY(-2px);
+}
+
+.optionButton:active {
+  transform: translateY(0);
+}
+
+.introCard {
+  text-align: center;
+  background: white;
+  padding: 3rem;
+  border-radius: 24px;
+  border: 1px solid #E5E7EB;
+  max-width: 400px;
+  margin: auto;
+}
+
+.introCard h1 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.introCard p {
+  color: #6B7280;
+  margin-bottom: 0.5rem;
+}
+
+.primaryButton {
+  margin-top: 2rem;
+  background-color: #4F46E5;
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  width: 100%;
+}
+
+.primaryButton:hover {
+  opacity: 0.9;
+}
+
+.optionButton.correct {
+  border-color: #10B981;
+  background-color: #ECFDF5;
+  color: #065F46;
+}
+
+.optionButton.wrong {
+  border-color: #EF4444;
+  background-color: #FEF2F2;
+  color: #991B1B;
+}
+
+.optionIcon {
+  margin-left: auto;
+}
+
+/* Summary Card */
+.summaryCard {
+  background: white;
+  padding: 3.5rem 2rem;
+  border-radius: 32px;
+  border: 1px solid #E5E7EB;
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+  margin: auto;
+}
+
+.scoreCircle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4F46E5, #818CF8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2rem;
+  color: white;
+  box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+}
+
+.scoreNumber {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.scoreLabel {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.summaryItem {
+  background: #F9FAFB;
+  padding: 1.2rem;
+  border-radius: 16px;
+  border: 1px solid #F3F4F6;
+}
+
+.summaryValue {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.summaryLabel {
+  font-size: 0.85rem;
+  color: #6B7280;
+}
+
+.practiceNote {
+  font-size: 0.85rem;
+  color: #9CA3AF;
+  font-style: italic;
+  margin-bottom: 2rem;
+}
+
+.summaryActions {
+  width: 100%;
+}
+
+
+.introIcon {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+.secondaryButton {
+  background-color: white;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+  padding: 1rem 2.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.secondaryButton:hover {
+  background-color: #F9FAFB;
+  border-color: #D1D5DB;
+}
+
+
+.summaryActions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.mistakesSection {
+  margin: 2rem 0;
+  text-align: left;
+  border-top: 1px solid #F3F4F6;
+  padding-top: 2rem;
+}
+
+.mistakesTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+}
+
+.mistakesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.mistakeItem {
+  background: #FEF2F2;
+  border: 1px solid #FEE2E2;
+  padding: 1rem;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.mistakePrompt {
+  font-weight: 600;
+  color: #991B1B;
+}
+
+.mistakeAnswer {
+  font-size: 0.9rem;
+  color: #B91C1C;
+  opacity: 0.8;
+}
+

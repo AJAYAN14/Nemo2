@@ -1,0 +1,23 @@
+drop function if exists public.fn_process_review_atomic(
+  uuid,
+  uuid,
+  text,
+  integer,
+  integer,
+  double precision,
+  double precision,
+  double precision,
+  double precision,
+  integer,
+  integer,
+  integer,
+  integer,
+  integer,
+  integer,
+  timestamptz,
+  timestamptz,
+  bigint,
+  bigint,
+  text,
+  integer
+);

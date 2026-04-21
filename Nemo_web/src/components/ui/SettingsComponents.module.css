@@ -1,0 +1,68 @@
+.card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.itemWrapper {
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.itemWrapper:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.itemContent {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.squircleIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px; /* Squircle effect */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.itemText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.itemTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--foreground);
+}
+
+.itemSubtitle {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.itemTrailing {
+  display: flex;
+  align-items: center;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border);
+  margin-left: 80px; /* Offset to align with text, not icon */
+  opacity: 0.5;
+}
+
+.itemWrapper:last-child .divider {
+  display: none;
+}

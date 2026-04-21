@@ -1,0 +1,12 @@
+.ruby {
+  display: inline-flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  line-height: 1;
+}
+
+.rt {
+  font-size: 0.5em;
+  color: var(--text-tertiary, #9CA3AF);
+  margin-bottom: 2px;
+}

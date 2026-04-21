@@ -1,0 +1,124 @@
+.container {
+  min-height: 100vh;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollArea {
+  flex: 1;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 40px;
+}
+
+
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-bottom: 12px;
+  padding-left: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.groupCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.divider {
+  height: 1px;
+  background-color: #F3F4F6;
+  margin: 0 16px;
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(to top, #F4F5F7 80%, rgba(244, 245, 247, 0));
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  margin-top: auto; /* Push to bottom of flex container */
+}
+
+
+.startBtn {
+  width: 100%;
+  max-width: 560px;
+  height: 56px;
+  margin: 0 auto; /* Ensure it's centered if flex fails */
+  background-color: #4F46E5;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.startBtn:hover {
+  background-color: #4338CA;
+  transform: translateY(-2px);
+}
+
+.startBtn:active {
+  transform: translateY(0);
+}
+
+.startBtn.disabled {
+  background-color: #9CA3AF;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.dataOverview {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dataLabel {
+  font-size: 16px;
+  color: #374151;
+}
+
+.dataValue {
+  font-size: 14px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+
+.subSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #9CA3AF;
+  margin: 16px 0 8px 16px;
+  text-transform: uppercase;
+}
+
+.distributionSettings {
+  background: #F9FAFB;
+  border-radius: 12px;
+  margin: 0 16px 16px;
+  border: 1px solid #F3F4F6;
+}

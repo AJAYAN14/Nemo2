@@ -1,0 +1,141 @@
+# Nemo Android 项目业务逻辑链路总结
+
+## 1. 核心流程梳理
+
+### 词库与收藏模块 (Collection & Library)
+- **收藏管理**: 
+  - `feature/collection/favorites/FavoritesViewModel.kt` 统一管理单词和题目的收藏列表
+  - `ToggleWordFavoriteUseCase` / `ToggleGrammarFavoriteUseCase` 切换收藏状态
+  - `GetFavoriteWordsUseCase` / `GetFavoriteGrammarsUseCase` 获取已收藏项目
+  - 收藏数据存储在 `words.is_favorite` / `grammars.is_favorite` 字段
+- **错题本 (Mistakes)**:
+  - `feature/collection/mistakes/MistakesViewModel.kt` 管理今日错误记录
+  - `WrongWordsScreen` / `WrongGrammarsScreen` 展示今日答错的单词和语法
+  - 通过 `SettingsRepository` 的 `TODAY_WRONG_WORD_IDS` / `TODAY_WRONG_GRAMMAR_IDS` 临时存储
+  - 每日自动清空，专注于当日薄弱环节
+- **题目收藏**: 
+  - `FavoriteQuestionsViewModel` 管理测试题目的收藏（独立于单词/语法收藏）
+  - 支持按题型分类查看和管理
+
+### 学习模块 (Learning)
+- **入口与初始化**: `feature/learning/presentation/LearningViewModel.kt` 是学习的核心控制器。当用户选择等级并点击开始时，调用 `startLearning()`。
+- **会话加载**: ViewModel 委托给 `feature/learning/domain/SessionLoader.kt`。`SessionLoader` 负责：
+  - 尝试从 `SettingsRepository` 恢复上次中断的会话（`SESSION_WORD_IDS` / `SESSION_CURRENT_INDEX`）。
+  - 通过 `GetDueWordsUseCase` / `GetDueGrammarsUseCase` 获取到期复习项。
+  - 根据每日目标计算新词配额，并通过 `GetNewWordsUseCase` / `GetNewGrammarsUseCase` 获取新内容。
+  - 使用 `LearningSessionPolicy` 智能混合复习项与新项（复习优先原则）。
+- **SRS 状态更新**: 
+  - 用户对卡片评分后，ViewModel 调用 `SrsCalculator` (FSRS 算法) 计算新的稳定性 (stability)、难度 (difficulty) 和下次复习日期 (nextReviewDate)。
+  - 结果通过 `UpdateWordUseCase` 或 `UpdateGrammarUseCase` 写入数据库。
+  - 数据最终持久化到 `word_study_states` 或 `grammar_study_states` 表中。
+  - **水蛭检测**: 当失败次数达到阈值时，自动标记为困难词汇并暂停学习。
+  - **步进管理**: 新词经过 learning steps（如 [1min, 10min]）逐步巩固，失败则回到第一步。
+- **断点续学**: 
+  - 会话状态（当前索引、已学步骤）保存在 DataStore 中
+  - 应用重启后可恢复到中断位置继续学习
+
+### 复习模块 (Review)
+- **入口与查询**: `feature/learning/presentation/review/ReviewViewModel.kt` 负责复习会话。
+- **到期项目获取**: 启动时直接调用 `GetDueWordsUseCase` 和 `GetDueGrammarsUseCase`。这些 UseCase 底层通过 `WordDao.getDueWords(currentDate)` 和 `GrammarDao.getDueGrammars(today)` 查询 `next_review_date <= today` 的项目。
+- **混合排序**: 将单词和语法按 `next_review_date` 统一排序，形成全局复习队列。
+- **反馈处理**: 复习过程中的评分逻辑与学习模块共享 `SrsCalculator`，确保算法一致性。复习完成后会更新 `last_reviewed_date` 并增加 `repetition_count`。
+- **重学步进**: 复习失败的项目进入 relearning steps，需要重新巩固后才能回到正常复习队列。
+
+### 测试模块 (Test)
+- **测试配置**: `feature/settings` 中管理测试参数（题目数量、时间限制、洗牌选项等）
+- **题库生成**: 根据配置从字典和错题本中抽取题目，支持多种题型（选择题、拼写题、配对题等）
+- **错题记录**: 测试中的错误自动加入当日错题本（`TODAY_WRONG_WORD_IDS`）
+- **连续测试天数**: `SettingsRepository.updateTestStreak()` 追踪测试连续性
+
+### 统计模块 (Statistics)
+- **学习统计**: 
+  - `dailyStreakFlow`: 连续学习天数
+  - `totalStudyDaysFlow`: 累计学习天数
+  - `lastStudyDateFlow`: 最后学习日期（Epoch Day）
+- **热力图数据**: `GetHeatmapDataUseCase` 获取过去 365 天的学习活动强度
+- **SRS 分布**: 统计各状态（New/Young/Mature/Suspended）的项目数量
+- **预测功能**: 基于 `next_review_date` 预测未来 7 天的复习量
+
+### 设置管理 (Settings)
+- **DataStore 持久化**: `SettingsRepositoryImpl` 通过 `PreferencesKeys.kt` 管理所有配置
+- **学习配置**:
+  - `DAILY_GOAL` / `GRAMMAR_DAILY_GOAL`: 每日学习目标
+  - `LEARNING_STEPS` / `RELEARNING_STEPS`: 学习步进配置
+  - `LEARN_AHEAD_LIMIT`: 提前学习限制（分钟）
+  - `LEECH_THRESHOLD` / `LEECH_ACTION`: 水蛭阈值和处理策略
+  - `LEARNING_DAY_RESET_HOUR`: 学习日重置时间（默认凌晨 4 点）
+- **测试配置**: 题目数量、时间限制、洗牌选项、优先级设置等
+- **应用配置**: 深色模式、动态颜色、通知开关、复习提醒时间
+
+### 数据持久化
+- **Room Database**: 
+  - `WordDao.kt` / `GrammarDao.kt`: 定义了对 `words` / `grammars`（静态字典）和 `word_study_states` / `grammar_study_states`（动态学习进度）的增删改查。
+  - `WordStudyStateEntity.kt`: 存储每个单词的学习进度，包括 SRS 参数、收藏状态、跳过标记等。
+  - **关键表结构**:
+    - `words`: id, japanese, hiragana, chinese, level, pos, is_favorite, is_delisted
+    - `word_study_states`: word_id, stability, difficulty, reps, lapses, state, learning_step, last_review_date, next_review_date
+- **DataStore (Preferences)**: 
+  - `SettingsRepository`: 通过 `PreferencesKeys.kt` 管理全局配置，如每日目标、学习步进、重置时间等。
+  - 会话状态（当前索引、已学步骤）也临时保存在 DataStore 中以实现断点续学。
+  - 今日临时数据（错题 ID、已测 ID）也在 DataStore 中，每日自动清空。
+
+---
+
+## 2. 核心文件职责总结
+
+| 文件路径 | 职责描述 |
+| :--- | :--- |
+| `feature/collection/favorites/FavoritesViewModel.kt` | 收藏管理总控，统一展示单词和题目收藏列表，支持取消收藏和清空操作。 |
+| `feature/collection/mistakes/MistakesViewModel.kt` | 错题本管理，追踪今日答错的单词和语法，用于针对性复习。 |
+| `feature/learning/presentation/LearningViewModel.kt` | 学习会话的总控中心，负责协调加载、导航、评分、撤销及水蛭处理。 |
+| `feature/learning/domain/SessionLoader.kt` | 封装了"恢复会话"、"获取复习/新词"、"智能混合排序"的统一加载逻辑。 |
+| `feature/learning/presentation/review/ReviewViewModel.kt` | 复习会话的控制器，专门处理今日所有到期内容的集中复习。 |
+| `feature/test/presentation/TestViewModel.kt` | 测试会话控制器，管理题库生成、答题流程、错题记录和成绩统计。 |
+| `feature/statistics/presentation/StatisticsViewModel.kt` | 统计数据聚合，提供学习趋势、热力图、SRS 分布等可视化数据。 |
+| `feature/settings/presentation/SettingsViewModel.kt` | 设置管理，处理学习配置、测试配置、应用偏好等的读写。 |
+| `core/domain/usecase/.../GetDueWordsUseCase.kt` | 业务用例，从 Repository 获取已到期的复习单词列表。 |
+| `core/domain/usecase/.../ToggleWordFavoriteUseCase.kt` | 切换单词收藏状态的业务逻辑封装。 |
+| `core/data/local/dao/WordDao.kt` | 数据访问层，执行针对单词及其学习状态的 SQL 查询（如按等级、按到期日筛选）。 |
+| `core/data/local/entity/WordStudyStateEntity.kt` | 映射 `word_study_states` 表，记录用户的个性化学习进度与 SRS 状态。 |
+| `core/domain/repository/GrammarRepository.kt` | 语法数据的抽象接口，定义了获取新语法、到期语法及更新状态的契约。 |
+| `core/domain/service/SrsCalculator.kt` | 核心算法服务，基于 FSRS 模型计算记忆稳定性、难度及下一次复习间隔。 |
+| `core/data/repository/SettingsRepositoryImpl.kt` | DataStore 实现类，管理所有用户配置和临时状态。 |
+
+---
+
+## 3. "学习-复习"闭环业务逻辑摘要
+
+Nemo Android 端构建了一个完整的 **FSRS (Free Spaced Repetition Scheduler) 驱动的学习生态系统**，涵盖从词库探索、收藏管理、系统学习、集中复习、测试验证到统计分析的全链路。
+
+**完整学习闭环**:
+1. **词库探索**: 用户通过 Library 浏览 JLPT N1-N5 的单词和语法，可搜索、筛选、查看详情
+2. **收藏管理**: 对感兴趣的项目点击收藏（`is_favorite = true`），在 Collection 模块统一管理
+3. **系统学习**: 
+   - 启动学习会话时，`SessionLoader` 智能混合到期复习项和新词（复习优先）
+   - 新词经过 learning steps（如 [1min, 10min]）逐步巩固
+   - 评分后通过 `SrsCalculator` 计算新的 stability/difficulty/interval
+   - 水蛭检测：失败 8 次自动暂停，避免无效重复
+4. **集中复习**: 
+   - Review 模块查询所有 `next_review_date <= today` 的项目
+   - 单词和语法混合排序，形成全局复习队列
+   - 失败项目进入 relearning steps，需重新巩固
+5. **测试验证**: 
+   - 根据配置生成多样化题型（选择、拼写、配对等）
+   - 错题自动加入当日错题本（`TODAY_WRONG_WORD_IDS`）
+   - 追踪连续测试天数，激励持续练习
+6. **错题强化**: 
+   - Mistakes 模块展示今日错误，针对性复习薄弱环节
+   - 每日自动清空，聚焦当天问题
+7. **数据统计**: 
+   - 连续学习天数（streak）、累计学习天数
+   - 热力图展示过去 365 天的学习强度
+   - SRS 分布饼图（New/Young/Mature/Suspended）
+   - 未来 7 天复习量预测
+8. **到期复习**: 后续日子里，系统再次查询到期项目，形成"学习 → 算法调度 → 到期复习 → 巩固记忆 → 测试验证 → 错题强化"的完整正向循环
+
+**技术亮点**:
+- **断点续学**: DataStore 保存会话状态，应用重启后可恢复
+- **学习日锁定**: 基于 `resetHour`（默认凌晨 4 点）计算逻辑日期，防止跨天统计偏差
+- **个性化配置**: 学习步进、水蛭阈值、提前学习限制等均可自定义
+- **多维度收藏**: 单词、语法、题目分别管理，支持批量操作
+- **实时统计**: Flow 响应式数据流，UI 自动更新学习进度

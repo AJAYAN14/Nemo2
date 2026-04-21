@@ -1,0 +1,85 @@
+.container {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4f46e5;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.favoriteButton {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 150ms;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.favoriteButton:hover {
+  background-color: #f3f4f6;
+  color: #f59e0b;
+}
+
+.favoriteButton.active {
+  color: #f59e0b;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.value {
+  font-size: 1rem;
+  color: #111827;
+  font-weight: 500;
+}
+
+.grammarContent {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.divider {
+  height: 1px;
+  background-color: #f3f4f6;
+  margin: 0.5rem 0;
+}

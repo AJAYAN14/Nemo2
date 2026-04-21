@@ -1,0 +1,84 @@
+.snackbarContainer {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 500px;
+  z-index: 2000;
+  pointer-events: none; /* Only the content box should catch clicks */
+}
+
+.snackbarContent {
+  pointer-events: auto;
+  border-radius: 16px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  color: white;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+/* Gradients matching Android NemoSnackbar.kt */
+.info {
+  background: linear-gradient(90deg, rgba(79, 70, 229, 0.95) 0%, #4A90D9 100%);
+}
+
+.success {
+  background: linear-gradient(90deg, #10B981 0%, #059669 100%);
+}
+
+.warning {
+  background: linear-gradient(90deg, #F59E0B 0%, #D97706 100%);
+}
+
+.error {
+  background: linear-gradient(90deg, #EF4444 0%, #DC2626 100%);
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.message {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.actionText {
+  pointer-events: auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin-left: 12px;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Animation classes for Framer Motion or simple transitions */
+.enter {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.center {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.exit {
+  opacity: 0;
+  transform: translateY(-20px);
+}

@@ -1,0 +1,137 @@
+.contentContainer {
+  padding: 32px 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.questionSection {
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.promptText {
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--text-primary, #111827);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.hintText {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary, #64748B);
+  margin-top: 12px;
+  opacity: 0.8;
+}
+
+.optionsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.answeredBadge {
+  background: var(--surface-secondary, #F3F4F6);
+  color: var(--text-secondary, #4B5563);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  align-self: center;
+  border: 1px solid var(--border-color, #E5E7EB);
+  margin-bottom: 8px;
+}
+
+.optionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.optionButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--surface-primary, #ffffff);
+  border: 1px solid var(--border-color, #E5E7EB);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 60px;
+}
+
+.optionText {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+  text-align: left;
+}
+
+/* States Before Answer */
+.optionButton:not(:disabled):hover {
+  background: var(--surface-hover, #F3F4F6);
+  border-color: var(--color-primary-light, #A5B4FC);
+}
+
+.selected {
+  background: var(--color-primary-lightest, #EEF2FF);
+  border-color: var(--color-primary, #4F46E5);
+}
+.selected .optionText {
+  color: var(--color-primary, #4F46E5);
+}
+
+/* States After Answer */
+.correct {
+  background: var(--color-success-lightest, #ECFDF5);
+  border-color: var(--color-success, #10B981) !important;
+}
+.correct .optionText {
+  color: var(--color-success-dark, #047857);
+}
+
+.wrong {
+  background: var(--color-danger-lightest, #FEF2F2);
+  border-color: var(--color-danger, #EF4444) !important;
+}
+.wrong .optionText {
+  color: var(--color-danger-dark, #B91C1C);
+}
+
+.defaultDisabled {
+  opacity: 0.6;
+}
+
+.iconCorrect {
+  color: var(--color-success, #10B981);
+}
+
+.iconWrong {
+  color: var(--color-danger, #EF4444);
+}
+
+.explanationCard {
+  margin-top: 32px;
+  padding: 20px;
+  background: var(--surface-primary, #ffffff);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #E5E7EB);
+}
+
+.explanationTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary, #4B5563);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.explanationText {
+  font-size: 15px;
+  color: var(--text-primary, #111827);
+  line-height: 1.6;
+}

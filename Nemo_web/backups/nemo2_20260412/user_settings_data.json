@@ -1,0 +1,74 @@
+[
+  {
+    "user_id": "f7034718-2fa9-4ee9-a886-164b7d3e080a",
+    "settings": {
+      "theme": "system",
+      "dailyGoal": 20,
+      "grammarDailyGoal": 10,
+      "isUnmasteredOnlyMode": false,
+      "isDynamicColorEnabled": true,
+      "isAutoPlayAudioEnabled": true
+    },
+    "updated_at": 1775641455719
+  },
+  {
+    "user_id": "d5b0d3d9-2eda-491f-8bf1-6c720efc30cd",
+    "settings": {
+      "theme": "system",
+      "dailyGoal": 20,
+      "grammarDailyGoal": 10,
+      "isUnmasteredOnlyMode": false,
+      "isDynamicColorEnabled": true,
+      "isAutoPlayAudioEnabled": true
+    },
+    "updated_at": 1775642712748
+  },
+  {
+    "user_id": "d581f5a4-2cf5-4e4a-bed5-50e26af5e1b6",
+    "settings": {
+      "theme": "system",
+      "dailyGoal": 20,
+      "grammarDailyGoal": 10,
+      "isUnmasteredOnlyMode": false,
+      "isDynamicColorEnabled": true,
+      "isAutoPlayAudioEnabled": true
+    },
+    "updated_at": 1775643422922
+  },
+  {
+    "user_id": "4ec56e54-a24a-48c9-bcb7-d4fbc783c178",
+    "settings": {
+      "theme": "system",
+      "dailyGoal": 20,
+      "grammarDailyGoal": 10,
+      "isUnmasteredOnlyMode": false,
+      "isDynamicColorEnabled": true,
+      "isAutoPlayAudioEnabled": true
+    },
+    "updated_at": 1775646043263
+  },
+  {
+    "user_id": "c6ff6c69-e707-4ef8-80a9-263fc96e7294",
+    "settings": {
+      "theme": "system",
+      "dailyGoal": 20,
+      "grammarDailyGoal": 10,
+      "isUnmasteredOnlyMode": false,
+      "isDynamicColorEnabled": true,
+      "isAutoPlayAudioEnabled": true
+    },
+    "updated_at": 1775646725720
+  },
+  {
+    "user_id": "490846dc-7945-48b8-93fa-f08f81cdfb48",
+    "settings": {
+      "theme": "system",
+      "dailyGoal": 20,
+      "grammarDailyGoal": 10,
+      "isUnmasteredOnlyMode": false,
+      "isDynamicColorEnabled": true,
+      "isAutoPlayAudioEnabled": true
+    },
+    "updated_at": 1775650775116
+  }
+]

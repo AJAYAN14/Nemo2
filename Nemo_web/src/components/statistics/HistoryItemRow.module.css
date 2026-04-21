@@ -1,0 +1,70 @@
+.row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.row:hover {
+  opacity: 0.8;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  font-size: 20px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.content {
+  margin-left: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.topLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.japanese {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.levelBadge {
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #6b7280;
+}
+
+.secondaryText {
+  margin-top: 2px;
+  font-size: 14px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .japanese {
+    color: #f3f4f6;
+  }
+  .levelBadge {
+    background: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+  }
+}

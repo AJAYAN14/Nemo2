@@ -1,0 +1,58 @@
+.clayButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius-button);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  user-select: none;
+  
+  /* The Claymorphism Look */
+  background: var(--clay-primary);
+  color: white;
+  box-shadow: var(--shadow-clay-outer);
+}
+
+.clayButton::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border-radius: inherit;
+  box-shadow: var(--shadow-clay-inner);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.clayButton:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.clayButton:active {
+  transform: translateY(0);
+}
+
+/* Color Variants */
+.secondary {
+  background: var(--clay-secondary);
+}
+
+.outline {
+  background: white;
+  color: var(--clay-primary);
+  border: 3px solid var(--clay-primary);
+}
+
+.outline::before {
+  display: none;
+}

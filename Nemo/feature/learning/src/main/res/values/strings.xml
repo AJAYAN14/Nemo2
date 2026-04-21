@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="title_select_word_level">选择单词等级</string>
+    <string name="title_select_grammar_level">选择语法等级</string>
+    <string name="bg_text_word">単語</string>
+    <string name="bg_text_grammar">文法</string>
+    <string name="mode_word">单词</string>
+    <string name="mode_grammar">语法</string>
+    <string name="title_word_learning">单词学习</string>
+    <string name="title_grammar_learning">语法学习</string>
+    <string name="title_current_progress">今日进度</string>
+    <string name="label_current_progress">当前进度</string>
+    <string name="label_daily_goal">目标 %d</string>
+    <string name="label_items_due">待复习项目</string>
+    <string name="label_completion_rate">学习达成率</string>
+    <string name="btn_continue_learning">继续上次会话</string>
+    <string name="btn_start_learning">开始学习</string>
+    <string name="btn_continue_home">继续学习</string>
+    <string name="btn_start_home">立即开始</string>
+    <string name="bg_text_nemo">ネモ</string>
+    <string name="app_name_nemo">Nemo</string>
+    <string name="app_subtitle">日语学习伴侣</string>
+    <string name="greeting_home">你好，Nemo</string>
+    <string name="title_learning_resources">学习资源</string>
+    <string name="title_heatmap">热力图</string>
+    <string name="desc_heatmap">查看学习成就与活跃记录</string>
+    <string name="menu_word_book_title">单词本</string>
+    <string name="menu_word_book_subtitle">专属词库</string>
+    <string name="menu_kana_chart_title">五十音图</string>
+    <string name="menu_kana_chart_subtitle">平假名与片假名</string>
+    <string name="menu_grammar_book_title">语法点</string>
+    <string name="menu_grammar_book_subtitle">语法精讲</string>
+
+    <string name="kana_chart_title">五十音图</string>
+    <string name="kana_tab_hiragana">平假名</string>
+    <string name="kana_tab_katakana">片假名</string>
+    <string name="kana_quick_nav_seion">清音</string>
+    <string name="kana_quick_nav_dakuon">浊音/半浊音</string>
+    <string name="kana_quick_nav_yoon">拗音</string>
+    <string name="kana_quick_nav_sokuon">促音</string>
+    <string name="kana_quick_nav_chouon">长元音</string>
+    <string name="kana_section_seion">清音（五十音）</string>
+    <string name="kana_section_dakuon">浊音和半浊音</string>
+    <string name="kana_desc_dakuon">加上符号，发音就会改变</string>
+    <string name="kana_section_yoon">拗音</string>
+    <string name="kana_desc_yoon">加上小写假名，组成新的音节</string>
+    <string name="kana_section_sokuon_hiragana">小写っ</string>
+    <string name="kana_section_sokuon_katakana">小写ッ</string>
+    <string name="kana_desc_sokuon">双写辅音：后面的辅音要加倍发音</string>
+    <string name="kana_section_chouon">长元音</string>
+</resources>

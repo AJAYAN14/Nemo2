@@ -1,0 +1,108 @@
+.card {
+  width: 100%;
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.totalCount {
+  color: #1e293b;
+  font-weight: 900;
+  background: #f1f5f9;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.5rem;
+}
+
+.bar {
+  display: flex;
+  height: 12px;
+  border-radius: 100px;
+  overflow: hidden;
+  background: #f1f5f9;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.segment {
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.early { background-color: #EF4444; }
+.developing { background-color: #3B82F6; }
+.mature { background-color: #10B981; }
+.expert { background-color: #059669; }
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.statCount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statPct {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  opacity: 0.8;
+}

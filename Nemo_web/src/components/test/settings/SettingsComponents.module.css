@@ -1,0 +1,100 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px;
+  background: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  text-align: left;
+  outline: none;
+}
+
+.row:hover {
+  background-color: #F9FAFB;
+}
+
+.label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1F2937;
+}
+
+.valueContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.value {
+  font-size: 14px;
+  color: #6B7280;
+}
+
+.error {
+  color: #EF4444;
+}
+
+.chevron {
+  color: #9CA3AF;
+}
+
+/* Switch Styles */
+.switchRoot {
+  width: 44px;
+  height: 24px;
+  background-color: #D1D5DB;
+  border-radius: 9999px;
+  position: relative;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s ease;
+}
+
+.switchRoot[data-state='checked'] {
+  background-color: #4F46E5;
+}
+
+.switchThumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  border-radius: 9999px;
+  transition: transform 0.15s ease;
+  transform: translateX(2px);
+  will-change: transform;
+}
+
+.switchThumb[data-state='checked'] {
+  transform: translateX(22px);
+}
+
+/* Grouping Card */
+.groupCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.divider {
+  height: 1px;
+  background-color: #F3F4F6;
+  width: calc(100% - 32px);
+  margin: 0 auto;
+}
+
+/* Section Title */
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}

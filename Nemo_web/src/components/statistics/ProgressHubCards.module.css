@@ -1,0 +1,252 @@
+.card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.headerIcon {
+  color: var(--muted);
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+/* Distribution Card */
+.distribution {
+  grid-column: span 2;
+}
+
+.chartContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stackedBar {
+  display: flex;
+  height: 24px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.barSegment {
+  height: 100%;
+}
+
+.mature { background: #4F46E5; }
+.young { background: #818CF8; }
+.new { background: #E2E8F0; }
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.matureBg { background: #4F46E5; }
+.youngBg { background: #818CF8; }
+.newBg { background: #E2E8F0; }
+
+.legendLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.legendValue {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--foreground);
+  margin-left: auto;
+}
+
+/* Radial Card */
+.oneByOne {
+  grid-column: span 1;
+  aspect-ratio: 1/1;
+}
+
+.radialContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.radialSvg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.radialBg {
+  fill: none;
+  stroke: var(--bg-secondary);
+  stroke-width: 8;
+}
+
+.radialProgress {
+  fill: none;
+  stroke: #4F46E5;
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+.radialContent {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.radialValue {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--foreground);
+}
+
+.radialLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Action Tile */
+.actionTile {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  text-align: left;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+}
+
+.actionTile:hover {
+  border-color: #4F46E5;
+  background: rgba(79, 70, 229, 0.02);
+  transform: translateY(-2px);
+}
+
+.tileIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  color: var(--foreground);
+}
+
+.tileText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tileTitle {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.tileSubtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.chevron {
+  color: var(--border);
+}
+
+.primary .tileIcon {
+  background: rgba(79, 70, 229, 0.1);
+  color: #4F46E5;
+}
+
+/* Stats Card */
+.statsCard {
+  flex-direction: row;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+
+.statsIcon {
+  width: 44px;
+  height: 44px;
+  background: #F8FAFC;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.statsContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.statsLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.statsMain {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.statsValue {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--foreground);
+}
+
+.statsSubValue {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .distribution {
+    grid-column: span 1;
+  }
+}

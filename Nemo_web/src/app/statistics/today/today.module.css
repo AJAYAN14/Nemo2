@@ -1,0 +1,191 @@
+.container {
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  color: #111827;
+}
+
+/* Sticky Controls Section */
+.scrollContent {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Sections */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #4b5563;
+  padding-left: 4px;
+}
+
+/* Premium Card */
+.card {
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  border-radius: 26px;
+  padding: 20px;
+  transition: all 0.15s ease;
+}
+
+/* Item Row */
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.itemRow:active {
+  opacity: 0.7;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.itemContent {
+  flex: 1;
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.itemHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 0.625rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.learnedBadge {
+  background-color: rgba(79, 70, 229, 0.1);
+  color: #4f46e5;
+}
+
+.reviewedBadge {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.levelBadge {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.japaneseText {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.secondaryText {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.divider {
+  height: 1px;
+  background-color: #f3f4f6;
+  margin-left: 64px;
+}
+
+/* Expand Button */
+.expandBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 0 4px;
+  color: #4f46e5;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.expandBtn:hover {
+  opacity: 0.8;
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 0;
+  gap: 12px;
+  color: #9ca3af;
+}
+
+.emptyText {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Skeleton */
+.skeleton {
+  min-height: 120px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #f9fafb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Loading Screen */
+.loadingScreen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.loadingText {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 600;
+}

@@ -1,0 +1,66 @@
+.sakuraLoader {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  animation: sakura-spin 4s infinite linear;
+}
+
+.sakuraPetal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 24px;
+  background: var(--sakura-petal);
+  border: 1px solid var(--sakura-petal-border);
+  border-radius: 50% 50% 0 50%;
+  transform-origin: 0 0;
+}
+
+.sakuraPetal:nth-child(1) {
+  transform: rotate(0deg) translateY(-100%);
+}
+
+.sakuraPetal:nth-child(2) {
+  transform: rotate(72deg) translateY(-100%);
+}
+
+.sakuraPetal:nth-child(3) {
+  transform: rotate(144deg) translateY(-100%);
+}
+
+.sakuraPetal:nth-child(4) {
+  transform: rotate(216deg) translateY(-100%);
+}
+
+.sakuraPetal:nth-child(5) {
+  transform: rotate(288deg) translateY(-100%);
+}
+
+.sakuraCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--sakura-center);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+@keyframes sakura-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sakuraLoader {
+    animation: none;
+  }
+}

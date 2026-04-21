@@ -1,0 +1,410 @@
+package com.jian.nemo.feature.user
+
+import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.jian.nemo.feature.user.component.*
+import com.jian.nemo.core.ui.component.animation.AnimatedWordBackground
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import androidx.activity.compose.BackHandler
+
+/**
+ * 包含动画背景和登录/注册 Tab 切换
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginScreen(
+    onNavigateToRegister: () -> Unit,
+    onLoginSuccess: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val onPrimaryColor = MaterialTheme.colorScheme.onPrimary
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+
+    // [Fix] Enforce Brand Blue for header background to ensure vibration in Dark Mode
+    // and fix "dirty gray-black" text issue by forcing White text on Blue background.
+    val loginBackgroundColor = Color(0xFF0E68FF)
+    val loginTextColor = Color.White
+
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val emailFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val confirmPasswordFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(uiState.isLoggedIn, uiState.isRestoreLoading) {
+        if (uiState.isLoggedIn && !uiState.isRestoreLoading) {
+            onLoginSuccess()
+        }
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            viewModel.clearSuccessMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.restoreMessage) {
+        uiState.restoreMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            viewModel.clearRestoreMessage()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        emailFocusRequester.requestFocus()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(loginBackgroundColor) // Changed to fixed Brand Blue
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f) // Adjust weight to give more space nicely
+        ) {
+            // 日语单词背景动画 (Keep as requested)
+            AnimatedWordBackground(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { coordinates ->
+                        containerSize = coordinates.size
+                    },
+                containerSize = containerSize,
+                contentColor = loginTextColor // [Fix] Force White text for floating words
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 64.dp, start = 32.dp, end = 32.dp), // Increased top padding
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = if (uiState.isLoginMode) "欢迎回来" else "创建账户",
+                    fontSize = 32.sp, // Increased size
+                    fontWeight = FontWeight.ExtraBold, // Increased weight
+                    letterSpacing = (-1).sp, // Tighter spacing for modern look
+                    color = loginTextColor // Changed to fixed White
+                )
+
+                Text(
+                    text = if (uiState.isLoginMode) "我们想念您！登录以开始学习" else "加入我们,开始您的学习之旅",
+                    fontSize = 14.sp, // Refined size
+                    fontWeight = FontWeight.Medium,
+                    color = loginTextColor.copy(alpha = 0.85f), // Softer White
+                    modifier = Modifier.padding(top = 12.dp),
+                    lineHeight = 20.sp
+                )
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(3.5f), // Slightly more space for the form
+            shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp), // 26dp Corner Radius
+            colors = CardDefaults.cardColors(containerColor = surfaceColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // Added shadow for depth
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp), // Optimized padding
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = if (uiState.isLoginMode) "登录" else "注册",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = onSurfaceColor,
+                    modifier = Modifier.padding(top = 40.dp, bottom = 24.dp)
+                )
+
+                // Tab Switcher with 26dp radius
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(26.dp) // [Fix] Reverted to 26dp as requested
+                        )
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    TabButton(
+                        text = "登录",
+                        isSelected = uiState.isLoginMode,
+                        onClick = {
+                            if (!uiState.isLoginMode) viewModel.toggleLoginMode()
+                        }
+                    )
+
+                    TabButton(
+                        text = "注册",
+                        isSelected = !uiState.isLoginMode,
+                        onClick = {
+                            if (uiState.isLoginMode) viewModel.toggleLoginMode()
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp)) // More breathing room
+
+                AnimatedContent(
+                    targetState = uiState.isLoginMode,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)) { it / 10 } togetherWith
+                        fadeOut(animationSpec = tween(200)) + slideOutVertically(animationSpec = tween(200)) { -it / 10 }
+                    },
+                    label = "AuthForm"
+                ) { loginMode ->
+                    if (loginMode) {
+                        LoginForm(
+                            email = uiState.email,
+                            password = uiState.password,
+                            isPasswordVisible = uiState.isPasswordVisible,
+                            onEmailChange = viewModel::onEmailChanged,
+                            onPasswordChange = viewModel::onPasswordChanged,
+                            onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
+                            onLogin = viewModel::onLoginClicked,
+                            isLoading = uiState.isLoading,
+                            emailFocusRequester = emailFocusRequester,
+                            passwordFocusRequester = passwordFocusRequester,
+                            onForgotPasswordClick = { viewModel.showDialog(UserDialogType.RESET_PASSWORD) },
+                            emailError = uiState.emailError,
+                            passwordError = uiState.passwordError
+                        )
+                    } else {
+                        RegisterForm(
+                            username = uiState.username,
+                            email = uiState.email,
+                            password = uiState.password,
+                            confirmPassword = uiState.confirmPassword,
+                            isPasswordVisible = uiState.isPasswordVisible,
+                            isConfirmPasswordVisible = uiState.isConfirmPasswordVisible,
+                            onUsernameChange = viewModel::onUsernameChanged,
+                            onEmailChange = viewModel::onEmailChanged,
+                            onPasswordChange = viewModel::onPasswordChanged,
+                            onConfirmPasswordChange = viewModel::onConfirmPasswordChanged,
+                            onTogglePasswordVisibility = viewModel::togglePasswordVisibility,
+                            onToggleConfirmPasswordVisibility = viewModel::toggleConfirmPasswordVisibility,
+                            onRegister = {
+                                viewModel.onRegisterClicked {
+                                    Toast.makeText(context, "两次输入的密码不一致", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            isLoading = uiState.isLoading,
+                            usernameFocusRequester = emailFocusRequester,
+                            passwordFocusRequester = passwordFocusRequester,
+                            confirmPasswordFocusRequester = confirmPasswordFocusRequester,
+                            usernameError = uiState.usernameError,
+                            emailError = uiState.emailError,
+                            passwordError = uiState.passwordError,
+                            confirmPasswordError = uiState.confirmPasswordError
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // --- 阻塞式恢复进度指示器 ---
+    if (uiState.isRestoreLoading) {
+        RestoreProgressIndicator(
+            progress = uiState.restoreProgress,
+            status = uiState.restoreStatus
+        )
+    }
+
+    if (uiState.activeDialog == UserDialogType.RESET_PASSWORD) {
+        AccountResetPasswordDialog(
+            userEmail = uiState.email,
+            onDismiss = { viewModel.dismissDialog() },
+            onSendOtp = { resetEmail, onSuccess, onError ->
+                viewModel.sendPasswordResetOtp(resetEmail, onSuccess, onError)
+            },
+            onVerifyOtp = { resetEmail, token, onSuccess, onError ->
+                viewModel.verifyPasswordResetOtp(resetEmail, token, onSuccess, onError)
+            },
+            onResetPassword = { newPassword, onSuccess, onError ->
+                viewModel.completePasswordReset(
+                    password = newPassword,
+                    onSuccess = {
+                        onSuccess()
+                        viewModel.dismissDialog()
+                    },
+                    onError = onError
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun RowScope.TabButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    // [Fix] Enforce Brand Blue
+    val brandBlue = Color(0xFF0E68FF)
+
+    Button(
+        onClick = onClick,
+        modifier = Modifier.weight(1f).height(44.dp),
+        shape = RoundedCornerShape(22.dp), // [Fix] Reverted to 22dp as requested
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) brandBlue else Color.Transparent, // [Fix] Force Brand Blue
+            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface // [Fix] Force White text
+        ),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 15.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+        )
+    }
+}
+
+/**
+ * 阻塞式同步/恢复进度指示器
+ * 用于卸载重装后全量拉取数据时锁定用户操作
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RestoreProgressIndicator(
+    progress: Float,
+    status: String
+) {
+    val sheetState = rememberModalBottomSheetState(
+        confirmValueChange = { false } // 禁止通过手势关闭
+    )
+
+    // 禁止返回键
+    BackHandler(enabled = true) { }
+
+    ModalBottomSheet(
+        onDismissRequest = { /* 阻塞模式不处理 */ },
+        sheetState = sheetState,
+        dragHandle = null, // 无拉柄
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 48.dp, top = 24.dp)
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 1. Icon
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        RoundedCornerShape(16.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CloudDownload,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 2. Title
+            Text(
+                text = "正在同步云端数据",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 3. Subtitle/Status
+            Text(
+                text = status.ifEmpty { "正在准备恢复数据，请稍候..." },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // 4. Progress System
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "${(progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}

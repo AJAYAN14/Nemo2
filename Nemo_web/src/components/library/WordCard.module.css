@@ -1,0 +1,68 @@
+.cardLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.card {
+  background: white;
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  border: var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 150ms ease;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--primary);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.japanese {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.hiragana {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.level {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  background: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.meaning {
+  font-size: 1rem;
+  color: var(--foreground);
+  line-height: 1.4;
+}
+
+.pos {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+  display: inline-block;
+  padding: 2px 0;
+}

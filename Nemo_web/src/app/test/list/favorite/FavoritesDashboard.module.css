@@ -1,0 +1,130 @@
+.container {
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  color: #111827;
+}
+
+.main {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* --- Summary Card --- */
+.summaryCard {
+  background: linear-gradient(135deg, #4F46E5, #8B5CF6);
+  border-radius: 28px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -12px rgba(79, 70, 229, 0.3);
+}
+
+.summaryLabel {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.summaryValue {
+  color: white;
+  font-size: 4rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-top: 8px;
+  z-index: 1;
+}
+
+.summaryDecoration {
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  opacity: 0.15;
+  color: white;
+  transform: rotate(15deg);
+}
+
+/* --- Category Cards --- */
+.categoryGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.categoryCard {
+  background: white;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 26px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+
+.categoryCard:hover {
+  transform: translateY(-2px);
+  background: #fdfdfd;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.04);
+}
+
+.categoryCard:active {
+  transform: scale(0.98);
+}
+
+.iconBox {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bgBlue { background: #EFF6FF; color: #3B82F6; }
+.bgPurple { background: #FAF5FF; color: #8B5CF6; }
+
+.categoryInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.categoryTitle {
+  font-size: 1.1rem;
+  font-weight: 850;
+  color: var(--foreground);
+}
+
+.categorySubtitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.categoryMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--foreground);
+}
+
+.arrow {
+  color: #CBD5E1;
+}

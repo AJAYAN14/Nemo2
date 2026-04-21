@@ -1,0 +1,129 @@
+.actionArea {
+  width: 100%;
+  padding: 12px 0;
+  display: flex;
+  justify-content: center;
+  background-color: transparent;
+}
+
+@media (min-width: 640px) {
+  .actionArea {
+    padding: 16px 0;
+  }
+}
+
+.showAnswerBtn {
+  width: 100%;
+  max-width: 400px;
+  height: 56px;
+  border-radius: 28px;
+  background-color: var(--primary);
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  border: 1px solid var(--primary);
+  cursor: pointer;
+  /* Hover effects handled largely by Framer Motion now, but keep basic transition */
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.showAnswerBtn:hover {
+  background-color: var(--primary-hover);
+}
+
+.showAnswerBtn.blocked {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid #E5E7EB;
+  cursor: wait;
+  position: relative;
+  overflow: hidden;
+}
+
+.blockedContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressTrack {
+  width: 120px;
+  height: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background-color: var(--primary);
+  border-radius: 2px;
+}
+
+.ratingsContainer {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+@media (min-width: 640px) {
+  .ratingsContainer {
+    gap: 12px;
+  }
+}
+
+.ratingBtn {
+  flex: 1;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  background-color: transparent;
+}
+
+.ratingBtn:hover {
+  filter: brightness(0.95);
+}
+
+.ratingLabel {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.ratingInterval {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+
+/* Colors matching Android specs (Rose, Orange, Blue, Emerald) but flat */
+.btn_again {
+  background-color: #FFE4E6;
+  color: #BE123C;
+  border: 1px solid #FECDD3;
+}
+
+.btn_hard {
+  background-color: #FFF7ED;
+  color: #EA580C;
+  border: 1px solid #FFEDD5;
+}
+
+.btn_good {
+  background-color: #ECFDF5;
+  color: #059669;
+  border: 1px solid #D1FAE5;
+}
+
+.btn_easy {
+  background-color: #EFF6FF;
+  color: #2563EB;
+  border: 1px solid #DBEAFE;
+}

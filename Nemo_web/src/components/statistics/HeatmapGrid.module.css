@@ -1,0 +1,152 @@
+.container {
+  width: 100%;
+  background: white;
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  border: var(--border-subtle);
+}
+
+.scrollWrapper {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.gridHeader {
+  display: grid;
+  grid-template-rows: auto;
+  margin-bottom: 0.5rem;
+  padding-left: 2rem;
+  /* Matches weekday labels width */
+}
+
+.monthLabel {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.gridBody {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.weekdayLabels {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+  width: 2rem;
+}
+
+.weekdayLabel {
+  font-size: 0.65rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  height: 12px;
+}
+
+.heatmapGrid {
+  display: grid;
+  gap: 3px;
+}
+
+.weekColumn {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.dayCell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background-color: #F3F4F6;
+  transition: opacity 150ms ease;
+}
+
+.dayCell:hover {
+  opacity: 0.8;
+}
+
+.level0 {
+  background-color: #F3F4F6;
+}
+
+.level1 {
+  background-color: #C7D2FE;
+}
+
+.level2 {
+  background-color: #818CF8;
+}
+
+.level3 {
+  background-color: #4F46E5;
+}
+
+.level4 {
+  background-color: #3730A3;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-top: 1rem;
+}
+
+.legendText {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0 0.25rem;
+}
+
+.loadingContainer {
+  width: 100%;
+  height: 150px;
+  background: white;
+  border-radius: var(--radius-md);
+  border: var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.skeleton {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Custom Scrollbar for better aesthetic */
+.scrollWrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scrollWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollWrapper::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 10px;
+}
+
+.scrollWrapper::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}

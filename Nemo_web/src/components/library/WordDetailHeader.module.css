@@ -1,0 +1,108 @@
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2.5rem 0;
+  border-bottom: var(--border-subtle);
+  margin-bottom: 2rem;
+}
+
+.mainInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.japanese {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.hiragana {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.studyButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background-color: white;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.studyButton:hover:not(:disabled) {
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.studyButton.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  cursor: default;
+}
+
+.studyButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.audioBtn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.audioBtn:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .japanese {
+    font-size: 2.25rem;
+  }
+  
+  .actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .audioBtn {
+    width: 48px;
+    height: 48px;
+  }
+}

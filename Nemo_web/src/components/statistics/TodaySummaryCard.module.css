@@ -1,0 +1,70 @@
+.card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid #f1f5f9;
+  padding: 20px;
+  width: 100%;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 4px;
+  border-radius: 18px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.value {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+/* 1:1 Color Tokens from Android */
+.primary {
+  background-color: rgba(14, 104, 255, 0.06);
+}
+.primary .value { color: #0E68FF; }
+
+.secondary {
+  background-color: rgba(76, 175, 80, 0.06);
+}
+.secondary .value { color: #4CAF50; }
+
+.orange {
+  background-color: rgba(255, 149, 0, 0.06);
+}
+.orange .value { color: #FF9500; }
+
+.indigo {
+  background-color: rgba(88, 86, 214, 0.06);
+}
+.indigo .value { color: #5856D6; }
+
+/* Skeleton */
+.skeleton {
+  height: 180px;
+  background-color: #f1f5f9;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}

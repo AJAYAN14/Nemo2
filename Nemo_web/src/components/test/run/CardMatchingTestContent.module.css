@@ -1,0 +1,125 @@
+.contentContainer {
+  padding: 32px 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.questionSection {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.promptText {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1.4;
+}
+
+.hintText {
+  font-size: 16px;
+  color: var(--text-secondary, #4B5563);
+  margin-top: 8px;
+}
+
+.columnsContainer {
+  display: flex;
+  width: 100%;
+  gap: 16px;
+  max-width: 700px;
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  width: 100%;
+  min-height: 80px;
+  background-color: var(--surface-primary, #ffffff);
+  border: 1px solid var(--border-color, #E5E7EB);
+  border-radius: 16px;
+  color: var(--text-primary, #111827);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.card:hover {
+  background-color: var(--surface-secondary, #F9FAFB);
+  border-color: var(--color-primary, #4F46E5);
+}
+
+.cardSelected {
+  background-color: rgba(79, 70, 229, 0.05);
+  border-width: 2px;
+  border-color: var(--color-primary, #4F46E5);
+  color: var(--color-primary-dark, #3730A3);
+}
+
+.cardIncorrect {
+  background-color: rgba(239, 68, 68, 0.05);
+  border-width: 2px;
+  border-color: var(--color-danger, #EF4444);
+  color: var(--color-danger-dark, #B91C1C);
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.cardText {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  word-break: break-word;
+}
+
+.successPanel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--color-success, #10B981);
+  color: white;
+  border-radius: 24px 24px 0 0;
+  padding: 32px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  box-shadow: 0 -4px 12px rgba(16, 185, 129, 0.2);
+  z-index: 10;
+}
+
+.successPanel span {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}

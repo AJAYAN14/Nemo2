@@ -1,0 +1,316 @@
+.container {
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  color: #111827;
+}
+
+/* Sticky Controls Section */
+.controlsWrapper {
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  max-width: 672px;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+  padding: 1rem 1rem 0.5rem;
+  background-color: #F4F5F7;
+}
+
+/* Pill Tabs */
+.tabContainer {
+  background: #F1F5F9;
+  padding: 4px;
+  border-radius: 9999px;
+  display: flex;
+  max-width: 384px;
+  margin: 0 auto 1rem;
+  border: 1px solid #E2E8F0;
+}
+
+.pillTab {
+  flex: 1;
+  position: relative;
+  height: 36px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.pillActive {
+  color: #4F46E5;
+}
+
+.tabIndicator {
+  position: absolute;
+  inset: 0;
+  background: white;
+  border-radius: 9999px;
+  border: 1px solid #E2E8F0;
+  z-index: -1;
+}
+
+/* Quick Nav */
+.quickNav {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.quickNav::-webkit-scrollbar {
+  display: none;
+}
+
+.navChip {
+  padding: 6px 16px;
+  border-radius: 9999px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748B;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.navChipActive {
+  /* Dynamic styles per theme will be applied via specific classes */
+}
+
+/* Content Area */
+.content {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.section {
+  margin-bottom: 3rem;
+  scroll-margin-top: 160px;
+  border-radius: 24px;
+  padding: 1rem;
+  transition: background-color 0.7s;
+}
+
+.sectionHeader {
+  margin-bottom: 1rem;
+  padding-left: 0.5rem;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionIndicator {
+  width: 6px;
+  height: 20px;
+  border-radius: 9999px;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.sectionSubtitle {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94A3B8;
+  margin-top: 0.25rem;
+  margin-left: 1rem;
+}
+
+/* Grid Layouts */
+.grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (min-width: 640px) {
+  .grid {
+    gap: 12px;
+  }
+}
+
+/* Kana Card Base */
+.card {
+  aspect-ratio: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.cardContent {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+@media (min-width: 640px) {
+  .cardContent {
+    gap: 6px;
+  }
+}
+
+.card:active {
+  transform: scale(0.92);
+}
+
+.kanaMajor {
+  font-size: 1.875rem;
+  font-weight: 800;
+  line-height: 1;
+  transition: color 0.3s;
+}
+
+@media (min-width: 640px) {
+  .kanaMajor {
+    font-size: 2.25rem;
+  }
+}
+
+.kanaSmall {
+  font-size: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .kanaSmall {
+    font-size: 1.875rem;
+  }
+}
+
+.romaji {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  transition: color 0.3s;
+}
+
+@media (min-width: 640px) {
+  .romaji {
+    font-size: 0.875rem;
+  }
+}
+
+.playingIcon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Theme: Rose */
+.themeRose .sectionIndicator { background: #F43F5E; }
+.themeRose .sectionTitle { color: #9F1239; }
+.themeRose .navChipActive { background: #FFE4E6; border-color: #FDA4AF; color: #9F1239; }
+.themeRose .card { background: rgba(255, 241, 242, 0.8); border-color: rgba(254, 205, 211, 0.6); }
+.themeRose .kanaMajor { color: #881337; }
+.themeRose .romaji { color: #F43F5E; }
+.themeRose .card:hover { border-color: #FDA4AF; background: #FFE4E6; }
+.themeRose .cardPlaying { border-color: #FB7185; background: #FECDD3; }
+.themeRose .ripple { background: rgba(251, 113, 133, 0.3); }
+.themeRose .playingIcon { color: #E11D48; }
+.themeRose.flash { background-color: rgba(255, 228, 230, 0.5); }
+
+/* Theme: Sky */
+.themeSky .sectionIndicator { background: #0EA5E9; }
+.themeSky .sectionTitle { color: #0C4A6E; }
+.themeSky .navChipActive { background: #E0F2FE; border-color: #7DD3FC; color: #0C4A6E; }
+.themeSky .card { background: rgba(240, 249, 255, 0.8); border-color: rgba(186, 230, 253, 0.6); }
+.themeSky .kanaMajor { color: #082F49; }
+.themeSky .romaji { color: #0EA5E9; }
+.themeSky .card:hover { border-color: #7DD3FC; background: #E0F2FE; }
+.themeSky .cardPlaying { border-color: #38BDF8; background: #BAE6FD; }
+.themeSky .ripple { background: rgba(56, 189, 248, 0.3); }
+.themeSky .playingIcon { color: #0284C7; }
+.themeSky.flash { background-color: rgba(224, 242, 254, 0.5); }
+
+/* Theme: Emerald */
+.themeEmerald .sectionIndicator { background: #10B981; }
+.themeEmerald .sectionTitle { color: #064E3B; }
+.themeEmerald .navChipActive { background: #D1FAE5; border-color: #6EE7B7; color: #064E3B; }
+.themeEmerald .card { background: rgba(236, 253, 245, 0.8); border-color: rgba(167, 243, 208, 0.6); }
+.themeEmerald .kanaMajor { color: #064E3B; }
+.themeEmerald .romaji { color: #10B981; }
+.themeEmerald .card:hover { border-color: #6EE7B7; background: #D1FAE5; }
+.themeEmerald .cardPlaying { border-color: #34D399; background: #A7F3D0; }
+.themeEmerald .ripple { background: rgba(52, 211, 153, 0.3); }
+.themeEmerald .playingIcon { color: #059669; }
+.themeEmerald.flash { background-color: rgba(209, 250, 229, 0.5); }
+
+/* Theme: Amber */
+.themeAmber .sectionIndicator { background: #F59E0B; }
+.themeAmber .sectionTitle { color: #78350F; }
+.themeAmber .navChipActive { background: #FEF3C7; border-color: #FCD34D; color: #78350F; }
+.themeAmber .card { background: rgba(255, 251, 235, 0.8); border-color: rgba(253, 230, 138, 0.6); }
+.themeAmber .kanaMajor { color: #451A03; }
+.themeAmber .romaji { color: #F59E0B; }
+.themeAmber .card:hover { border-color: #FCD34D; background: #FEF3C7; }
+.themeAmber .cardPlaying { border-color: #FBBF24; background: #FDE68A; }
+.themeAmber .ripple { background: rgba(251, 191, 36, 0.3); }
+.themeAmber .playingIcon { color: #D97706; }
+.themeAmber.flash { background-color: rgba(254, 243, 199, 0.5); }
+
+/* Theme: Violet */
+.themeViolet .sectionIndicator { background: #8B5CF6; }
+.themeViolet .sectionTitle { color: #4C1D95; }
+.themeViolet .navChipActive { background: #EDE9FE; border-color: #C4B5FD; color: #4C1D95; }
+.themeViolet .card { background: rgba(245, 243, 255, 0.8); border-color: rgba(221, 214, 254, 0.6); }
+.themeViolet .kanaMajor { color: #2E1065; }
+.themeViolet .romaji { color: #8B5CF6; }
+.themeViolet .card:hover { border-color: #C4B5FD; background: #EDE9FE; }
+.themeViolet .cardPlaying { border-color: #A78BFA; background: #DDD6FE; }
+.themeViolet .ripple { background: rgba(167, 139, 250, 0.3); }
+.themeViolet .playingIcon { color: #7C3AED; }
+.themeViolet.flash { background-color: rgba(237, 233, 254, 0.5); }
+
+.cardPlaceholder {
+  aspect-ratio: 1;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.relativeZ10 {
+  position: relative;
+  z-index: 10;
+}

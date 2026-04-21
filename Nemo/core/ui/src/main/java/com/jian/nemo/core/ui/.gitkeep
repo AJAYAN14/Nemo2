@@ -1,0 +1,9 @@
+# UI Components
+
+This module contains reusable UI components without business logic.
+
+All components should:
+- Be stateless
+- Follow Compose best practices
+- Use Material3 from :core:designsystem
+- Include @Preview annotations

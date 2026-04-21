@@ -1,0 +1,4 @@
+export const RATING_DEBOUNCE_MS = 300;
+export const DEFAULT_LEARN_AHEAD_MINUTES = 20;
+export const MANUAL_OVERRIDE_WINDOW_MS = 2000;
+export const SESSION_MAX_AGE_MS = 4 * 60 * 60 * 1000;

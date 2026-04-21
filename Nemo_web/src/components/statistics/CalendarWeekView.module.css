@@ -1,0 +1,99 @@
+.card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid #f1f5f9;
+  padding: 16px;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dayItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px;
+  border-radius: 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 38px;
+}
+
+.forecast {
+  opacity: 0.85;
+}
+
+.dayLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.dayNumber {
+  font-size: 15px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.levelDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  margin-top: 4px;
+  background: transparent;
+}
+
+.levelDotActive {
+  background: #0e68ff;
+}
+
+/* 1:1 States from Android WeekDayItem */
+.selected {
+  background-color: #0E68FF !important;
+  transform: none;
+}
+.selected .dayLabel { color: rgba(255, 255, 255, 0.8); }
+.selected .dayNumber { color: #ffffff; font-weight: 900; }
+
+.today:not(.selected) {
+  background-color: rgba(14, 104, 255, 0.1);
+  border: none;
+}
+.today:not(.selected) .dayLabel { color: #0E68FF; }
+.today:not(.selected) .dayNumber { color: #0E68FF; font-weight: 900; }
+
+/* Date Indicator Pill */
+.indicatorWrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.dateIndicator {
+  background-color: rgba(0, 0, 0, 0.04);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* Skeleton */
+.skeleton {
+  height: 120px;
+  background-color: #f1f5f9;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}

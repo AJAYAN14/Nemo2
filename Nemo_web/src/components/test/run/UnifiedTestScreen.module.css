@@ -1,0 +1,25 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* Support mobile browser height correctly */
+  height: 100dvh; 
+  background: linear-gradient(180deg, #F5F8FF 0%, #FFFFFF 100%);
+  overflow: hidden;
+}
+
+.mainContent {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  /* Add smooth scrolling */
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+}
+
+.progressArea {
+  padding: 8px 20px;
+  background: var(--surface-primary, #ffffff);
+  border-bottom: 1px solid var(--border-color, #E5E7EB);
+}

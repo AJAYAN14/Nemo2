@@ -1,0 +1,378 @@
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 32px 20px 120px;
+  min-height: 100vh;
+}
+
+.header {
+  margin-bottom: 40px;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 850;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+/* --- Summary Card --- */
+.overviewSection {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden; /* Prevent animation leak */
+}
+
+.overviewCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 24px;
+  padding: 24px;
+  position: relative;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: none; /* Enforce Minimalist Flat */
+}
+
+.carouselItem {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.overviewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.calendarBtn {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.calendarBtn:hover {
+  background: #F3F4F6;
+  border-color: #D1D5DB;
+  color: #111827;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconBadge {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.overviewTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--foreground);
+  letter-spacing: -0.01em;
+}
+
+.contentWrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: center;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .contentWrapper {
+    display: flex;
+    flex-direction: row; /* Force side-by-side even on mobile */
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+  }
+  .statsColumn {
+    flex: 1;
+  }
+  .ringWrapper {
+    flex-shrink: 0;
+  }
+}
+
+.statsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.miniStatItem {
+  background: #F9FAFB;
+  border: 1px solid #F3F4F6;
+  border-radius: 12px;
+  padding: 8px 16px; /* Slightly tighter padding for mobile side-by-side */
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.miniStatValue {
+  font-size: 1.5rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.miniStatLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9CA3AF;
+}
+
+/* --- Progress Ring --- */
+.ringWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.progressRing {
+  position: relative;
+  width: 90px; /* Slightly smaller for mobile side-by-side */
+  height: 90px;
+}
+
+.ringBg {
+  fill: transparent;
+  stroke: rgba(0, 0, 0, 0.03);
+  stroke-width: 12;
+}
+
+.ringIndicator {
+  fill: transparent;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.ringText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ringPercent {
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.ringUnit {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ringLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9CA3AF;
+  white-space: nowrap;
+}
+
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding-bottom: 8px;
+}
+
+.indicatorDots {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #E5E7EB;
+  transition: all 0.15s ease;
+}
+
+.dotActive {
+  background: #FFD600;
+  width: 12px;
+}
+
+.fraction {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+/* --- Section Groups --- */
+.section {
+  margin-bottom: 40px;
+}
+
+.sectionTitle {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  padding-left: 8px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.gridCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 24px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.gridCard:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
+}
+
+.gridCard:active {
+  background: #F3F4F6;
+}
+
+.iconBox {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itemTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1F2937;
+}
+
+.itemSubtitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #9CA3AF;
+}
+
+/* --- Comprehensive Test Card --- */
+.featuredCard {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 24px;
+  padding: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 12px;
+}
+
+.featuredCard:hover {
+  border-color: #4F46E5;
+  background: #F5F3FF;
+}
+
+.featuredInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.featuredTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #4F46E5;
+}
+
+.featuredSubtitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #64748b;
+  max-width: 450px;
+}
+
+.featuredIcon {
+  color: #4F46E5;
+  opacity: 0.1;
+}
+
+/* --- Colors --- */
+.bgRed { background: #FF5C5C; color: white; }
+.bgOrange { background: #FF9F1C; color: white; }
+.bgGreen { background: #10B981; color: white; }
+.bgBlue { background: #3B82F6; color: white; }
+.bgPurple { background: #A855F7; color: white; }
+.bgIndigo { background: #6366F1; color: white; }
+
+@media (max-width: 600px) {
+  .container { padding: 24px 16px 120px; }
+  .title { font-size: 2rem; margin-bottom: 32px; }
+  .grid { 
+    grid-template-columns: 1fr; 
+    gap: 12px;
+  }
+  .gridCard { 
+    padding: 16px; 
+    width: 100%;
+  }
+  .featuredCard { 
+    padding: 24px; 
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: 16px; 
+  }
+  .featuredSubtitle { font-size: 0.95rem; }
+  .overviewCard { padding: 20px; min-height: 240px; }
+}

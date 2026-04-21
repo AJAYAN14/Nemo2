@@ -1,0 +1,138 @@
+.container {
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground);
+  transition: all 0.2s;
+}
+
+.backBtn:hover {
+  background: var(--bg-secondary);
+  border-color: #D1D5DB;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.section {
+  max-width: 672px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sectionTitle {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  border-color: var(--primary);
+  background-color: rgba(79, 70, 229, 0.02);
+  transform: translateY(-2px);
+}
+
+.card:active {
+  transform: translateY(0);
+}
+
+.iconBox {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 2px;
+}
+
+.cardSubtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Category Colors - Minimalist Flat Palette */
+.icon_noun { background-color: #EEF2FF; color: #4F46E5; }
+.icon_adj { background-color: #FEF3C7; color: #D97706; }
+.icon_verb { background-color: #ECFDF5; color: #10B981; }
+.icon_adv { background-color: #F5F3FF; color: #7C3AED; }
+
+.icon_rentai { background-color: #FFF1F2; color: #E11D48; }
+.icon_conj { background-color: #F0FDFA; color: #0D9488; }
+.icon_exclam { background-color: #FFF7ED; color: #EA580C; }
+.icon_particle { background-color: #F8FAFC; color: #475569; }
+
+.icon_prefix { background-color: #F0F9FF; color: #0284C7; }
+.icon_suffix { background-color: #EFF6FF; color: #2563EB; }
+.icon_expression { background-color: #FAF5FF; color: #9333EA; }
+.icon_kata { background-color: #FDF2F8; color: #DB2777; }
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .container {
+    gap: 2rem;
+  }
+}

@@ -1,0 +1,396 @@
+.container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 68px;
+}
+
+.questionCard {
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 26px;
+  border: 1px solid #E5E7EB;
+  padding: 32px 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  cursor: pointer;
+  /* Hover scale handled by parent or just slight translate */
+  transition: transform 0.15s ease;
+}
+
+.questionCard:hover {
+  transform: translateY(-2px);
+}
+
+.badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  /* Android source has it on TopEnd */
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.levelBadge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800; /* Slightly thinner for better legibility at this size */
+  letter-spacing: 0.05em;
+  background-color: #EEF2FF; /* Indigo Lightest */
+  color: #4F46E5; /* Indigo Primary */
+  border: 1px solid #C7D2FE; /* Indigo 200 */
+}
+
+.badge_NEW {
+  background-color: #E0EDFF;
+  color: #1D4ED8;
+}
+
+.badge_REVIEW {
+  background-color: #DCFCE7;
+  color: #166534;
+}
+
+.badge_RELEARN {
+  background-color: #FFEDD5;
+  color: #9A3412;
+}
+
+.japanese {
+  font-size: clamp(40px, 8vw, 48px);
+  font-weight: 800;
+  color: #111827;
+  /* Gray 900 */
+  margin-bottom: 8px;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.hiragana {
+  font-size: 20px;
+  font-weight: 500;
+  color: #4F46E5;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.hiraganaBlurred {
+  color: transparent;
+  user-select: none;
+}
+.hiraganaBlurred::after {
+  content: '';
+  position: absolute;
+  top: 10%;
+  left: -5%;
+  width: 110%;
+  height: 80%;
+  background-color: #E5E7EB;
+  border-radius: 6px;
+}
+
+.cardTransitionArea {
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.stickerArea {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+  pointer-events: none;
+}
+
+.stickerContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.stickerImage {
+  width: 280px;
+  /* Increased from 200px for a more prominent visual */
+  height: 280px;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.answerCard {
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.98);
+  border-radius: 26px;
+  border: 1px solid #E5E7EB;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.actionButtons {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+
+.posTag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  background-color: #F3F4F6;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9CA3AF;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.chinese {
+  font-size: 26px;
+  /* Slightly larger */
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+.divider {
+  height: 1px;
+  background-color: #F3F4F6;
+  margin: 16px 0;
+}
+
+.exampleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  /* Unified large gap for better readability */
+}
+
+.exampleGroup_simple {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.exampleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exampleBlock_simple {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Slightly more space for simple card layout */
+}
+
+.exampleJa {
+  font-size: 19px;
+  color: #111827;
+  line-height: 1.6;
+  flex: 1;
+}
+
+.exampleZh {
+  font-size: 15px;
+  /* Increased from 13px */
+  color: #6B7280;
+}
+
+.grammarUsages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.usageHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.usageHeader:active {
+  transform: scale(0.98);
+}
+
+.usageHeaderExpanded {
+  background-color: transparent;
+  border-color: transparent;
+  padding-bottom: 4px;
+  padding-left: 0;
+}
+
+.usageLabel {
+  background-color: #EEF2FF;
+  color: #4F46E5;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-right: 12px;
+}
+
+.usageLabelCollapsed {
+  background-color: rgba(79, 70, 229, 0.05);
+  color: rgba(79, 70, 229, 0.7);
+}
+
+.usageSubtype {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.chevron {
+  margin-left: auto;
+  color: #9CA3AF;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chevronRotated {
+  transform: rotate(180deg);
+}
+
+.cardAreaContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contentCard {
+  background-color: #ffffff;
+  border-radius: 24px;
+  border: 1px solid #E5E7EB;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.iconIndigo {
+  color: #4F46E5;
+}
+
+.iconGray {
+  color: #6B7280;
+}
+
+.cardLabelText {
+  font-size: 13px;
+  font-weight: 800;
+  color: #6B7280;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cardLabelTextIndigo {
+  color: #4F46E5;
+}
+
+.cardTextContent {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.7;
+}
+
+.explanationText {
+  font-weight: 400;
+}
+
+.exampleGroup {
+  background-color: #F9FAFB;
+  border-radius: 16px;
+  padding: 4px 12px;
+}
+
+.exampleItem {
+  padding: 24px 0;
+  /* Increase padding between items */
+}
+
+.exampleItem+.exampleItem {
+  border-top: 1px solid #E5E7EB;
+}
+
+.tipsCard {
+  background-color: #FEFCE8;
+  border: 1.5px solid #FEF3C7;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.tipsIcon {
+  color: #CA8A04;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.tipsText {
+  font-size: 14px;
+  font-weight: 500;
+  color: #92400E;
+  line-height: 1.6;
+}
+
+.flipHint {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #9CA3AF;
+  text-align: center;
+}
+
+.exampleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}

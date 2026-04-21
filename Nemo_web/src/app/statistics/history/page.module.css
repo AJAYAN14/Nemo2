@@ -1,0 +1,57 @@
+.container {
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  color: #111827;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.backBtn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  color: #111827;
+  cursor: pointer;
+  margin-right: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.content {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.loadingScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.loadingText {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 600;
+}

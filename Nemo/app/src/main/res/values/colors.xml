@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="launcher_background_green">#3DDC84</color>
+    <color name="white_alpha_20">#33FFFFFF</color>
+    <color name="nemo_primary_blue">#0E68FF</color>
+    <color name="white_alpha_35">#59FFFFFF</color>
+    <color name="transparent">#00000000</color>
+    <color name="white_alpha_10">#19FFFFFF</color>
+    <color name="white_alpha_90">#E5FFFFFF</color>
+    <color name="white_alpha_60">#99FFFFFF</color>
+</resources>

@@ -1,0 +1,250 @@
+# Nemo Web 项目业务逻辑链路总结
+
+## 1. 核心流程梳理
+
+### 词库管理模块 (Library)
+- **字典查询服务**: `src/lib/services/dictionaryService.ts` 提供多维度筛选功能
+  - **单词查询**: `getWords()` 支持按 JLPT 等级、搜索词（日语/假名/中文）、词性筛选，使用无限滚动分页加载（每页 50 条）
+  - **语法查询**: `getGrammars()` 支持按等级和标题搜索，一次性加载全部结果
+  - **详情获取**: `getWordById()` / `getGrammarById()` 获取单个项目的完整信息
+  - **外来语检测**: `isLoanWord()` 基于片假名和英文字母判断是否为外来语
+- **顽固词管理**: 
+  - `studyService.getLeeches()` 查询所有 state = -1（暂停状态）的项目
+  - `studyService.restoreItem()` 将顽固词重置为新词状态（state=0, reps=0, lapses=0）
+- **手动添加到学习库**: 
+  - `studyService.addToLibrary()` 通过 upsert 操作将单词/语法加入 `user_progress` 表
+  - 设置 `next_review` 为当前时间，使项目立即可学
+
+### 学习模块 (Learning)
+- **入口与初始化**: 
+  - `src/app/learn/page.tsx` 是学习的入口，通过 `useQuery` 触发数据加载
+  - 加载流程：
+    1. 获取当前用户（Supabase Auth）
+    2. 读取本地配置 `settingsService.getStudyConfig()`
+    3. **会话日锁定**: 调用 `studyService.lockSessionDay(resetHour)` 防止跨天统计偏差
+    4. **自动播种新词**: `studyService.seedDailyNewItems()` 根据每日目标从字典中批量添加新词（使用 Supabase RPC `fn_seed_daily_new_items` 优化性能）
+    5. **获取到期项目**: `studyService.getDueItems()` 查询所有 `next_review <= now` 且未被埋藏的项目
+    6. **获取今日统计**: `statisticsService.getTodayStats()` 用于进度条显示
+- **会话管理**: `src/hooks/useLearningSession.ts` 是核心 Hook
+  - **队列维护**: 管理 `wordList`（学习队列）、`currentIndex`（当前索引）、`status`（会话状态）
+  - **智能调度算法** (`getQueueResult`): 
+    - 遍历队列找到最早到期的项目（min dueTime）
+    - 如果最优项目的到期时间超过 `now + learnAheadLimit`，进入 Waiting 状态
+    - 支持手动覆盖：用户在 2 秒内点击可强制学习未到期项目
+  - **等待状态轮询**: 每秒检查一次是否有项目解锁（1000ms interval），到期后自动恢复 Learning 状态
+  - **步进状态机** (`srsService.evaluateRatingAction`):
+    - **状态定义**: New(0)、Learning(1)、Review(2)、Relearning(3)、Suspended(-1)
+    - **步进配置**: `learningSteps: [1, 10]`（新词步进）、`relearningSteps: [10]`（重学步进）
+    - **评分转换规则**:
+      - Again → 回到第一步或保持当前步（delayMins = steps[0]）
+      - Hard → 保持当前步（delayMins = steps[currentStep]）
+      - Good → 下一步或毕业（若已是最后一步则毕业）
+      - Easy → 直接毕业
+  - **水蛭检测**: 当 `(lapses + 1) >= leechThreshold`（默认 8 次失败）时触发
+    - 处理策略：`skip`（暂停至 2099 年）或 `bury_today`（埋藏至今日结束）
+- **SRS 更新流程**:
+  1. **乐观 UI 更新**: 立即计算下一个卡片并切换，零延迟体验
+  2. **后台同步**: `studyService.processReview()` 异步更新 Supabase
+     - 记录 `review_logs` 用于参数优化（fire-and-forget 模式）
+     - 根据评分类型分支处理：
+       - **Leach 路径**: 更新 state = -1，next_review = 2099-12-31
+       - **Graduate 路径**: 计算 FSRS 新状态，应用确定性 Fuzzing，更新稳定性/难度/间隔
+       - **Requeue 路径**: 更新 learning_step 和 next_review（短期记忆）
+  3. **日志记录**: `studyService.logActivity()` 更新 `study_records` 表的当日计数
+  4. **防抖保护**: 300ms 内拒绝重复评分（`RATING_DEBOUNCE_MS`）
+- **参数个性化优化**:
+  - **触发条件**: 会话启动时异步调用 `studyService.getOptimizedParameters(userId)`
+  - **采样策略**: 获取最近 1500 条 `review_logs`，至少需要 400 条才进行优化
+  - **启发式算法**: `FsrsParameterOptimizer.optimize()` 根据用户的 Again/Hard 率调整默认参数
+  - **应用机制**: `studyService.applyOptimizedParameters()` 更新全局 FSRS 实例
+  - **回退策略**: 优化失败时使用 `DEFAULT_PARAMETERS`
+- **撤销功能** (`undo`):
+  - **快照机制**: 每次评分前保存完整队列、索引、项目进度状态的深拷贝
+  - **数据库回滚**: `studyService.undoReview()` 恢复 `user_progress` 的所有字段（stability, difficulty, reps, lapses, state, learning_step, last_review, next_review 等）
+  - **统计回滚**: 递减 `study_records` 中对应的 learned/reviewed 计数
+  - **UI 回滚**: 恢复队列、索引、完成数，重新显示答案允许重新评分
+- **辅助功能**:
+  - **埋藏功能** (`buryCurrent`): 设置 `buried_until = currentEpochDay + 1`，次日自动恢复
+  - **暂停功能** (`suspendCurrent`): 设置 state = -1，永久隐藏直到手动恢复
+  - **音频控制**: `toggleAutoAudio()` 动态开关自动播放
+  - **答案延迟**: `cycleDelayDuration()` 循环切换 0.5s/1s/2s/3s，实时保存到 localStorage
+
+### 复习模块 (Review)
+- **入口与查询**: `src/app/review/page.tsx` 专门处理集中复习
+  - 加载流程：
+    1. 获取当前用户
+    2. 读取配置并锁定会话日
+    3. **获取所有到期项目**: `studyService.getDueItems(user.id, 200)`（无类型限制，混合单词和语法）
+    4. **过滤已学习项目**: 仅保留 `reps > 0` 的项目（排除新词）
+    5. **全局排序**: 按 `next_review` 升序排列，相同时间按 ID 稳定排序
+- **会话管理**: `src/hooks/useReviewSession.ts`
+  - **优先级队列**: `findBestIndex()` 找到最早到期的项目（与学习模块算法一致）
+  - **等待状态**: 当最优项目未到期且超出 `learnAheadLimit` 时进入 Waiting，每秒轮询检查
+  - **乐观 UI 更新**: 
+    - 先本地计算下一个项目并立即切换（零延迟）
+    - 后台 fire-and-forget 调用 `studyService.processReview()` 同步云端
+    - 同步失败仅记录日志，不影响用户体验
+  - **简化交互**: 无撤销功能、无埋藏/暂停按钮，专注于快速复习
+- **状态流转**: Loading → Reviewing → Waiting → SessionCompleted
+
+### 统计服务 (Statistics)
+- **学习日计算**: `statisticsService.getLearningDay(date, resetHour)`
+  - 基于配置的 `resetHour`（默认凌晨 4 点）计算逻辑日期
+  - 如果当前时间 < resetHour，视为前一天
+  - 返回 Unix Epoch Day（从 1970-01-01 开始的天数）
+- **今日统计**: `getTodayStats(userId, resetHour)`
+  - 查询 `study_records` 表获取今日 learned/reviewed 计数
+  - 查询 `user_progress` 表统计当前到期的单词和语法数量
+  - 计算连续学习天数（streak）：回溯最近 31 天记录，检查连续性
+- **热力图数据**: `getHeatmapData(userId, resetHour)`
+  - 获取过去 365 天的学习活动
+  - 强度分级：0（无活动）、1（1-10 项）、2（11-30 项）、3（31-60 项）、4（60+ 项）
+- **7 天预测**: `getWeekForecast(userId, resetHour)`
+  - 遍历所有 `user_progress` 项目，统计未来 7 天每天的 `next_review` 数量
+  - 用于首页的复习量预告
+- **SRS 分布**: `getSRSDistribution(userId)`
+  - 统计各状态的项目数量：New(0)、Young(1&3)、Mature(2)、Suspended(-1)
+  - 用于统计页面的饼图展示
+
+### 设置管理 (Settings)
+- **存储位置**: Web 端使用 `localStorage`（键名：`nemo_study_settings`）
+- **配置项** (`StudyConfig`):
+  - **发牌模式**: `mode`（WORDS_AND_GRAMMAR / WORDS_ONLY / GRAMMAR_ONLY）
+  - **等级筛选**: `level`（ALL / N5-N1）
+  - **每日限额**: `wordLimit`（默认 20）、`grammarLimit`（默认 5）
+  - **随机化**: `isRandom`（是否启用种子洗牌）
+  - **学习步进**: `learningSteps`（默认 [1, 10]）、`relearningSteps`（默认 [10]）
+  - **提前学习限制**: `learnAheadLimit`（默认 20 分钟，0 表示禁用）
+  - **水蛭阈值**: `leechThreshold`（默认 8 次失败）
+  - **水蛭处理**: `leechAction`（Suspend / Bury Today）
+  - **重置时间**: `resetHour`（默认 4，凌晨 4 点）
+  - **音频控制**: `isAutoAudioEnabled`（默认 true）
+  - **答案延迟**: `isShowAnswerDelayEnabled`、`showAnswerDelayDuration`（0.5/1/2/3 秒）
+- **动态更新**: 
+  - `settingsService.updateStudyConfig()` 实时写入 localStorage
+  - 学习中修改配置（如延迟时长）立即生效，无需刷新页面
+
+### 数据持久化
+- **Supabase Database**: 
+  - **user_progress**: 核心学习进度表
+    - 字段：user_id, item_type, item_id, state, stability, difficulty, reps, lapses, learning_step, last_review, next_review, elapsed_days, scheduled_days, buried_until
+    - 唯一约束：(user_id, item_type, item_id)
+  - **dictionary_words / dictionary_grammars**: 静态字典内容（JLPT N1-N5）
+  - **review_logs**: 评分行为日志（rating, stability, difficulty, created_at），用于参数优化
+  - **study_records**: 每日聚合统计（date, learned_words, learned_grammars, reviewed_words, reviewed_grammars）
+- **Local Storage**: 
+  - `nemo_study_settings`: 用户配置持久化
+  - **会话日锁定**: 内存变量 `_sessionLockedDay`，组件卸载时清除
+- **Supabase RPC 优化**: 
+  - `fn_seed_daily_new_items`: 服务端批量插入新词，避免客户端多次往返
+  - 原子操作：在数据库中检查今日已学数量，仅在不足时补充
+
+---
+
+## 2. 核心文件职责总结
+
+| 文件路径 | 职责描述 |
+| :--- | :--- |
+| `src/app/learn/page.tsx` | 学习页面入口，负责用户认证、配置加载、自动播种新词、获取到期项目。 |
+| `src/app/review/page.tsx` | 复习页面入口，获取所有到期且已学习的项目，按时间排序后传递给复习会话。 |
+| `src/app/library/LibraryClient.tsx` | 词库浏览界面，支持无限滚动、多维筛选、顽固词管理。 |
+| `src/hooks/useLearningSession.ts` | 学习会话的核心逻辑 Hook，管理队列、导航、撤销、等待状态、水蛭检测、步进状态机。 |
+| `src/hooks/useReviewSession.ts` | 复习会话的专用 Hook，实现混合复习队列的优先级调度和乐观 UI 更新。 |
+| `src/lib/services/studyService.ts` | 数据服务层，封装 Supabase 交互、FSRS 算法调用、日志记录、会话日锁定、RPC 调用。 |
+| `src/lib/services/dictionaryService.ts` | 字典查询服务，支持单词/语法的搜索、筛选、分页加载、外来语检测。 |
+| `src/lib/services/statisticsService.ts` | 统计服务，提供学习日计算、今日统计、热力图、7 天预测、SRS 分布。 |
+| `src/lib/services/settingsService.ts` | 设置管理服务，读写 localStorage 中的用户配置。 |
+| `src/lib/services/srsService.ts` | SRS 纯逻辑服务，包含步进状态机评估、预览间隔计算、参数应用。 |
+| `src/lib/srs/fsrs.ts` | FSRS 6 算法的 TypeScript 实现，包含 21 个参数的记忆模型计算、确定性 Fuzzing。 |
+| `src/lib/srs/parameterOptimizer.ts` | FSRS 参数优化器，基于用户历史评分日志进行启发式参数调整。 |
+| `src/app/learn/LearnSession.tsx` | 学习页面的 UI 容器，整合卡片展示、头部信息、底部操作区、菜单设置。 |
+| `src/app/review/ReviewSession.tsx` | 复习页面的 UI 容器，提供沉浸式的集中复习体验。 |
+| `src/components/library/WordCard.tsx` | 词库单词卡片组件，显示日语、假名、中文释义、JLPT 等级。 |
+| `src/components/library/GrammarCard.tsx` | 词库语法卡片组件，显示语法标题、说明、JLPT 等级。 |
+| `src/components/library/LeechCard.tsx` | 顽固词卡片组件，显示冻结原因和恢复按钮。 |
+
+---
+
+## 3. 关键技术细节
+
+### 确定性随机化 (Deterministic Randomization)
+- **种子生成**: `seededRandom(seed)` 基于字符串生成确定性随机数生成器
+  - 哈希算法：对种子字符串逐字符计算 hash = ((hash << 5) - hash) + char
+  - LCG 算法：s = (s * 9301 + 49297) % 233280
+- **应用场景**:
+  - **每日新词洗牌**: `seedDailyNewItems()` 使用 `seededShuffle(array, userId + epochDay)` 保证同一天相同用户看到相同的顺序
+  - **Fuzzing 防堆积**: `fsrs.nextIntervalDaysWithFuzz(stability, seed)` 对复习间隔进行 ±span 天的扰动
+    - Span 计算：<7 天=1, <30 天=8%, <90 天=12%, ≥90 天=15%
+    - 种子：`(parseInt(userId.slice(0, 8), 16) ^ (itemId * 1103515245 + 12345)) >>> 0`
+    - 目的：避免大量卡片在同一天到期造成复习压力
+
+### 会话日锁定机制 (Session Day Locking)
+- **问题背景**: 用户在 23:50 开始学习，00:10 结束，跨越自然日导致统计分裂
+- **解决方案**: 
+  - 会话启动时调用 `lockSessionDay(resetHour)` 锁定逻辑日期
+  - 所有后续的 `logActivity()` 和 `undoReview()` 使用锁定的 `_sessionLockedDay`
+  - 组件卸载时调用 `clearSessionLock()` 清理状态
+- **影响范围**: 学习记录、撤销回滚、统计查询
+
+### 乐观 UI 更新 (Optimistic UI Updates)
+- **复习模块特有**: 先更新 UI 再后台同步，实现零延迟体验
+- **实现步骤**:
+  1. 本地计算下一个项目（`selectNext()`）
+  2. 立即切换卡片（`setCurrentIndex()`）
+  3. Fire-and-forget 调用 `studyService.processReview()`
+  4. 捕获错误仅记录日志，不阻塞用户流程
+- **风险缓解**: 即使同步失败，下次加载时会从云端恢复正确状态
+
+### 防抖机制 (Debounce)
+- **评分防抖**: 300ms 内拒绝重复评分（`RATING_DEBOUNCE_MS = 300`）
+- **实现方式**: 使用 `lastRatingTime` ref 记录上次评分时间戳
+- **应用场景**: 防止快速连续点击或触摸事件导致的重复评分
+
+### 埋藏 vs 暂停 (Bury vs Suspend)
+- **埋藏 (Bury)**:
+  - 设置 `buried_until = currentEpochDay + 1`
+  - 查询时自动过滤：`.lte('buried_until', currentEpochDay)`
+  - 次日自动恢复，无需手动干预
+  - 适用场景：今天不想复习，但明天可以继续
+- **暂停 (Suspend)**:
+  - 设置 `state = -1`, `next_review = '2099-12-31T23:59:59Z'`
+  - 永久隐藏，需手动调用 `restoreItem()` 恢复为新词
+  - 适用场景：太难或暂时不想学的词汇
+
+---
+
+## 4. "学习-复习"闭环业务逻辑摘要
+
+Nemo Web 端采用了与 Android 端高度一致的 **FSRS 驱动闭环**，并针对 Web 特性进行了优化。
+
+**完整学习流程**:
+1. **词库探索**: 用户通过 `LibraryClient` 浏览字典，可按 JLPT 等级、搜索词筛选，查看顽固词列表
+2. **手动添加**: 通过 `addToLibrary()` 将感兴趣的单词/语法加入学习计划
+3. **自动播种**: 每日首次学习时，`seedDailyNewItems()` 根据用户配置（wordLimit/grammarLimit）从字典中批量添加新词，使用 Supabase RPC 优化性能
+4. **会话启动**: 
+   - 锁定会话日防止跨天统计偏差
+   - 异步获取个性化的 FSRS 参数（基于 400+ 条历史日志）
+   - 获取所有到期项目（排除被埋藏的项目）
+5. **智能调度**: 
+   - `getQueueResult()` 优先选择最早到期的项目
+   - 应用提前学习限制，未到期项目进入 Waiting 状态（每秒轮询检查）
+   - 支持手动覆盖强制学习
+6. **步进学习**: 
+   - 新词经过 learningSteps（默认 [1min, 10min]）逐步巩固
+   - 失败项目进入 relearningSteps（默认 [10min]）重学
+   - 达到水蛭阈值（8 次失败）自动暂停或埋藏
+7. **SRS 更新**: 
+   - 评分后立即更新 UI（乐观更新）
+   - 后台调用 `processReview()` 计算新的 stability/difficulty/interval
+   - 应用确定性 Fuzzing 避免复习堆积
+   - 记录 review_logs 用于未来参数优化
+   - 更新 study_records 的当日统计
+8. **撤销支持**: 学习模块支持完整回滚（数据库 + 统计 + UI），复习模块采用乐观更新无撤销
+9. **到期复习**: 后续日子里，系统通过 `getDueItems()` 查询 `next_review <= now` 的项目，形成"学习 → 算法调度 → 到期复习 → 巩固记忆"的正向循环
+
+**技术亮点**:
+- **性能优化**: Supabase RPC 批量插入、乐观 UI 更新、防抖保护
+- **一致性保证**: 确定性随机化确保同日同序、会话日锁定防止统计偏差
+- **个性化学习**: FSRS 参数优化器基于用户历史行为自适应调整
+- **灵活控制**: 埋藏/暂停/水蛭处理/提前学习限制等多维度调度策略
+- **完整追溯**: review_logs 记录每次评分，study_records 聚合每日统计，支持热力图和预测

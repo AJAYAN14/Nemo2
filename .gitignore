@@ -1,0 +1,31 @@
+# Android
+.gradle/
+build/
+app/build/
+core/data/build/
+core/domain/build/
+core/common/build/
+core/ui/build/
+feature/learning/build/
+feature/library/build/
+feature/settings/build/
+feature/statistics/build/
+feature/test/build/
+feature/user/build/
+local.properties
+*.iml
+.idea/
+.DS_Store
+
+# Web
+Nemo_web/node_modules/
+Nemo_web/.next/
+Nemo_web/out/
+Nemo_web/build/
+Nemo_web/.env*.local
+
+# Common
+*.log
+temp/
+bin/
+obj/

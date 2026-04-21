@@ -1,0 +1,38 @@
+.card {
+  background-color: #ffffff;
+  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:hover {
+  border-color: var(--primary-color);
+  background-color: #fafbfc;
+  transform: translateY(-1px);
+}
+
+.interactive:active {
+  transform: translateY(0);
+  background-color: #f3f4f6;
+}
+
+/* Padding variants */
+.padding-none { padding: 0; }
+.padding-small { padding: 12px; }
+.padding-medium { padding: 20px; }
+.padding-large { padding: 32px; }
+
+/* Themes for different learning modes if needed */
+.cardPrimary {
+  border-color: rgba(79, 70, 229, 0.15);
+}
+
+.cardSuccess {
+  border-color: rgba(16, 185, 129, 0.15);
+}

@@ -1,0 +1,306 @@
+/* Progress Page Styles - Optimized for Premium Web Excellence */
+
+.mainContainer {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: #0f172a;
+  padding: 1rem;
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+.contentWrapper {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px 120px;
+}
+
+/* --- Immersive Header --- */
+.immersiveHeader {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -1px;
+}
+
+
+/* Section Styling */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  padding-left: 0.5rem;
+}
+
+/* Carousel */
+.carouselContainer {
+  margin-bottom: 1.25rem;
+}
+
+.carouselViewport {
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background: transparent;
+}
+
+.carouselTrack {
+  display: flex;
+}
+
+.carouselSlide {
+  flex: 0 0 100%;
+}
+
+.bentoGrid {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .bentoGrid {
+    flex-direction: row;
+    height: 180px;
+    gap: 0.6rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bentoGrid {
+    height: 200px;
+    gap: 0.75rem;
+  }
+}
+
+.mainTile {
+  flex: 1.6;
+  height: 130px;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mainTile:hover {
+  transform: translateY(-1px);
+}
+
+.mainTileContent {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+@media (min-width: 768px) {
+  .mainTile {
+    height: 100%;
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mainTile {
+    padding: 1.5rem;
+  }
+}
+
+.sideTiles {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .sideTiles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sideTiles {
+    gap: 0.75rem;
+  }
+}
+
+.subTile {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 0.875rem;
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.subTile:hover {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.tileLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.2rem;
+}
+
+.subTile .tileLabel {
+  color: #64748b;
+  font-size: 0.6rem;
+}
+
+.statValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-top: 0.1rem;
+}
+
+.mainValue {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.subValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+/* Indicators */
+.indicators {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 1.5rem;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: #cbd5e1;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.indicatorActive {
+  width: 24px;
+  background: #6366f1;
+}
+
+/* Visual Hint */
+.visualHint {
+  margin-bottom: 1.5rem;
+}
+
+.progressBar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: white;
+}
+
+
+.barsRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.bar {
+  width: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.barActive {
+  background: white;
+}
+
+/* Empty/Error States */
+.emptyStateCard {
+  background: white;
+  padding: 3rem 2rem;
+  border-radius: 1.5rem;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.emptyStateCard p {
+  color: #64748b;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.primaryButton {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.primaryButton:hover {
+  background: #4338ca;
+  transform: translateY(-1px);
+}
+
+.panoramaWrapper {
+  margin-top: 0.5rem;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--background);
+}
+

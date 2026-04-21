@@ -1,0 +1,229 @@
+.contentContainer {
+  padding: 40px 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100%;
+}
+
+.questionSection {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.promptText {
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--text-primary, #111827);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.hintText {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary, #64748B);
+  margin-top: 12px;
+  opacity: 0.8;
+}
+
+.answerContainer {
+  width: 100%;
+  max-width: 640px;
+  min-height: 120px;
+  border-radius: 32px;
+  background-color: #E0E7FF; /* Light Indigo background */
+  border: 1px solid #CBD5E1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.answerActive {
+  background-color: #EEF2FF;
+  border-color: #818CF8;
+}
+
+.answerCorrect {
+  background-color: rgba(16, 185, 129, 0.08);
+  border-color: #10B981;
+}
+
+.answerError {
+  background-color: rgba(239, 68, 68, 0.08);
+  border-color: #EF4444;
+}
+
+.emptyStateText {
+  color: #312E81;
+  opacity: 0.3;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.optionsTray {
+  width: 100%;
+  max-width: 640px;
+  background-color: #F8FAFF;
+  border-radius: 32px;
+  padding: 32px 24px;
+  border: 1px solid #E2E8F0;
+  margin-bottom: 40px;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.chip {
+  background-color: #ffffff;
+  border: 1px solid #F1F5F9;
+  border-radius: 18px;
+  color: #1E293B;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 14px 22px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+}
+
+.chip:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #CBD5E1;
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.chipSelected {
+  color: #ffffff;
+}
+
+/* Macaron Palette for Selected Chips */
+.chipIndigo { background-color: #818CF8; border-color: transparent; color: white; }
+.chipPink { background-color: #F472B6; border-color: transparent; color: white; }
+.chipAmber { background-color: #FBBF24; border-color: transparent; color: white; }
+.chipEmerald { background-color: #34D399; border-color: transparent; color: white; }
+.chipCyan { background-color: #22D3EE; border-color: transparent; color: white; }
+.chipViolet { background-color: #A78BFA; border-color: transparent; color: white; }
+
+.chipCorrect {
+  background-color: #4CAF50 !important;
+  color: white !important;
+  border-color: transparent !important;
+}
+
+.chipWrong {
+  background-color: #F44336 !important;
+  color: white !important;
+  border-color: transparent !important;
+}
+
+.chipDisabled {
+  cursor: default;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.feedbackCard {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  border-radius: 24px;
+  border: 1px solid;
+  margin-top: 24px;
+}
+
+.feedbackCorrect {
+  background-color: rgba(16, 185, 129, 0.05);
+  border-color: #10B981;
+}
+
+.feedbackError {
+  background-color: rgba(239, 68, 68, 0.05);
+  border-color: #EF4444;
+}
+
+.feedbackIconCorrect {
+  color: #10B981;
+  margin-bottom: 12px;
+}
+
+.feedbackTitleCorrect {
+  font-size: 24px;
+  font-weight: 900;
+  color: #10B981;
+}
+
+.feedbackIconError {
+  color: #EF4444;
+  margin-bottom: 12px;
+}
+
+.feedbackTitleError {
+  font-size: 24px;
+  font-weight: 900;
+  color: #EF4444;
+  margin-bottom: 16px;
+}
+
+.correctAnswerLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.correctAnswerValue {
+  font-size: 32px;
+  font-weight: 900;
+  color: #1E293B;
+  margin-top: 8px;
+}
+
+.explanationCard {
+  width: 100%;
+  max-width: 500px;
+  margin-top: 32px;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid #E2E8F0;
+  text-align: left;
+}
+
+.explanationTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748B;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.explanationText {
+  font-size: 16px;
+  color: #1E293B;
+  line-height: 1.6;
+}
+

@@ -1,0 +1,35 @@
+package com.jian.nemo.core.data.local.entity
+
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+/**
+ * 离线任务队列实体
+ * 用于存储待同步到 Supabase 的复习操作
+ */
+@Entity(tableName = "sync_outbox")
+data class SyncOutboxEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+
+    @ColumnInfo(name = "item_id")
+    val itemId: Int,
+
+    @ColumnInfo(name = "item_type")
+    val itemType: String,
+
+    /** 用户评分 (1:Again, 2:Hard, 3:Good, 4:Easy) */
+    val rating: Int,
+
+    /** 操作发生的时间戳 (ISO String) */
+    @ColumnInfo(name = "created_at")
+    val createdAt: String,
+
+    /** 是否正在同步中 */
+    @ColumnInfo(name = "is_syncing")
+    val isSyncing: Boolean = false,
+
+    /** 失败重试次数 */
+    val attempts: Int = 0
+)

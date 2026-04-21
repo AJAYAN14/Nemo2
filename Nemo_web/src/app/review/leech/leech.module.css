@@ -1,0 +1,90 @@
+.container {
+  min-height: 100vh;
+  padding-bottom: 5rem;
+  color: #111827;
+}
+
+.tabSection {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem 1rem;
+}
+
+.tabList {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.pillTab {
+  padding: 0 24px;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pillActive {
+  background: var(--primary);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.content {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 0.5rem;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.emptyIconBox {
+  width: 80px;
+  height: 80px;
+  border-radius: 40px;
+  background: #EEF2FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  color: var(--primary);
+}
+
+.emptyText {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  color: var(--muted);
+}

@@ -1,0 +1,246 @@
+.header {
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modeIndicator {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.rightActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navPill {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 2px;
+  height: 40px;
+}
+
+:global(.light) .navPill {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+}
+
+.navBtn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.navBtn:hover:not(.disabled) {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.navBtn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.countText {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 10px;
+  color: inherit;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.moreBtn {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 50% !important;
+  width: 44px !important;
+  height: 44px !important;
+}
+
+:global(.light) .moreBtn {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+}
+
+/* Dropdown Menu Styles */
+.menuContent {
+  min-width: 220px;
+  background-color: white;
+  border-radius: 16px;
+  padding: 8px;
+  border: 1px solid #E5E7EB;
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+  z-index: 100;
+}
+
+.menuItem {
+  font-size: 15px;
+  line-height: 1;
+  color: #374151;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  position: relative;
+  user-select: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.menuItem:hover,
+.menuItem:focus {
+  background-color: #F3F4F6;
+  color: #111827;
+}
+
+.menuIcon {
+  margin-right: 12px;
+  color: #6B7280;
+}
+
+.menuSeparator {
+  height: 1px;
+  background-color: #F3F4F6;
+  margin: 6px;
+}
+
+.flexFill {
+  flex: 1;
+}
+
+.toggle {
+  width: 36px;
+  height: 20px;
+  background-color: #E5E7EB;
+  border-radius: 20px;
+  position: relative;
+  transition: background-color 150ms ease;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  border-radius: 50%;
+  border: 1px solid #D1D5DB;
+  transition: transform 150ms ease;
+}
+
+.toggleActive {
+  background-color: var(--primary-color, #4F46E5);
+}
+
+.toggleActive::after {
+  transform: translateX(16px);
+}
+
+.menuArrow {
+  fill: white;
+}
+
+/* Progress Bar Row */
+.progressRow {
+  height: 40px;
+  /* Adjust to accommodate progress bar + chips */
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background-color: transparent;
+}
+
+.progressBarBg {
+  flex: 1;
+  height: 4px;
+  /* MD3 spec for LinearProgressIndicator */
+  background-color: #E5E7EB;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background-color: var(--primary);
+  border-radius: 2px;
+  transition: width 0.15s ease-out;
+}
+
+.statusGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statusChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 32px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.new {
+  color: #3B82F6;
+  /* Blue */
+}
+
+.new .dot {
+  background-color: #3B82F6;
+}
+
+.relearn {
+  color: #EF4444;
+  /* Red */
+}
+
+.relearn .dot {
+  background-color: #EF4444;
+}
+
+.review {
+  color: #10B981;
+  /* Green */
+}
+
+.review .dot {
+  background-color: #10B981;
+}
