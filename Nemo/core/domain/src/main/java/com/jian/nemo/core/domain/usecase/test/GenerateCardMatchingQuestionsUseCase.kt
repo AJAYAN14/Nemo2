@@ -7,9 +7,6 @@ import javax.inject.Inject
 
 /**
  * 生成卡片题UseCase
- *
- * 参考: 旧项目 TestManager.kt 行1108-1123
- *
  * 逻辑要点:
  * 1. 每5个单词为一组生成一道卡片题
  * 2. 如果配置要求打乱，先shuffled()再chunked(5)
@@ -29,17 +26,17 @@ class GenerateCardMatchingQuestionsUseCase @Inject constructor(
         words: List<Word>,
         shuffle: Boolean = true
     ): List<TestQuestion.CardMatching> {
-        // 根据配置决定是否打乱顺序（参考旧项目行1110-1115）
+        // 根据配置决定是否打乱顺序
         val processedWords = if (shuffle) {
             words.shuffled()
         } else {
             words
         }
 
-        // 每5个单词为一组（参考旧项目行1117-1122）
+        // 每5个单词为一组
         return processedWords.chunked(5).mapIndexed { index, wordGroup ->
             TestQuestion.CardMatching(
-                id = index,
+                id = index.toString(),
                 pairs = wordGroup
             )
         }

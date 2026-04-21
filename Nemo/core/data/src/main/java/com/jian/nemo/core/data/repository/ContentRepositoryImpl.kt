@@ -4,6 +4,7 @@ import android.util.Log
 import com.jian.nemo.core.domain.repository.ContentRepository
 import com.jian.nemo.core.domain.model.dto.WordDto
 import com.jian.nemo.core.domain.model.dto.GrammarDto
+import com.jian.nemo.core.domain.model.dto.GrammarTestQuestionDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -42,7 +43,7 @@ class ContentRepositoryImpl @Inject constructor(
                 }.decodeList<WordDto>()
         } catch (e: Exception) {
             Log.e(TAG, "fetchRemoteWords($level) failed", e)
-            emptyList()
+            emptyList<WordDto>()
         }
     }
 
@@ -56,7 +57,23 @@ class ContentRepositoryImpl @Inject constructor(
                 }.decodeList<GrammarDto>()
         } catch (e: Exception) {
             Log.e(TAG, "fetchRemoteGrammars($level) failed", e)
-            emptyList()
+            emptyList<GrammarDto>()
+        }
+    }
+
+    override suspend fun fetchRemoteGrammarQuestions(level: String): List<GrammarTestQuestionDto> = withContext(Dispatchers.IO) {
+        try {
+            // 语法题 ID 格式通常为 GT_N1_xxx_xx，我们可以通过前缀过滤
+            val prefix = "GT_${level.uppercase()}_"
+            supabase.postgrest["grammar_questions"]
+                .select(columns = Columns.ALL) {
+                    filter {
+                        ilike("id", "$prefix%")
+                    }
+                }.decodeList<GrammarTestQuestionDto>()
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchRemoteGrammarQuestions($level) failed", e)
+            emptyList<GrammarTestQuestionDto>()
         }
     }
 

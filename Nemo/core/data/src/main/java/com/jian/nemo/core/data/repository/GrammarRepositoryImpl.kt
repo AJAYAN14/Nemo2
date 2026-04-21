@@ -28,7 +28,7 @@ class GrammarRepositoryImpl @Inject constructor(
 
     // ========== 查询实现 ==========
 
-    override fun getGrammarById(id: Int): Flow<Grammar?> {
+    override fun getGrammarById(id: String): Flow<Grammar?> {
         return grammarDao.getGrammarWithUsages(id)
             .map { it?.toDomainModel() }
             .catch { e ->
@@ -190,7 +190,7 @@ class GrammarRepositoryImpl @Inject constructor(
             }
     }
 
-    override suspend fun getGrammarsByIds(ids: List<Int>): List<Grammar> {
+    override suspend fun getGrammarsByIds(ids: List<String>): List<Grammar> {
         return try {
             if (ids.isEmpty()) {
                 emptyList()
@@ -223,7 +223,7 @@ class GrammarRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateFavoriteStatus(
-        grammarId: Int,
+        grammarId: String,
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
@@ -235,7 +235,7 @@ class GrammarRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun markAsSkipped(grammarId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun markAsSkipped(grammarId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             val nowIso = DateTimeUtils.getCurrentCompensatedIso()
             userProgressDao.updateProgressState(grammarId, "grammar", -1, nowIso)
@@ -245,7 +245,7 @@ class GrammarRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun unmarkAsSkipped(grammarId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun unmarkAsSkipped(grammarId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             val nowIso = DateTimeUtils.getCurrentCompensatedIso()
             userProgressDao.updateProgressState(grammarId, "grammar", 0, nowIso)

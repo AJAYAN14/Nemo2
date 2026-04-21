@@ -107,6 +107,7 @@ fun LearningSummaryCard(
     dueCount: Int,
     totalStudyDays: Int,
     weekStudyDays: Int,
+    stats: com.jian.nemo.core.domain.model.LearningStats?,
     cardColor: Color // Unused in V2, we use PremiumCard defaults
 ) {
     val pageCount = 10000
@@ -133,31 +134,22 @@ fun LearningSummaryCard(
 
     val pageModels = listOf(
         BentoPageModel(
-            title = "日间概览",
+            title = "今日表现",
             icon = Icons.Rounded.Today,
             accentColor = NemoPrimary,
             main = BentoMetric("今日已学", todayLearned.toString(), "项"),
-            topRight = BentoMetric("待复习", dueCount.toString(), "项"),
-            bottomRight = BentoMetric("目标完成度", todayProgress.toString(), "%"),
+            topRight = BentoMetric("连续学习", studyStreak.toString(), "天"),
+            bottomRight = BentoMetric("目标完成", todayProgress.toString(), "%"),
             visualType = BentoVisualType.Progress
         ),
         BentoPageModel(
-            title = "学习轨迹",
+            title = "学情总览",
             icon = Icons.Rounded.Timeline,
             accentColor = NemoSecondary,
-            main = BentoMetric("连续学习", studyStreak.toString(), "天"),
-            topRight = BentoMetric("累计掌握", masteredCount.toString(), "项"),
-            bottomRight = BentoMetric("待学习", unmasteredCount.toString(), "项"),
+            main = BentoMetric("掌握率", (progress * 100).toInt().toString(), "%"),
+            topRight = BentoMetric("稳固项", ((stats?.matureWords ?: 0) + (stats?.matureGrammars ?: 0)).toString(), "项"),
+            bottomRight = BentoMetric("累计已学", masteredCount.toString(), "项"),
             visualType = BentoVisualType.Dots
-        ),
-        BentoPageModel(
-            title = "成长总览",
-            icon = Icons.AutoMirrored.Rounded.TrendingUp,
-            accentColor = Color(0xFFF4B73F),
-            main = BentoMetric("总进度", (progress * 100).toInt().toString(), "%"),
-            topRight = BentoMetric("累计学习", totalStudyDays.toString(), "天"),
-            bottomRight = BentoMetric("本周学习", weekStudyDays.toString(), "天"),
-            visualType = BentoVisualType.Bars
         )
     )
 
@@ -178,7 +170,7 @@ fun LearningSummaryCard(
 
         SlidingDotIndicator(
             pagerState = pagerState,
-            pageCount = 3,
+            pageCount = 2,
             activeColor = currentPage.accentColor,
             inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
             modifier = Modifier

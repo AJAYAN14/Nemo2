@@ -36,10 +36,10 @@ class WordDetailViewModel @Inject constructor(
     private val _playingAudioId = MutableStateFlow<String?>(null)
     val playingAudioId = _playingAudioId.asStateFlow()
 
-    private val startWordId: Int = checkNotNull(savedStateHandle["wordId"])
+    private val startWordId: String = checkNotNull(savedStateHandle["wordId"])
 
     // Context IDs for Swipe Navigation
-    private val _contextIds = MutableStateFlow<List<Int>>(emptyList())
+    private val _contextIds = MutableStateFlow<List<String>>(emptyList())
     val contextIds = _contextIds.asStateFlow()
 
     // Current word flow (for initial loading to determine context)
@@ -92,7 +92,7 @@ class WordDetailViewModel @Inject constructor(
     /**
      * Get a flow for a specific word by ID (used by Pager pages)
      */
-    fun getWordFlow(id: Int): kotlinx.coroutines.flow.Flow<Word?> {
+    fun getWordFlow(id: String): kotlinx.coroutines.flow.Flow<Word?> {
         return wordRepository.getWordById(id)
     }
 
@@ -132,7 +132,7 @@ class WordDetailViewModel @Inject constructor(
         _showReportDialog.value = false
     }
 
-    fun reportContentError(wordId: Int) {
+    fun reportContentError(wordId: String) {
         _showReportDialog.value = false
         viewModelScope.launch {
             val result = contentReportRepository.reportContentError(wordId, "word")

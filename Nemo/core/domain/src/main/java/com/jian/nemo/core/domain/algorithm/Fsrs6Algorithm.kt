@@ -163,8 +163,8 @@ class Fsrs6Algorithm(
         val clampedInterval = max(minBound, min(maximum.toDouble(), interval))
         val delta = fuzzDelta(clampedInterval)
 
-        var lower = round(clampedInterval - delta).toInt()
-        var upper = round(clampedInterval + delta).toInt()
+        var lower = java.lang.Math.round(clampedInterval - delta).toInt()
+        var upper = java.lang.Math.round(clampedInterval + delta).toInt()
 
         lower = max(minBound.toInt(), min(maximum, lower))
         upper = max(minBound.toInt(), min(maximum, upper))
@@ -207,5 +207,19 @@ class Fsrs6Algorithm(
         val (lower, upper) = constrainedFuzzBounds(rawInterval, 1, MAX_INTERVAL)
         val fuzzFactor = fuzzFactorFromSeed(seed)
         return floor(lower + fuzzFactor * (1 + upper - lower)).toInt()
+    }
+
+    /**
+     * Build an Anki-style deterministic seed mirroring the Web's implementation.
+     */
+    fun buildFsrsDeterministicSeed(cardId: String, reps: Int): Long {
+        // FNV-1a 32-bit hash of cardId string
+        var hash = 2166136261L
+        for (i in cardId.indices) {
+            hash = hash xor cardId[i].code.toLong()
+            hash = (hash * 16777619L) and 0xFFFFFFFFL
+        }
+        val safeReps = max(0, reps).toLong()
+        return (hash + safeReps) and 0xFFFFFFFFL
     }
 }

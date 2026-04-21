@@ -16,6 +16,9 @@ interface TestRecordDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(record: TestRecordEntity)
 
+    @androidx.room.Delete
+    suspend fun delete(record: TestRecordEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(records: List<TestRecordEntity>)
 
@@ -49,8 +52,8 @@ interface TestRecordDao {
     @Query("SELECT * FROM test_records WHERE test_mode = :testMode AND is_deleted = 0 ORDER BY timestamp DESC LIMIT :limit")
     fun getRecordsByMode(testMode: String, limit: Int): Flow<List<TestRecordEntity>>
 
-    @Query("UPDATE test_records SET is_deleted = 1, deleted_time = :time, timestamp = :time WHERE uuid = :uuid")
-    suspend fun markDeletedByUuid(uuid: String, time: Long)
+    @Query("UPDATE test_records SET is_deleted = 1, deleted_time = :time, timestamp = :time WHERE id = :id")
+    suspend fun markDeletedById(id: String, time: Long)
 
     /**
      * 逻辑删除所有测试记录
@@ -88,6 +91,6 @@ interface TestRecordDao {
     /**
      * 根据 UUID 列表批量获取记录
      */
-    @Query("SELECT * FROM test_records WHERE uuid IN (:uuids)")
-    suspend fun getByUuids(uuids: List<String>): List<TestRecordEntity>
+    @Query("SELECT * FROM test_records WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<TestRecordEntity>
 }

@@ -67,26 +67,25 @@ class TestQuestionFactory @Inject constructor() {
         )
     }
 
-    fun mapJsonToMultipleChoice(
-        jsonQ: GrammarTestQuestion,
+    fun mapRemoteToMultipleChoice(
+        remoteQ: GrammarTestQuestion,
         mode: TestMode,
-        grammarMap: Map<Int, Grammar>,
+        grammarMap: Map<String, Grammar>,
         shuffleOptions: Boolean = true
     ): TestQuestion.MultipleChoice {
         // Link to real Grammar entity if possible
-        val grammarId = try { extractNumericId(jsonQ.targetGrammarId) } catch (_: Exception) { 0 }
-        val grammar = grammarMap[grammarId]
+        val grammar = grammarMap[remoteQ.targetGrammarId]
 
         return TestQuestion.MultipleChoice(
-            id = jsonQ.id.hashCode(), // Use hashCode for Int ID risk collision but ok for MVP
+            id = remoteQ.id, 
             word = null,
             grammar = grammar,
             mode = mode,
-            questionText = jsonQ.question,
-            correctAnswer = jsonQ.options[jsonQ.correctIndex],
-            options = jsonQ.options,
-            explanation = jsonQ.explanation,
-            explanationPayload = resolveJsonGrammarExplanationPayload(jsonQ.explanation, grammar)
+            questionText = remoteQ.question,
+            correctAnswer = remoteQ.options[remoteQ.correctIndex],
+            options = remoteQ.options,
+            explanation = remoteQ.explanation,
+            explanationPayload = resolveRemoteGrammarExplanationPayload(remoteQ.explanation, grammar)
         ).let { if (shuffleOptions) it.copy(options = it.options.shuffled()) else it }
     }
 
@@ -277,11 +276,11 @@ class TestQuestionFactory @Inject constructor() {
         }
     }
 
-    private fun resolveJsonGrammarExplanationPayload(
-        jsonExplanation: String?,
+    private fun resolveRemoteGrammarExplanationPayload(
+        remoteExplanation: String?,
         grammar: Grammar?
     ): ExplanationPayload? {
-        val text = jsonExplanation?.takeIf { it.isNotBlank() }
+        val text = remoteExplanation?.takeIf { it.isNotBlank() }
             ?: grammar?.getFirstExplanation()?.takeIf { it.isNotBlank() }
         return text?.let { ExplanationPayload.GrammarText(it) }
     }

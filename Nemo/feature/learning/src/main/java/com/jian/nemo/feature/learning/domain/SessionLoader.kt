@@ -13,7 +13,7 @@ sealed class SessionLoadResult<T> {
     data class Restored<T>(
         val items: List<T>,
         val index: Int,
-        val steps: Map<Int, Int>,
+        val steps: Map<String, Int>,
         val dailyGoal: Int,
         val completedToday: Int,
         val waitingUntil: Long = 0L // 新增
@@ -43,10 +43,10 @@ sealed class SessionLoadResult<T> {
  * 已保存的会话数据
  */
 data class SavedSession(
-    val ids: List<Int>,
+    val ids: List<String>,
     val index: Int,
     val level: String,
-    val steps: Map<Int, Int>,
+    val steps: Map<String, Int>,
     val waitingUntil: Long = 0L // 新增：保存等待状态
 )
 
@@ -85,10 +85,10 @@ class SessionLoader @Inject constructor(
         dailyGoal: Int,
         completedToday: Int,
         savedSession: SavedSession?,
-        getItemsByIds: suspend (List<Int>) -> List<T>,
+        getItemsByIds: suspend (List<String>) -> List<T>,
         getDueItems: suspend () -> List<T>,
         getNewItems: suspend () -> List<T>,
-        getItemId: (T) -> Int,
+        getItemId: (T) -> String,
         filterByLevel: (T) -> Boolean
     ): SessionLoadResult<T> {
 

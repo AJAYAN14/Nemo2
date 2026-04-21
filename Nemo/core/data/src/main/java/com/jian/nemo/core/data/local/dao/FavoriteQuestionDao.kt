@@ -19,17 +19,20 @@ interface FavoriteQuestionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: FavoriteQuestionEntity)
 
+    @androidx.room.Delete
+    suspend fun delete(entity: FavoriteQuestionEntity)
+
     @Query("DELETE FROM favorite_questions WHERE id = :id")
-    suspend fun deleteById(id: Int)
+    suspend fun deleteById(id: String)
 
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_questions WHERE grammar_id = :grammarId LIMIT 1)")
-    suspend fun isFavoriteByGrammarId(grammarId: Int): Boolean
+    suspend fun isFavoriteByGrammarId(grammarId: String): Boolean
 
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_questions WHERE json_id = :jsonId LIMIT 1)")
     suspend fun isFavoriteByJsonId(jsonId: String): Boolean
 
     @Query("DELETE FROM favorite_questions WHERE grammar_id = :grammarId")
-    suspend fun deleteByGrammarId(grammarId: Int)
+    suspend fun deleteByGrammarId(grammarId: String)
 
     @Query("DELETE FROM favorite_questions WHERE json_id = :jsonId")
     suspend fun deleteByJsonId(jsonId: String)
@@ -48,13 +51,13 @@ interface FavoriteQuestionDao {
     suspend fun upsertAll(entities: List<FavoriteQuestionEntity>)
 
     @Query("DELETE FROM favorite_questions WHERE id IN (:ids)")
-    suspend fun deleteByIds(ids: List<Int>)
+    suspend fun deleteByIds(ids: List<String>)
 
     @Query("SELECT * FROM favorite_questions")
     suspend fun getAllFavoriteQuestionsSync(): List<FavoriteQuestionEntity>
 
     @Query("SELECT id FROM favorite_questions WHERE id IN (:ids)")
-    suspend fun getIdsIn(ids: List<Int>): List<Int>
+    suspend fun getIdsIn(ids: List<String>): List<String>
 
     @Query("SELECT * FROM favorite_questions WHERE json_id = :jsonId LIMIT 1")
     suspend fun getByJsonId(jsonId: String): FavoriteQuestionEntity?
@@ -69,5 +72,5 @@ interface FavoriteQuestionDao {
     fun getExportFavoritesCursor(): android.database.Cursor
 
     @Query("UPDATE favorite_questions SET grammar_id = :newId WHERE grammar_id = :oldId")
-    suspend fun migrateGrammarId(oldId: Int, newId: Int)
+    suspend fun migrateGrammarId(oldId: String, newId: String)
 }

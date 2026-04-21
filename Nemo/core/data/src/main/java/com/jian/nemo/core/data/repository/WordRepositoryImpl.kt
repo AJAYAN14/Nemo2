@@ -44,7 +44,7 @@ class WordRepositoryImpl @Inject constructor(
 
     // ========== 查询实现 ==========
 
-    override fun getWordById(id: Int): Flow<Word?> {
+    override fun getWordById(id: String): Flow<Word?> {
         return combine(
             wordDao.getById(id),
             userProgressDao.getProgressByItemIdFlow(id, "word")
@@ -338,7 +338,7 @@ class WordRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getWordsByIds(ids: List<Int>): List<Word> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun getWordsByIds(ids: List<String>): List<Word> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             if (ids.isEmpty()) {
                 emptyList()
@@ -363,7 +363,7 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateFavoriteStatus(
-        wordId: Int,
+        wordId: String,
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         return@withContext try {
@@ -375,7 +375,7 @@ class WordRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun markAsSkipped(wordId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun markAsSkipped(wordId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
             // Suspend corresponds to state = -1
@@ -386,7 +386,7 @@ class WordRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun unmarkAsSkipped(wordId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun unmarkAsSkipped(wordId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
             // Unsuspend corresponds to state = 0

@@ -18,7 +18,7 @@ import androidx.compose.runtime.getValue
  * 进度复习界面 - 还原旧项目视觉样式
  *
  * 结构：
- * - 学习摘要卡片（3页轮播：日间概览/学习轨迹/成长总览）
+ * - 学习摘要卡片（2页轮播：日间概览/学习轨迹）
  * - 复习与训练卡片
  * - 数据与资料卡片
  */
@@ -71,7 +71,7 @@ fun ProgressDashboardScreen(
                     ImmersiveDashboardHeader(title = "进度")
                 }
 
-                // 学习摘要卡片（3页轮播）
+                // 学习摘要卡片（2页轮播）
                 item {
                     LearningSummaryCard(
                         progress = uiState.totalProgress,
@@ -84,6 +84,7 @@ fun ProgressDashboardScreen(
                         dueCount = stats.totalDue,
                         totalStudyDays = stats.totalStudyDays,
                         weekStudyDays = stats.weekStudyDays,
+                        stats = stats,
                         cardColor = cardColor
                     )
                 }

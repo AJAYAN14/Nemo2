@@ -1,36 +1,33 @@
 package com.jian.nemo.core.data.repository
 
-import android.content.Context
-import kotlinx.serialization.json.Json
 import com.jian.nemo.core.common.Result
-import com.jian.nemo.core.data.mapper.GrammarTestQuestionMapper.toDomainModels
-import com.jian.nemo.core.data.model.GrammarTestQuestionDto
+import com.jian.nemo.core.data.local.dao.GrammarQuestionDao
+import com.jian.nemo.core.data.mapper.GrammarTestQuestionMapper.entitiesToDomainModels
 import com.jian.nemo.core.domain.model.GrammarTestQuestion
 import com.jian.nemo.core.domain.repository.GrammarTestRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class GrammarTestRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val grammarQuestionDao: GrammarQuestionDao
 ) : GrammarTestRepository {
-
-    // 创建一个本地 Json 实例，或者注入全局单例
-    private val json = Json {
-        ignoreUnknownKeys = true
-    }
 
     override suspend fun loadQuestionsByLevel(level: String): Result<List<GrammarTestQuestion>> {
         return withContext(Dispatchers.IO) {
             try {
-                val fileName = "grammar/questions/${level}.json"
-                val inputStream = context.assets.open(fileName)
-                val jsonString = inputStream.bufferedReader().use { it.readText() }
+                // Supabase 中的 ID 格式为 GT_N1_xxx，我们按前缀过滤
+                val prefix = "GT_${level.uppercase()}_"
+                val entities = grammarQuestionDao.getByLevel(prefix)
+                
+                if (entities.isEmpty()) {
+                    // 如果本地没数据，可能是还没同步
+                    return@withContext Result.Error(Exception("No grammar questions found for level $level in local database. Please sync first."))
+                }
 
-                val questionsDto = json.decodeFromString<List<GrammarTestQuestionDto>>(jsonString)
-
-                val questions = questionsDto.toDomainModels()
+                val questions = entities.entitiesToDomainModels()
                 Result.Success(questions)
             } catch (e: Exception) {
                 Result.Error(e)

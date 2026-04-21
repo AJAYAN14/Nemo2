@@ -44,7 +44,7 @@ interface WordDao {
      * 批量获取存在的ID (用于区分 Update 和 Insert)
      */
     @Query("SELECT id FROM words WHERE id IN (:ids)")
-    suspend fun getIdsIn(ids: List<Int>): List<Int>
+    suspend fun getIdsIn(ids: List<String>): List<String>
 
     /**
      * 按等级+日语匹配单词（用于云更新合并）
@@ -69,20 +69,20 @@ interface WordDao {
         updated_at = :updatedTime
         WHERE item_id IN (:ids) AND item_type = 'word'
     """)
-    suspend fun softDeleteByIds(ids: List<Int>, updatedTime: String)
+    suspend fun softDeleteByIds(ids: List<String>, updatedTime: String)
 
     /**
      * 标记单词下架 (Dictionary Sync)
      * 用于处理 JSON 源文件中已被删除的单词
      */
     @Query("UPDATE words SET is_delisted = 1 WHERE id IN (:ids)")
-    suspend fun markAsDelisted(ids: List<Int>)
+    suspend fun markAsDelisted(ids: List<String>)
 
     /**
      * 物理删除单词 (仅用于同步或特殊清理)
      */
     @Query("DELETE FROM words WHERE id IN (:ids)")
-    suspend fun deleteByIds(ids: List<Int>)
+    suspend fun deleteByIds(ids: List<String>)
 
     /**
      * 清空所有单词 (用于数据重置)
@@ -119,7 +119,7 @@ interface WordDao {
         AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
     """)
-    fun getById(id: Int): Flow<WordEntity?>
+    fun getById(id: String): Flow<WordEntity?>
 
     // ========== 学习相关查询 ==========
 
@@ -269,7 +269,7 @@ interface WordDao {
      * 更新收藏状态
      */
     @Query("UPDATE user_progress SET is_favorite = :isFavorite, updated_at = :updatedAt WHERE item_id = :wordId AND item_type = 'word'")
-    suspend fun updateFavoriteStatus(wordId: Int, isFavorite: Boolean, updatedAt: String)
+    suspend fun updateFavoriteStatus(wordId: String, isFavorite: Boolean, updatedAt: String)
 
     /**
      * 获取跳过的单词 (Suspend 状态)
@@ -433,7 +433,7 @@ interface WordDao {
     suspend fun countModifiedSince(timestamp: String): Int
 
     @Query("SELECT * FROM words WHERE id IN (:ids)")
-    suspend fun getWordsByIds(ids: List<Int>): List<WordEntity>
+    suspend fun getWordsByIds(ids: List<String>): List<WordEntity>
 
     /**
      * 搜索单词 (匹配日文、中文、假名)
@@ -582,13 +582,13 @@ interface WordDao {
      * 用于清理本地重复数据
      */
     @Query("SELECT MIN(id) FROM words GROUP BY japanese, hiragana, chinese, level")
-    suspend fun getDuplicateKeepIds(): List<Int>
+    suspend fun getDuplicateKeepIds(): List<String>
 
     /**
      * 将指定等级下，不在给定 ID 列表中的单词标记为已下架
      */
     @Query("UPDATE words SET is_delisted = 1 WHERE level = :level AND id NOT IN (:ids)")
-    suspend fun markMissingAsDelistedById(level: String, ids: List<Int>): Int
+    suspend fun markMissingAsDelistedById(level: String, ids: List<String>): Int
 
     /**
      * 将指定等级下，不在给定日语原文列表中的单词标记为已下架

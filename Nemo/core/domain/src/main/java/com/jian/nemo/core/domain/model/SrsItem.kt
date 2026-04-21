@@ -11,11 +11,20 @@ package com.jian.nemo.core.domain.model
  */
 interface SrsItem {
     /**
+     * 唯一 ID (如 user_progress.id)，用于确定性抖动计算
+     */
+    val id: String?
+    /**
      * 复习次数（已成功复习的次数）
      * - 0: 未学习
      * - 1+: 已复习次数
      */
     val repetitionCount: Int
+
+    /**
+     * 遗忘次数 (FSRS)
+     */
+    val lapses: Int
 
     /**
      * 记忆稳定性 (FSRS)
@@ -58,6 +67,7 @@ interface SrsItem {
  */
 data class SrsUpdateResult(
     val repetitionCount: Int,
+    val lapses: Int,
     val stability: Double,
     val difficulty: Double,
     val interval: Int,

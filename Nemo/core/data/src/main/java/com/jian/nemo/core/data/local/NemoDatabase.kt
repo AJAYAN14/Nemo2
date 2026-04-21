@@ -24,11 +24,13 @@ import com.jian.nemo.core.data.local.entity.*
         SyncMetadataEntity::class,
         UserProgressEntity::class,
         SyncOutboxEntity::class,
-        FavoriteQuestionEntity::class
+        FavoriteQuestionEntity::class,
+        GrammarQuestionEntity::class
     ],
-    version = 20,
+    version = 22,
     exportSchema = true
 )
+@androidx.room.TypeConverters(com.jian.nemo.core.data.local.util.RoomConverters::class)
 abstract class NemoDatabase : RoomDatabase() {
 
     abstract fun wordDao(): WordDao
@@ -47,6 +49,7 @@ abstract class NemoDatabase : RoomDatabase() {
 
     abstract fun userProgressDao(): UserProgressDao
     abstract fun syncOutboxDao(): SyncOutboxDao
+    abstract fun grammarQuestionDao(): GrammarQuestionDao
 
     companion object {
         const val DATABASE_NAME = "nemo_database"

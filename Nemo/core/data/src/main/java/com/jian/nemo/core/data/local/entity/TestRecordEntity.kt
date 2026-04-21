@@ -12,8 +12,8 @@ import androidx.room.PrimaryKey
  */
 @Entity(tableName = "test_records")
 data class TestRecordEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     /**
      * 测试日期 (Epoch Day)
@@ -39,10 +39,6 @@ data class TestRecordEntity(
     @ColumnInfo(name = "test_mode")
     val testMode: String,
 
-    /**
-     * 记录唯一标识 (用于跨设备同步)
-     */
-    val uuid: String = java.util.UUID.randomUUID().toString(),
 
     /**
      * 是否已删除

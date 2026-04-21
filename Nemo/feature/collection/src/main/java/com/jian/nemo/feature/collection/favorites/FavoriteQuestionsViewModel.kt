@@ -48,7 +48,7 @@ class FavoriteQuestionsViewModel @Inject constructor(
     /**
      * 取消收藏
      */
-    fun unfavorite(questionId: Int) {
+    fun unfavorite(questionId: String) {
         viewModelScope.launch {
             favoriteQuestionRepository.deleteFavoriteQuestion(questionId)
         }

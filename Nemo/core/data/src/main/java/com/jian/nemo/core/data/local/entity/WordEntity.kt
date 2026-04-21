@@ -19,7 +19,7 @@ import androidx.room.PrimaryKey
 )
 data class WordEntity(
     @PrimaryKey(autoGenerate = false)
-    val id: Int,
+    val id: String,
 
     // ========== 核心内容字段 ==========
     /**

@@ -23,7 +23,7 @@ class ToggleWordFavoriteUseCase @Inject constructor(
      * @param wordId 单词ID
      * @return Result<Boolean> 新的收藏状态(true=已收藏, false=未收藏)
      */
-    suspend operator fun invoke(wordId: Int): Result<Boolean> {
+    suspend fun invoke(wordId: String): Result<Boolean> {
         return try {
             // 1. 获取单词当前收藏状态
             val word = wordRepository.getWordById(wordId).firstOrNull()

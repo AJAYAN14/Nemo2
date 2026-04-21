@@ -8,7 +8,7 @@ data class UserProgress(
     val id: String, // UUID
     val userId: String,
     val itemType: String, // 'word' | 'grammar'
-    val itemId: Int,
+    val itemId: String,
     val stability: Double,
     val difficulty: Double,
     val elapsedDays: Int,

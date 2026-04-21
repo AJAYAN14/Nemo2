@@ -80,7 +80,7 @@ class FavoritesViewModel @Inject constructor(
     /**
      * 取消单词收藏
      */
-    fun unfavorite(wordId: Int) {
+    fun unfavorite(wordId: String) {
         viewModelScope.launch {
             when (val result = wordRepository.updateFavoriteStatus(wordId, false)) {
                 is Result.Success -> {

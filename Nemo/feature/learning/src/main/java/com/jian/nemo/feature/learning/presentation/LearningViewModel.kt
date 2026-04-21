@@ -54,7 +54,7 @@ import javax.inject.Inject
  * 学习项封装 (统一 Word 和 Grammar)
  */
 sealed class LearningItem {
-    abstract val id: Int
+    abstract val id: String
     abstract val isNew: Boolean
     abstract val displayName: String
     abstract val repetitionCount: Int
@@ -68,7 +68,7 @@ sealed class LearningItem {
         override val step: Int = 0,
         override val dueTime: Long = 0
     ) : LearningItem() {
-        override val id: Int get() = word.id
+        override val id: String get() = word.id
         override val isNew: Boolean get() = word.repetitionCount == 0
         override val displayName: String get() = word.japanese
         override val repetitionCount: Int get() = word.repetitionCount
@@ -79,7 +79,7 @@ sealed class LearningItem {
         override val step: Int = 0,
         override val dueTime: Long = 0
     ) : LearningItem() {
-        override val id: Int get() = grammar.id
+        override val id: String get() = grammar.id
         override val isNew: Boolean get() = grammar.repetitionCount == 0
         override val displayName: String get() = grammar.grammar
         override val repetitionCount: Int get() = grammar.repetitionCount
@@ -157,16 +157,16 @@ class LearningViewModel @Inject constructor(
     val uiState: StateFlow<LearningUiState> = _uiState.asStateFlow()
 
     /** 学习阶段追踪 (ItemId -> StepIndex) */
-    private val _learningSteps = mutableMapOf<Int, Int>()
+    private val _learningSteps = mutableMapOf<String, Int>()
 
     /** Anki-Mode: 到期时间记录 (ID -> DueTime Epoch Millis) */
-    private val _learningDueTimes = mutableMapOf<Int, Long>()
+    private val _learningDueTimes = mutableMapOf<String, Long>()
 
     /** 失败次数追踪 (用于钉子户检测)，使用 StateFlow 确保并发安全 */
-    private val _lapseCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    private val _lapseCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
 
     /** 重入队标记 (用于红标显示) */
-    private val _requeuedItems = mutableSetOf<Int>()
+    private val _requeuedItems = mutableSetOf<String>()
 
     /** 会话锁定的学习日 (用于零点跨天保护) */
     private var _sessionLockedDay: Long? = null
@@ -1559,7 +1559,7 @@ class LearningViewModel @Inject constructor(
         }
     }
 
-    private fun saveSessionState(ids: List<Int>, index: Int, level: String) {
+    private fun saveSessionState(ids: List<String>, index: Int, level: String) {
         val waitingUntil = _uiState.value.waitingUntil
         viewModelScope.launch {
             when (_uiState.value.learningMode) {

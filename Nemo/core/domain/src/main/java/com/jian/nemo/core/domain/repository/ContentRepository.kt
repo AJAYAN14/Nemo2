@@ -2,6 +2,7 @@ package com.jian.nemo.core.domain.repository
 
 import com.jian.nemo.core.domain.model.dto.WordDto
 import com.jian.nemo.core.domain.model.dto.GrammarDto
+import com.jian.nemo.core.domain.model.dto.GrammarTestQuestionDto
 
 /**
  * 词库内容同步仓库
@@ -26,4 +27,10 @@ interface ContentRepository {
      * @param level N1～N5
      */
     suspend fun fetchRemoteGrammars(level: String): List<GrammarDto>
+
+    /**
+     * 拉取指定等级的云端语法测试题
+     * @param level N1～N5
+     */
+    suspend fun fetchRemoteGrammarQuestions(level: String): List<GrammarTestQuestionDto>
 }

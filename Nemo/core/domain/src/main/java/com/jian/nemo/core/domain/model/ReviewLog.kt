@@ -6,7 +6,7 @@ package com.jian.nemo.core.domain.model
  */
 data class ReviewLog(
     val id: Long = 0,
-    val itemId: Int,           // 单词/语法ID
+    val itemId: String,           // 单词/语法ID
     val itemType: String,      // "word" 或 "grammar"
     val reviewDate: Long,      // 复习时间戳
     val intervalDays: Int,     // 本次复习时的间隔 (天)

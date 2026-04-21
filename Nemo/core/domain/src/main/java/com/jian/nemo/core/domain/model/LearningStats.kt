@@ -47,6 +47,16 @@ data class LearningStats(
     val masteredGrammars: Int,
 
     /**
+     * 稳固单词数 (Stability >= 21)
+     */
+    val matureWords: Int = 0,
+
+    /**
+     * 稳固语法数 (Stability >= 21)
+     */
+    val matureGrammars: Int = 0,
+
+    /**
      * 待复习单词数
      */
     val dueWords: Int,

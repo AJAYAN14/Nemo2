@@ -30,8 +30,6 @@ import com.jian.nemo.core.domain.repository.ContentRepository
 import com.jian.nemo.core.domain.repository.ContentUpdateApplier
 import com.jian.nemo.core.domain.repository.StudyRepository
 import com.jian.nemo.core.data.repository.StudyRepositoryImpl
-import com.jian.nemo.core.data.manager.DataExportManager
-import com.jian.nemo.core.domain.repository.DataExportRepository
 import com.jian.nemo.core.domain.service.SyncService
 import com.jian.nemo.core.domain.service.SyncManager
 import com.jian.nemo.core.data.service.SyncServiceImpl
@@ -135,11 +133,6 @@ abstract class RepositoryModule {
         impl: SyncRepositoryImpl
     ): SyncRepository
 
-    @Binds
-    @Singleton
-    abstract fun bindDataExportRepository(
-        impl: DataExportManager
-    ): DataExportRepository
 
     @Binds
     @Singleton

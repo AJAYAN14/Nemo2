@@ -39,7 +39,6 @@ class AuthRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
     private val database: com.jian.nemo.core.data.local.NemoDatabase,
     private val settingsRepository: com.jian.nemo.core.domain.repository.SettingsRepository,
-    private val dataSeedService: com.jian.nemo.core.data.util.DataSeedService,
     @ApplicationScope private val externalScope: CoroutineScope
 ) : AuthRepository {
 
@@ -98,8 +97,6 @@ class AuthRepositoryImpl @Inject constructor(
             saveUserToLocal(userInfo)
             val user = userInfo.toDomainModel()
             _userFlow.value = user
-            // 确保基础数据已填充（应对 clearAllTables 后重新登录的场景）
-            dataSeedService.ensureDataSeeded()
             Result.Success(user)
         } catch (e: Exception) {
             Result.Error(e.toAuthException())
@@ -128,8 +125,6 @@ class AuthRepositoryImpl @Inject constructor(
             saveUserToLocal(current)
             val user = current.toDomainModel().copy(username = username)
             _userFlow.value = user
-            // 确保基础数据已填充（应对 clearAllTables 后重新注册的场景）
-            dataSeedService.ensureDataSeeded()
             Result.Success(user)
         } catch (e: Exception) {
             Result.Error(e.toAuthException())

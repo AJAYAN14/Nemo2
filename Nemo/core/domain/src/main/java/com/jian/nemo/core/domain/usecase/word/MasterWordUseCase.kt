@@ -20,11 +20,6 @@ import javax.inject.Inject
  * 2. 调用 SRS 算法计算新状态（基于重置时间确定的“学习日”）
  * 3. 更新数据库
  * 4. 更新今日学习记录
- *
- * 参考:
- * - 旧项目: MasterWordUseCase.kt (第16-55行)
- * - 实施计划: 06-单词Domain层.md (第291-351行)
- * - 架构规范: rules.md (第248-267行)
  */
 class MasterWordUseCase @Inject constructor(
     private val wordRepository: WordRepository,
@@ -39,8 +34,8 @@ class MasterWordUseCase @Inject constructor(
      * @param quality SRS质量评分 (0-5), 默认3表示掌握
      * @return Result<Word> 更新后的单词
      */
-    suspend operator fun invoke(
-        wordId: Int,
+    suspend fun invoke(
+        wordId: String,
         quality: Int = 3
     ): Result<Word> {
         return try {

@@ -16,6 +16,9 @@ interface GrammarWrongAnswerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(wrongAnswer: GrammarWrongAnswerEntity)
 
+    @androidx.room.Delete
+    suspend fun delete(wrongAnswer: GrammarWrongAnswerEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(wrongAnswers: List<GrammarWrongAnswerEntity>)
 
@@ -35,22 +38,22 @@ interface GrammarWrongAnswerDao {
     fun getExportWrongAnswersCursor(): android.database.Cursor
 
     @Query("SELECT * FROM grammar_wrong_answers WHERE grammar_id = :grammarId AND is_deleted = 0 ORDER BY timestamp DESC")
-    fun getWrongAnswersByGrammarId(grammarId: Int): Flow<List<GrammarWrongAnswerEntity>>
+    fun getWrongAnswersByGrammarId(grammarId: String): Flow<List<GrammarWrongAnswerEntity>>
 
     /**
      * 获取指定语法的错题记录 (同步) - 用于做题时判断
      */
     @Query("SELECT * FROM grammar_wrong_answers WHERE grammar_id = :grammarId AND is_deleted = 0 LIMIT 1")
-    suspend fun getWrongAnswerByGrammarIdSync(grammarId: Int): GrammarWrongAnswerEntity?
+    suspend fun getWrongAnswerByGrammarIdSync(grammarId: String): GrammarWrongAnswerEntity?
 
     @Query("SELECT DISTINCT T2.grammar_level FROM grammar_wrong_answers T1 JOIN grammars T2 ON T1.grammar_id = T2.id WHERE T1.is_deleted = 0")
     fun getWrongAnswerGrammarLevels(): Flow<List<String>>
 
     @Query("SELECT DISTINCT grammar_id FROM grammar_wrong_answers WHERE is_deleted = 0")
-    suspend fun getAllWrongGrammarIds(): List<Int>
+    suspend fun getAllWrongGrammarIds(): List<String>
 
     @Query("UPDATE grammar_wrong_answers SET is_deleted = 1, deleted_time = :time, timestamp = :time WHERE grammar_id = :grammarId")
-    suspend fun markDeletedByGrammarId(grammarId: Int, time: Long)
+    suspend fun markDeletedByGrammarId(grammarId: String, time: Long)
 
     /**
      * 逻辑删除所有语法错题记录
@@ -70,9 +73,9 @@ interface GrammarWrongAnswerDao {
     /**
      * 根据 UUID 列表批量获取记录
      */
-    @Query("SELECT * FROM grammar_wrong_answers WHERE uuid IN (:uuids)")
-    suspend fun getByUuids(uuids: List<String>): List<GrammarWrongAnswerEntity>
+    @Query("SELECT * FROM grammar_wrong_answers WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<GrammarWrongAnswerEntity>
 
     @Query("UPDATE grammar_wrong_answers SET grammar_id = :newId WHERE grammar_id = :oldId")
-    suspend fun migrateGrammarId(oldId: Int, newId: Int)
+    suspend fun migrateGrammarId(oldId: String, newId: String)
 }

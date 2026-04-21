@@ -7,6 +7,8 @@ import com.jian.nemo.core.data.local.dao.WordDao
 import com.jian.nemo.core.data.local.dao.GrammarDao
 import com.jian.nemo.core.domain.model.dto.WordDto
 import com.jian.nemo.core.domain.model.dto.GrammarDto
+import com.jian.nemo.core.domain.model.dto.GrammarTestQuestionDto
+import com.jian.nemo.core.data.local.dao.GrammarQuestionDao
 import com.jian.nemo.core.data.mapper.toEntity
 import com.jian.nemo.core.data.mapper.toGrammarEntity
 import com.jian.nemo.core.data.mapper.toUsageEntities
@@ -29,7 +31,8 @@ class ContentUpdateApplierImpl @Inject constructor(
     private val wordDao: WordDao,
     private val grammarDao: GrammarDao,
     private val grammarUsageDao: GrammarUsageDao,
-    private val grammarExampleDao: GrammarExampleDao
+    private val grammarExampleDao: GrammarExampleDao,
+    private val grammarQuestionDao: GrammarQuestionDao
 ) : ContentUpdateApplier {
 
     override suspend fun applyWords(level: String, words: List<WordDto>): Int? =
@@ -80,6 +83,23 @@ class ContentUpdateApplierImpl @Inject constructor(
                 count
             } catch (e: Exception) {
                 Log.e(TAG, "applyGrammars($level) failed", e)
+                null
+            }
+        }
+
+    override suspend fun applyGrammarQuestions(level: String, questions: List<GrammarTestQuestionDto>): Int? =
+        withContext(Dispatchers.IO) {
+            try {
+                var count = 0
+                // 1. 批量插入/更新
+                val entities = questions.map { it.toEntity() }
+                grammarQuestionDao.insertAll(entities)
+                count = entities.size
+
+                Log.d(TAG, "applyGrammarQuestions($level): $count items updated/inserted")
+                count
+            } catch (e: Exception) {
+                Log.e(TAG, "applyGrammarQuestions($level) failed", e)
                 null
             }
         }

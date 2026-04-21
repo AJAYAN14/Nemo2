@@ -23,13 +23,13 @@ interface GrammarUsageDao {
      * 根据语法ID查询所有用法
      */
     @Query("SELECT * FROM grammar_usages WHERE grammar_id = :grammarId ORDER BY usage_order")
-    fun getUsagesByGrammarId(grammarId: Int): Flow<List<GrammarUsageEntity>>
+    fun getUsagesByGrammarId(grammarId: String): Flow<List<GrammarUsageEntity>>
 
     /**
      * 根据语法ID删除所有用法
      */
     @Query("DELETE FROM grammar_usages WHERE grammar_id = :grammarId")
-    suspend fun deleteByGrammarId(grammarId: Int)
+    suspend fun deleteByGrammarId(grammarId: String)
 
     /**
      * 清空所有用法

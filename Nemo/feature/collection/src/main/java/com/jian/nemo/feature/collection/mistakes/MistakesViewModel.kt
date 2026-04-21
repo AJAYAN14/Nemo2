@@ -107,7 +107,7 @@ class MistakesViewModel @Inject constructor(
     /**
      * 删除单词错题
      */
-    fun deleteWordMistake(wordId: Int) {
+    fun deleteWordMistake(wordId: String) {
         viewModelScope.launch {
             when (val result = wrongAnswerRepository.deleteByWordId(wordId)) {
                 is Result.Success -> {
@@ -128,7 +128,7 @@ class MistakesViewModel @Inject constructor(
     /**
      * 删除语法错题
      */
-    fun deleteGrammarMistake(grammarId: Int) {
+    fun deleteGrammarMistake(grammarId: String) {
         viewModelScope.launch {
             when (val result = grammarWrongAnswerRepository.deleteByGrammarId(grammarId)) {
                 is Result.Success -> {

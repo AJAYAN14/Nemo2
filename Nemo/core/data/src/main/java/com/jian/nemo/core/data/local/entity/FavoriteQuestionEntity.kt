@@ -11,14 +11,14 @@ import androidx.room.PrimaryKey
  */
 @Entity(tableName = "favorite_questions")
 data class FavoriteQuestionEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     /**
      * 关联的语法ID (可选)
      */
     @ColumnInfo(name = "grammar_id")
-    val grammarId: Int? = null,
+    val grammarId: String? = null,
 
     /**
      * JSON题目ID (可选，对应 GrammarTestQuestion.id)

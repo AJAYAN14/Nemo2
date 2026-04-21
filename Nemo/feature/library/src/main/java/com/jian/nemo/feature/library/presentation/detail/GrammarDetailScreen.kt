@@ -54,7 +54,7 @@ fun GrammarDetailScreen(
 
     // Swipe Navigation State (Moved to outer scope for Reporting logic)
     val initialIndex = remember(contextIds, initialGrammar) {
-        val index = contextIds.indexOf(initialGrammar?.id ?: -1)
+        val index = contextIds.indexOf(initialGrammar?.id ?: "")
         if (index >= 0) index else 0
     }
 
@@ -432,7 +432,7 @@ private fun GrammarExampleItem(
     isDark: Boolean,
     playingAudioId: String?,
     onPlayAudio: (String, String?) -> Unit,
-    grammarId: Int,
+    grammarId: String,
     usageIndex: Int,
     exampleIndex: Int
 ) {

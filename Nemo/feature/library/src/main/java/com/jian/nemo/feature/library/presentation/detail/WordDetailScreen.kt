@@ -52,7 +52,7 @@ fun WordDetailScreen(
 
     // Swipe Navigation State (Moved to outer scope for Reporting logic)
     val initialIndex = remember(contextIds, initialWord) {
-        val index = contextIds.indexOf(initialWord?.id ?: -1)
+        val index = contextIds.indexOf(initialWord?.id ?: "")
         if (index >= 0) index else 0
     }
 
@@ -412,7 +412,7 @@ private fun ExampleCard(
     index: Int,
     playingAudioId: String?,
     onPlayAudio: (String, String?) -> Unit,
-    wordId: Int
+    wordId: String
 ) {
     val exampleId = "example_${wordId}_$index"
 

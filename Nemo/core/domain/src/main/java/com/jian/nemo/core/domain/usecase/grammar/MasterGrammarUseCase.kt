@@ -29,8 +29,8 @@ class MasterGrammarUseCase @Inject constructor(
     private val studyRecordRepository: StudyRecordRepository,
     private val settingsRepository: SettingsRepository
 ) {
-    suspend operator fun invoke(
-        grammarId: Int,
+    suspend fun invoke(
+        grammarId: String,
         quality: Int = 3
     ): Result<Grammar> {
         return try {

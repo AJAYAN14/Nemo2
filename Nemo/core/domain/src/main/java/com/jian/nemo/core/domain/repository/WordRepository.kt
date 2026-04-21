@@ -23,7 +23,7 @@ interface WordRepository {
     /**
      * 根据ID获取单词
      */
-    fun getWordById(id: Int): Flow<Word?>
+    fun getWordById(id: String): Flow<Word?>
 
     /**
      * 获取指定等级的新单词（未学习且未跳过）
@@ -98,7 +98,7 @@ interface WordRepository {
     /**
      * 根据ID列表批量获取单词
      */
-    suspend fun getWordsByIds(ids: List<Int>): List<Word>
+    suspend fun getWordsByIds(ids: List<String>): List<Word>
 
     /**
      * 搜索单词
@@ -174,17 +174,17 @@ interface WordRepository {
     /**
      * 更新收藏状态
      */
-    suspend fun updateFavoriteStatus(wordId: Int, isFavorite: Boolean): Result<Unit>
+    suspend fun updateFavoriteStatus(wordId: String, isFavorite: Boolean): Result<Unit>
 
     /**
      * 标记为跳过
      */
-    suspend fun markAsSkipped(wordId: Int): Result<Unit>
+    suspend fun markAsSkipped(wordId: String): Result<Unit>
 
     /**
      * 取消跳过
      */
-    suspend fun unmarkAsSkipped(wordId: Int): Result<Unit>
+    suspend fun unmarkAsSkipped(wordId: String): Result<Unit>
 
     // ========== 批量操作 ==========
 

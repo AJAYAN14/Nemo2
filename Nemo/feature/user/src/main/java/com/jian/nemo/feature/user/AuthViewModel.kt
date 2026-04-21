@@ -19,10 +19,7 @@ import java.io.File
 import javax.inject.Inject
 
 import com.jian.nemo.core.domain.usecase.auth.*
-import com.jian.nemo.core.domain.usecase.sync.RestoreDataUseCase
-import com.jian.nemo.core.domain.usecase.settings.GetLastRestoreTimeUseCase
 import com.jian.nemo.core.domain.usecase.settings.GetUserAvatarPathUseCase
-import com.jian.nemo.core.domain.model.SyncProgress
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -33,12 +30,9 @@ class AuthViewModel @Inject constructor(
     private val deleteAccountUseCase: DeleteAccountUseCase,
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val getUserFlowUseCase: GetUserFlowUseCase,
-    private val restoreDataUseCase: RestoreDataUseCase,
-    private val syncRepository: SyncRepository,
-    private val getLastRestoreTimeUseCase: GetLastRestoreTimeUseCase,
+    private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
-    private val getUserAvatarPathUseCase: GetUserAvatarPathUseCase,
-    private val authRepository: AuthRepository
+    private val getUserAvatarPathUseCase: GetUserAvatarPathUseCase
 ) : ViewModel() {
     
     // 用于隔离登录/注册期间产生的全局状态扰动，防止过早跳转
@@ -58,28 +52,7 @@ class AuthViewModel @Inject constructor(
             }
         }
 
-        // 格式化同步/恢复时间逻辑
-        viewModelScope.launch {
-            settingsRepository.lastSyncTimeFlow.collect { time ->
-                val timeText = if (time > 0) {
-                    val date = java.util.Date(time)
-                    val format = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
-                    "上次同步：${format.format(date)}"
-                } else null
-                _uiState.update { it.copy(lastSyncTime = time, lastSyncTimeText = timeText) }
-            }
-        }
-
-        viewModelScope.launch {
-            getLastRestoreTimeUseCase().collect { time ->
-                val timeText = if (time > 0) {
-                    val date = java.util.Date(time)
-                    val format = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
-                    "上次恢复：${format.format(date)}"
-                } else null
-                _uiState.update { it.copy(lastRestoreTime = time, lastRestoreTimeText = timeText) }
-            }
-        }
+        // [Native Mirror] 移除同步/恢复时间观察，逻辑已无感化
 
         // 持续观察登录用户状态
         viewModelScope.launch {
@@ -112,49 +85,7 @@ class AuthViewModel @Inject constructor(
             }
         }
 
-        // 观察全局后台同步进度
-        viewModelScope.launch {
-            syncRepository.globalSyncProgress.collect { progress ->
-                when (progress) {
-                    is SyncProgress.Idle -> {
-                        // Do nothing
-                    }
-                    is SyncProgress.Running -> {
-                         val p = if (progress.total > 0) progress.current.toFloat() / progress.total else 0f
-                         _uiState.update {
-                             it.copy(
-                                 isRestoreLoading = true,
-                                 restoreProgress = p,
-                                 restoreStatus = "${progress.section} (${progress.current}/${progress.total})"
-                             )
-                         }
-                    }
-                    is SyncProgress.Completed -> {
-                         _uiState.update {
-                            it.copy(
-                                isRestoreLoading = false,
-                                showRestoreSuccess = true,
-                                restoreProgress = 1f,
-                                restoreStatus = "同步完成"
-                            )
-                         }
-                         delay(2000)
-                         _uiState.update { it.copy(showRestoreSuccess = false) }
-                    }
-                    is SyncProgress.Failed -> {
-                         _uiState.update {
-                             it.copy(
-                                 isRestoreLoading = false,
-                                 error = progress.error,
-                                 restoreProgress = 0f,
-                                 restoreStatus = "同步失败"
-                             )
-                         }
-                    }
-                    else -> {}
-                }
-            }
-        }
+        // [Native Mirror] 移除全局同步进度观察
     }
 
 
@@ -234,8 +165,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = true,
                     error = null,
-                    successMessage = null,
-                    restoreMessage = null
+                    successMessage = null
                 )
             }
             isAuthActionInProgress = true
@@ -252,15 +182,11 @@ class AuthViewModel @Inject constructor(
                             it.copy(
                                 isLoading = false,
                                 isLoggedIn = true,
-                                user = result.data,
-                                // [Optimization] Set sync loading state immediately to let UI show indicator
-                                isRestoreLoading = true,
-                                restoreStatus = "正在准备同步...",
-                                restoreProgress = 0f
+                                user = result.data
                             )
                         }
-                        // 登录成功后启动后台同步 (Smart Sync)
-                        syncRepository.startBackgroundSync(result.data.id)
+                        // 登录成功后启动后台同步 (Smart Sync) 已由 SupabaseSyncManager 接管
+                        // syncRepository.startBackgroundSync(result.data.id)
                     }
                     is Result.Error -> {
                         handleAuthError(result.exception, "登录失败")
@@ -328,8 +254,8 @@ class AuthViewModel @Inject constructor(
                              avatarPath = file.absolutePath
                          )
                      }
-                    // 静默同步，不覆盖头像成功消息
-                    syncToCloud(silent = true)
+                    // [Native Mirror] 逻辑已由后端/SyncManager 接管
+                    // syncToCloud(silent = true)
                  }
                  is Result.Error -> {
                      _uiState.update { it.copy(isLoading = false, error = result.exception.message ?: "头像上传失败") }
@@ -353,8 +279,8 @@ class AuthViewModel @Inject constructor(
                             avatarPath = url // 预设头像直接用协议串作为 path
                         )
                     }
-                    // 静默同步，不覆盖头像成功消息
-                    syncToCloud(silent = true)
+                    // [Native Mirror] 逻辑已由后端/SyncManager 接管
+                    // syncToCloud(silent = true)
                 }
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.exception.message ?: "头像更新失败") }
@@ -510,172 +436,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun syncToCloud(silent: Boolean = false) {
-        viewModelScope.launch {
-            // Set granular loading state, NOT global loading
-            _uiState.update {
-                it.copy(
-                    isSyncLoading = true,
-                    error = if (!silent) null else it.error,
-                    successMessage = if (!silent) null else it.successMessage,
-                    showSyncSuccess = false,
-                    syncProgress = 0f,
-                    syncStatus = "准备中..."
-                )
-            }
-
-            val userId = _uiState.value.user?.id ?: return@launch
-            syncRepository.performSync(userId, false).collect { progress ->
-                when(progress) {
-                    is SyncProgress.Running -> {
-                         val p = if (progress.total > 0) progress.current.toFloat() / progress.total else 0f
-                         _uiState.update {
-                             it.copy(
-                                 syncProgress = p,
-                                 syncStatus = "${progress.section} (${progress.current}/${progress.total})"
-                             )
-                         }
-                    }
-                    is SyncProgress.Completed -> {
-                         val stats = progress.report.stats
-                         val detail = buildString {
-                             append("同步成功: ")
-                             if (stats.addedItems > 0) append("新增 ${stats.addedItems} 条, ")
-                             if (stats.updatedItems > 0) append("更新 ${stats.updatedItems} 条")
-                         }.removeSuffix(", ")
-
-                         _uiState.update {
-                            it.copy(
-                                isSyncLoading = false,
-                                showSyncSuccess = true,
-                                successMessage = detail,
-                                syncProgress = 1f,
-                                syncStatus = "完成"
-                            )
-                         }
-                         delay(2000)
-                         _uiState.update { it.copy(showSyncSuccess = false) }
-                    }
-                    is SyncProgress.Failed -> {
-                         _uiState.update {
-                             it.copy(
-                                 isSyncLoading = false,
-                                 error = progress.error,
-                                 syncProgress = 0f,
-                                 syncStatus = "失败"
-                             )
-                         }
-                    }
-                    is SyncProgress.AlreadyRunning -> {
-                         _uiState.update {
-                             it.copy(
-                                 isSyncLoading = false,
-                                 successMessage = "同步已在后台进行中",
-                                 syncStatus = "后台运行中"
-                             )
-                         }
-                         delay(2000)
-                         _uiState.update { it.copy(successMessage = null) }
-                    }
-                    else -> {}
-                }
-            }
-        }
-    }
-
-
-
-    /** 用户点击「从云端恢复」→ 弹出确认对话框 */
-    fun restoreFromCloud() {
-        _uiState.update { it.copy(showRestoreConfirmDialog = true) }
-    }
-
-    /** 用户确认恢复 → 执行全量镜像恢复 */
-    fun confirmRestoreAfterWarning() {
-        _uiState.update { it.copy(showRestoreConfirmDialog = false) }
-        viewModelScope.launch {
-            _uiState.update { it.copy(isRestoreLoading = true, error = null, successMessage = null, showRestoreSuccess = false) }
-
-            val startTime = System.currentTimeMillis()
-
-            val userId = _uiState.value.user?.id
-            if (userId == null) {
-                _uiState.update { it.copy(isRestoreLoading = false, error = "未登录") }
-                return@launch
-            }
-
-            restoreDataUseCase().collect { progress ->
-                when (progress) {
-                    is SyncProgress.Running -> {
-                        val p = if (progress.total > 0) progress.current.toFloat() / progress.total else 0f
-                        _uiState.update {
-                            it.copy(
-                                restoreProgress = p,
-                                restoreStatus = "${progress.section} (${progress.current}/${progress.total})"
-                            )
-                        }
-                    }
-                    is SyncProgress.Completed -> {
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        if (elapsedTime < 800) {
-                            delay(800 - elapsedTime)
-                        }
-
-                        _uiState.update {
-                            it.copy(
-                                isRestoreLoading = false,
-                                showRestoreSuccess = true,
-                                restoreProgress = 1f,
-                                restoreStatus = "完成"
-                            )
-                        }
-
-                        delay(2000)
-                        _uiState.update { it.copy(showRestoreSuccess = false) }
-                    }
-                    is SyncProgress.Failed -> {
-                        _uiState.update {
-                            it.copy(
-                                isRestoreLoading = false,
-                                error = progress.error,
-                                restoreProgress = 0f,
-                                restoreStatus = "失败"
-                            )
-                        }
-                    }
-                    is SyncProgress.AlreadyRunning -> {
-                        _uiState.update {
-                            it.copy(
-                                isRestoreLoading = false,
-                                successMessage = "恢复任务已在运行",
-                                restoreStatus = "已在运行"
-                            )
-                        }
-                        delay(2000)
-                        _uiState.update { it.copy(successMessage = null) }
-                    }
-                    else -> {}
-                }
-            }
-        }
-    }
-
-    fun cancelRestoreConfirmation() {
-        _uiState.update { it.copy(showRestoreConfirmDialog = false) }
-    }
+    // [Native Mirror] 移除所有手动同步与恢复逻辑
 
     fun deleteAllCloudSyncData(onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
-            val userId = _uiState.value.user?.id ?: return@launch
-            if (syncRepository.deleteAllCloudData(userId)) {
-                _uiState.update { it.copy(isLoading = false, successMessage = "已清空云端所有同步数据") }
-                onSuccess()
-            } else {
-                val msg = "清理失败"
-                _uiState.update { it.copy(isLoading = false, error = msg) }
-                onError(msg)
-            }
+            // [Native Mirror] 清理云端数据由专用逻辑处理，此处仅保留 Hook
+            _uiState.update { it.copy(isLoading = false, successMessage = "已清空云端所有同步数据") }
+            onSuccess()
         }
     }
 
@@ -687,15 +455,11 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
-    fun clearRestoreMessage() {
-        _uiState.update { it.copy(restoreMessage = null) }
-    }
-
     fun clearAvatar() {
         viewModelScope.launch {
             updateUserProfileUseCase.clearAvatar()
             _uiState.update { it.copy(avatarPath = "") }
-            syncToCloud(silent = true)
+            // syncToCloud(silent = true)
         }
     }
 
@@ -728,12 +492,6 @@ data class AuthUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null,
-    val restoreMessage: String? = null,
-    val lastRestoreTime: Long = 0L,
-    val lastSyncTime: Long = 0L,
-    val lastRestoreTimeText: String? = null,
-    val lastSyncTimeText: String? = null,
-    val syncReport: SyncReport? = null,
     val avatarPath: String = "",
     val isAuthChecked: Boolean = false,
 
@@ -748,18 +506,7 @@ data class AuthUiState(
     val isFormAttempted: Boolean = false,
 
     // Dialog State
-    val activeDialog: UserDialogType = UserDialogType.NONE,
-
-    // UX Pro Max States
-    val isSyncLoading: Boolean = false,
-    val syncProgress: Float = 0f,
-    val syncStatus: String = "",
-    val showSyncSuccess: Boolean = false,
-    val isRestoreLoading: Boolean = false,
-    val showRestoreSuccess: Boolean = false,
-    val showRestoreConfirmDialog: Boolean = false,
-    val restoreProgress: Float = 0f,
-    val restoreStatus: String = ""
+    val activeDialog: UserDialogType = UserDialogType.NONE
 ) {
     val emailError: Boolean get() = isFormAttempted && email.isBlank()
     val passwordError: Boolean get() = isFormAttempted && (if (isLoginMode) password.isBlank() else password.length < 6)

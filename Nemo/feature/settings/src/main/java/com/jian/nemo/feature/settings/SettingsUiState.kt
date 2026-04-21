@@ -28,19 +28,10 @@ data class SettingsUiState(
     val showDailyGoalDialog: Boolean = false,
     val showGrammarDailyGoalDialog: Boolean = false,
     val showLearningDayResetHourDialog: Boolean = false,
-
-
+    val statusMessage: String? = null,
 
     // 应用信息
     val appVersion: String = "1.0.0",
-
-    // 同步状态
-    val isAutoSyncEnabled: Boolean = true,
-    val lastSyncTime: Long = 0,
-    val lastSyncConflictCount: Int = 0,
-    val showRestoreConfirmDialog: Boolean = false,
-    val isRestoring: Boolean = false, // 恢复被中断的标识
-    val syncMessage: String? = null,
 
     // TTS 设置
     val ttsSpeechRate: Float = 1.0f,
@@ -75,14 +66,6 @@ enum class DarkModeOption {
 enum class DarkModeStrategy {
     FOLLOW_SYSTEM,  // 跟随系统
     SCHEDULED       // 定时切换
-}
-
-/**
- * 冲突解决选项
- */
-enum class ConflictResolutionOption {
-    FORCE_CLOUD, // 强制以云端为准
-    FORCE_LOCAL  // 强制以本地为准
 }
 
 /**
@@ -136,19 +119,6 @@ sealed interface SettingsEvent {
     data class ShowGrammarDailyGoalDialog(val show: Boolean) : SettingsEvent
     data class ShowLearningDayResetHourDialog(val show: Boolean) : SettingsEvent
 
-    // 同步
-    data object SyncData : SettingsEvent
-    data object RestoreData : SettingsEvent
-    data class SetAutoSyncEnabled(val enabled: Boolean) : SettingsEvent
-    data class ResolveConflict(val option: ConflictResolutionOption) : SettingsEvent
-
-    // 文件导出导入
-    data class ExportData(val uri: android.net.Uri) : SettingsEvent
-    data class ImportData(val uri: android.net.Uri) : SettingsEvent
-
     // 重置进度
     data class ResetProgress(val includeCloud: Boolean) : SettingsEvent
-
-    // 修复数据 (清理重复)
-    data object RepairLocalData : SettingsEvent
 }

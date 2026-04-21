@@ -2,6 +2,7 @@ package com.jian.nemo.core.domain.repository
 
 import com.jian.nemo.core.domain.model.dto.WordDto
 import com.jian.nemo.core.domain.model.dto.GrammarDto
+import com.jian.nemo.core.domain.model.dto.GrammarTestQuestionDto
 
 /**
  * 将云端词库数据合并到本地 DB（按等级）
@@ -23,4 +24,10 @@ interface ContentUpdateApplier {
      * @return 本等级更新/插入的条数，失败返回 null
      */
     suspend fun applyGrammars(level: String, grammars: List<GrammarDto>): Int?
+
+    /**
+     * 将指定等级的语法测试题合并到本地
+     * @return 本等级更新/插入的条数，失败返回 null
+     */
+    suspend fun applyGrammarQuestions(level: String, questions: List<GrammarTestQuestionDto>): Int?
 }

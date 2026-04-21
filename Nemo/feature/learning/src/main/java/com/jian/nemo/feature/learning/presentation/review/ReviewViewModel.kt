@@ -83,10 +83,10 @@ class ReviewViewModel @Inject constructor(
     // ========== Relearning 内部状态 ==========
 
     /** 重学步进追踪 (ItemId -> StepIndex) */
-    private val _relearningSteps = mutableMapOf<Int, Int>()
+    private val _relearningSteps = mutableMapOf<String, Int>()
 
     /** 重学到期时间 (ItemId -> DueTime Epoch Millis) */
-    private val _relearningDueTimes = mutableMapOf<Int, Long>()
+    private val _relearningDueTimes = mutableMapOf<String, Long>()
 
     /** 重学步进配置 (分钟列表) */
     private var _relearningStepsConfig: List<Int> = listOf(1, 10)
@@ -615,7 +615,7 @@ class ReviewViewModel @Inject constructor(
      */
     private fun calculateIntervalsSync(item: ReviewPreviewItem): Map<Int, String> {
         val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
-        val itemId = item.itemId
+        val itemId = item.itemId // Now String
 
         return when (item) {
             is ReviewPreviewItem.WordItem -> srsIntervalPreview.calculate(
@@ -649,7 +649,7 @@ class ReviewViewModel @Inject constructor(
 // ========== ReviewPreviewItem 辅助扩展 ==========
 
 /** 获取项目 ID */
-val ReviewPreviewItem.itemId: Int
+val ReviewPreviewItem.itemId: String
     get() = when (this) {
         is ReviewPreviewItem.WordItem -> word.id
         is ReviewPreviewItem.GrammarItem -> grammar.id

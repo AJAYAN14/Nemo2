@@ -24,17 +24,17 @@ interface GrammarWrongAnswerRepository {
     /**
      * 获取指定语法的错题记录
      */
-    fun getWrongAnswersByGrammarId(grammarId: Int): Flow<List<GrammarWrongAnswer>>
+    fun getWrongAnswersByGrammarId(grammarId: String): Flow<List<GrammarWrongAnswer>>
 
     /**
      * 获取所有错题语法的ID列表
      */
-    suspend fun getAllWrongGrammarIds(): List<Int>
+    suspend fun getAllWrongGrammarIds(): List<String>
 
     /**
      * 删除指定语法的错题记录
      */
-    suspend fun deleteByGrammarId(grammarId: Int): Result<Unit>
+    suspend fun deleteByGrammarId(grammarId: String): Result<Unit>
 
     /**
      * 删除所有语法错题记录
@@ -44,7 +44,7 @@ interface GrammarWrongAnswerRepository {
     /**
      * 获取指定语法的错题记录 (同步)
      */
-    suspend fun getWrongAnswerByGrammarIdSync(grammarId: Int): GrammarWrongAnswer?
+    suspend fun getWrongAnswerByGrammarIdSync(grammarId: String): GrammarWrongAnswer?
 
     /**
      * 插入错题记录

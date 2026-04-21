@@ -65,7 +65,7 @@ class GrammarWrongAnswerRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override suspend fun getWrongAnswerByGrammarIdSync(grammarId: Int): GrammarWrongAnswer? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun getWrongAnswerByGrammarIdSync(grammarId: String): GrammarWrongAnswer? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             grammarWrongAnswerDao.getWrongAnswerByGrammarIdSync(grammarId)?.toDomainModel()
         } catch (e: Exception) {
@@ -74,7 +74,7 @@ class GrammarWrongAnswerRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getWrongAnswersByGrammarId(grammarId: Int): Flow<List<GrammarWrongAnswer>> {
+    override fun getWrongAnswersByGrammarId(grammarId: String): Flow<List<GrammarWrongAnswer>> {
         return grammarWrongAnswerDao.getWrongAnswersByGrammarId(grammarId)
             .map { entities ->
                 entities.map { it.toDomainModel(null) }
@@ -85,7 +85,7 @@ class GrammarWrongAnswerRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override suspend fun getAllWrongGrammarIds(): List<Int> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun getAllWrongGrammarIds(): List<String> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             grammarWrongAnswerDao.getAllWrongGrammarIds()
         } catch (e: Exception) {
@@ -94,7 +94,7 @@ class GrammarWrongAnswerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteByGrammarId(grammarId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun deleteByGrammarId(grammarId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             grammarWrongAnswerDao.markDeletedByGrammarId(grammarId, com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis())
             println("✅ 标记记录为已删除: grammarId=$grammarId")

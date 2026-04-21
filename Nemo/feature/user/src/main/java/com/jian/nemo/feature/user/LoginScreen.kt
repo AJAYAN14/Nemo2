@@ -56,8 +56,8 @@ fun LoginScreen(
     val passwordFocusRequester = remember { FocusRequester() }
     val confirmPasswordFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(uiState.isLoggedIn, uiState.isRestoreLoading) {
-        if (uiState.isLoggedIn && !uiState.isRestoreLoading) {
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (uiState.isLoggedIn) {
             onLoginSuccess()
         }
     }
@@ -76,12 +76,6 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(uiState.restoreMessage) {
-        uiState.restoreMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            viewModel.clearRestoreMessage()
-        }
-    }
 
     LaunchedEffect(Unit) {
         emailFocusRequester.requestFocus()
@@ -243,13 +237,6 @@ fun LoginScreen(
         }
     }
 
-    // --- 阻塞式恢复进度指示器 ---
-    if (uiState.isRestoreLoading) {
-        RestoreProgressIndicator(
-            progress = uiState.restoreProgress,
-            status = uiState.restoreStatus
-        )
-    }
 
     if (uiState.activeDialog == UserDialogType.RESET_PASSWORD) {
         AccountResetPasswordDialog(
@@ -303,108 +290,3 @@ private fun RowScope.TabButton(
     }
 }
 
-/**
- * 阻塞式同步/恢复进度指示器
- * 用于卸载重装后全量拉取数据时锁定用户操作
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RestoreProgressIndicator(
-    progress: Float,
-    status: String
-) {
-    val sheetState = rememberModalBottomSheetState(
-        confirmValueChange = { false } // 禁止通过手势关闭
-    )
-
-    // 禁止返回键
-    BackHandler(enabled = true) { }
-
-    ModalBottomSheet(
-        onDismissRequest = { /* 阻塞模式不处理 */ },
-        sheetState = sheetState,
-        dragHandle = null, // 无拉柄
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 48.dp, top = 24.dp)
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // 1. Icon
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        RoundedCornerShape(16.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.CloudDownload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 2. Title
-            Text(
-                text = "正在同步云端数据",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 3. Subtitle/Status
-            Text(
-                text = status.ifEmpty { "正在准备恢复数据，请稍候..." },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // 4. Progress System
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Text(
-                        text = "${(progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(RoundedCornerShape(5.dp)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}

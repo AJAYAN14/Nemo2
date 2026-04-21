@@ -30,7 +30,7 @@ import com.jian.nemo.core.domain.model.Grammar
 @Composable
 fun FavoriteGrammarsScreen(
     viewModel: FavoriteGrammarsViewModel = hiltViewModel(),
-    onGrammarClick: (Int) -> Unit = {},
+    onGrammarClick: (String) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()

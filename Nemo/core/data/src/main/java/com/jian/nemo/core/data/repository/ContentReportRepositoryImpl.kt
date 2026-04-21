@@ -21,7 +21,7 @@ class ContentReportRepositoryImpl @Inject constructor(
     private val authRepository: AuthRepository
 ) : ContentReportRepository {
 
-    override suspend fun reportContentError(itemId: Int, itemType: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun reportContentError(itemId: String, itemType: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val userId = authRepository.getCurrentUser()?.id
             

@@ -4,8 +4,8 @@ package com.jian.nemo.core.domain.model
  * 收藏题目领域模型
  */
 data class FavoriteQuestion(
-    val id: Int = 0,
-    val grammarId: Int? = null,
+    val id: String,
+    val grammarId: String? = null,
     val jsonId: String? = null,
     val questionType: String,
     val questionText: String,

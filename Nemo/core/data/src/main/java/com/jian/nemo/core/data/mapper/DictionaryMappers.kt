@@ -6,6 +6,9 @@ import com.jian.nemo.core.data.local.entity.GrammarUsageEntity
 import com.jian.nemo.core.data.local.entity.WordEntity
 import com.jian.nemo.core.domain.model.dto.GrammarDto
 import com.jian.nemo.core.domain.model.dto.WordDto
+import com.jian.nemo.core.domain.model.dto.GrammarTestQuestionDto
+import com.jian.nemo.core.data.local.entity.GrammarQuestionEntity
+import com.jian.nemo.core.domain.model.GrammarQuestionType
 
 /**
  * 字典 DTO 到数据库 Entity 的映射器
@@ -64,3 +67,14 @@ fun GrammarDto.toExampleEntities(usageIds: List<Long>): List<GrammarExampleEntit
     }
     return entities
 }
+
+fun GrammarTestQuestionDto.toEntity() = GrammarQuestionEntity(
+    id = this.id,
+    targetGrammarId = this.targetGrammarId,
+    targetUsageIndex = this.targetUsageIndex,
+    type = this.type ?: GrammarQuestionType.CHOICE,
+    question = this.question,
+    options = this.options,
+    correctIndex = this.correctIndex,
+    explanation = this.explanation
+)

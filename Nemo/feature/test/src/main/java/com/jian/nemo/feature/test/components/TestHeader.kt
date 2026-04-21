@@ -45,7 +45,7 @@ fun TestHeader(
     timeRemainingSeconds: Int,
     word: Word?,
     grammar: Grammar? = null,
-    onToggleFavorite: (Int, Boolean) -> Unit,
+    onToggleFavorite: (String, Boolean) -> Unit,
     onPause: () -> Unit
 ) {
     Row(
@@ -84,7 +84,7 @@ fun TestHeader(
 
         // 菜单入口按钮 (替代之前的收藏按钮)
         val isFavorite = word?.isFavorite == true || grammar?.isFavorite == true
-        val itemId = word?.id ?: grammar?.id ?: 0
+        val itemId = word?.id ?: grammar?.id ?: ""
 
         Box {
             var expanded by remember { mutableStateOf(false) }
@@ -106,7 +106,7 @@ fun TestHeader(
                 onDismissRequest = { expanded = false }
             ) {
                 // 收藏选项 (保留业务逻辑)
-                if (itemId != 0) {
+                if (itemId.isNotEmpty()) {
                     NemoMenuItem(
                         text = if (isFavorite) "取消收藏" else "收藏",
                         onClick = {

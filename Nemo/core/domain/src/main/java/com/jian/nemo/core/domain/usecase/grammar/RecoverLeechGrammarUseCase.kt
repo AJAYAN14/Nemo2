@@ -13,7 +13,7 @@ class RecoverLeechGrammarUseCase @Inject constructor(
     private val grammarRepository: GrammarRepository,
     private val settingsRepository: SettingsRepository
 ) {
-    suspend operator fun invoke(grammarId: Int): Result<Unit> {
+    suspend operator fun invoke(grammarId: String): Result<Unit> {
         return try {
             val grammar = grammarRepository.getGrammarById(grammarId).firstOrNull()
                 ?: return Result.Error(Exception("语法不存在: $grammarId"))

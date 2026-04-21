@@ -14,7 +14,7 @@ data class SyncOutboxEntity(
     val id: Long = 0,
 
     @ColumnInfo(name = "item_id")
-    val itemId: Int,
+    val itemId: String,
 
     @ColumnInfo(name = "item_type")
     val itemType: String,

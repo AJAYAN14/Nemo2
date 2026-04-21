@@ -7,7 +7,7 @@ package com.jian.nemo.core.domain.model
  * 参考: 旧项目 TestRecord
  */
 data class TestRecord(
-    val id: Int = 0,
+    val id: String = java.util.UUID.randomUUID().toString(),
     val date: Long, // 测试日期（以天为单位）
     val totalQuestions: Int, // 总题目数
     val correctAnswers: Int, // 正确题目数

@@ -29,7 +29,7 @@ interface GrammarDao {
     suspend fun update(grammar: GrammarEntity)
 
     @Query("SELECT id FROM grammars WHERE id IN (:ids)")
-    suspend fun getIdsIn(ids: List<Int>): List<Int>
+    suspend fun getIdsIn(ids: List<String>): List<String>
 
     /**
      * 批量插入或更新 (用于同步)
@@ -46,10 +46,10 @@ interface GrammarDao {
         updated_at = :updatedTime
         WHERE item_id IN (:ids) AND item_type = 'grammar'
     """)
-    suspend fun softDeleteByIds(ids: List<Int>, updatedTime: String)
+    suspend fun softDeleteByIds(ids: List<String>, updatedTime: String)
 
     @Query("DELETE FROM grammars WHERE id IN (:ids)")
-    suspend fun deleteByIds(ids: List<Int>)
+    suspend fun deleteByIds(ids: List<String>)
 
     /**
      * 获取所有语法 (包含已逻辑删除的)
@@ -83,7 +83,7 @@ interface GrammarDao {
         AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
-    fun getById(id: Int): Flow<GrammarEntity?>
+    fun getById(id: String): Flow<GrammarEntity?>
 
     /**
      * 获取语法（含用法和例句）
@@ -96,7 +96,7 @@ interface GrammarDao {
         AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
-    fun getGrammarWithUsages(id: Int): Flow<GrammarWithUsages?>
+    fun getGrammarWithUsages(id: String): Flow<GrammarWithUsages?>
 
     /**
      * 获取所有语法（含用法和例句）
@@ -247,7 +247,7 @@ interface GrammarDao {
      */
     @Transaction
     @Query("SELECT * FROM grammars WHERE id IN (:ids)")
-    suspend fun getGrammarsByIdsWithUsages(ids: List<Int>): List<GrammarWithUsages>
+    suspend fun getGrammarsByIdsWithUsages(ids: List<String>): List<GrammarWithUsages>
 
     /**
      * 搜索语法（含用法和例句）
@@ -398,7 +398,7 @@ interface GrammarDao {
     fun getFavoriteGrammars(): Flow<List<GrammarEntity>>
 
     @Query("UPDATE user_progress SET is_favorite = :isFavorite, updated_at = :updatedAt WHERE item_id = :grammarId AND item_type = 'grammar'")
-    suspend fun updateFavoriteStatus(grammarId: Int, isFavorite: Boolean, updatedAt: String)
+    suspend fun updateFavoriteStatus(grammarId: String, isFavorite: Boolean, updatedAt: String)
 
     @Query("""
         SELECT g.* FROM grammars g
@@ -415,7 +415,7 @@ interface GrammarDao {
     fun getSkippedGrammarsCount(): Flow<Int>
 
     @Query("SELECT * FROM grammars WHERE id IN (:ids)")
-    suspend fun getGrammarsByIds(ids: List<Int>): List<GrammarEntity>
+    suspend fun getGrammarsByIds(ids: List<String>): List<GrammarEntity>
 
     /**
      * 搜索语法 (匹配标题)
@@ -507,13 +507,13 @@ interface GrammarDao {
      * 获取去重后的保留ID列表 (每个语法只保留ID最小的一个)
      */
     @Query("SELECT MIN(id) FROM grammars GROUP BY grammar, grammar_level")
-    suspend fun getDuplicateKeepIds(): List<Int>
+    suspend fun getDuplicateKeepIds(): List<String>
 
     /**
      * 将指定等级下，不在给定 ID 列表中的语法标记为已下架
      */
     @Query("UPDATE grammars SET is_delisted = 1 WHERE UPPER(grammar_level) = UPPER(:level) AND id NOT IN (:jsonIds)")
-    suspend fun markMissingAsDelistedById(level: String, jsonIds: List<Int>): Int
+    suspend fun markMissingAsDelistedById(level: String, jsonIds: List<String>): Int
 }
 
 data class GrammarReviewForecastTuple(

@@ -16,6 +16,9 @@ interface WrongAnswerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(wrongAnswer: WrongAnswerEntity)
 
+    @androidx.room.Delete
+    suspend fun delete(wrongAnswer: WrongAnswerEntity)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(wrongAnswers: List<WrongAnswerEntity>)
 
@@ -41,25 +44,25 @@ interface WrongAnswerDao {
      * 获取指定单词的错题记录
      */
     @Query("SELECT * FROM wrong_answers WHERE word_id = :wordId AND is_deleted = 0 ORDER BY timestamp DESC")
-    fun getWrongAnswersByWordId(wordId: Int): Flow<List<WrongAnswerEntity>>
+    fun getWrongAnswersByWordId(wordId: String): Flow<List<WrongAnswerEntity>>
 
     /**
      * 获取指定单词的错题记录 (同步) - 用于做题时判断
      */
     @Query("SELECT * FROM wrong_answers WHERE word_id = :wordId AND is_deleted = 0 LIMIT 1")
-    suspend fun getWrongAnswerByWordIdSync(wordId: Int): WrongAnswerEntity?
+    suspend fun getWrongAnswerByWordIdSync(wordId: String): WrongAnswerEntity?
 
     /**
      * 获取所有错题单词的ID列表
      */
     @Query("SELECT DISTINCT word_id FROM wrong_answers WHERE is_deleted = 0")
-    suspend fun getAllWrongWordIds(): List<Int>
+    suspend fun getAllWrongWordIds(): List<String>
 
     /**
      * 删除指定单词的错题记录
      */
     @Query("UPDATE wrong_answers SET is_deleted = 1, deleted_time = :time, timestamp = :time WHERE word_id = :wordId")
-    suspend fun markDeletedByWordId(wordId: Int, time: Long)
+    suspend fun markDeletedByWordId(wordId: String, time: Long)
 
     /**
      * 逻辑删除所有错题记录
@@ -79,6 +82,6 @@ interface WrongAnswerDao {
     /**
      * 根据 UUID 列表批量获取记录
      */
-    @Query("SELECT * FROM wrong_answers WHERE uuid IN (:uuids)")
-    suspend fun getByUuids(uuids: List<String>): List<WrongAnswerEntity>
+    @Query("SELECT * FROM wrong_answers WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<WrongAnswerEntity>
 }

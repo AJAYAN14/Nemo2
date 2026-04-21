@@ -62,7 +62,7 @@ class FavoriteGrammarsViewModel @Inject constructor(
     /**
      * 取消收藏
      */
-    fun unfavorite(grammarId: Int) {
+    fun unfavorite(grammarId: String) {
         viewModelScope.launch {
             grammarRepository.updateFavoriteStatus(grammarId, false)
         }

@@ -11,7 +11,7 @@ package com.jian.nemo.core.domain.model
  * 5. 实现SrsItem接口,用于SRS算法计算
  */
 data class Word(
-    val id: Int,
+    override val id: String, // 对齐 SrsItem
 
     // ========== 核心内容 ==========
     /**
@@ -57,6 +57,7 @@ data class Word(
      * 重复次数 (0表示未学习)
      */
     override val repetitionCount: Int = 0,
+    override val lapses: Int = 0,
 
     /**
      * 记忆稳定性 (FSRS) — 多少天后回忆概率降至90%

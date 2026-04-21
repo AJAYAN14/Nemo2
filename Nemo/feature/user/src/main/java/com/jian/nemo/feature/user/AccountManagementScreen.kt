@@ -62,12 +62,6 @@ fun AccountManagementScreen(
             viewModel.clearSuccessMessage()
         }
     }
-    LaunchedEffect(uiState.restoreMessage) {
-        uiState.restoreMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            viewModel.clearRestoreMessage()
-        }
-    }
 
     // Handle Logout Redirect
     LaunchedEffect(uiState.isLoggedIn, uiState.isLoading, uiState.isAuthChecked) {
@@ -147,104 +141,8 @@ fun AccountManagementScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Group 3: Data Sync
-                PremiumSettingsGroup(title = "数据同步", cardBg = cardBg) {
-                    PremiumSettingsItem(
-                        icon = Icons.Rounded.CloudUpload,
-                        iconTint = Color(0xFFAF52DE), // Purple
-                        title = "立即同步",
-                        subtitle = when {
-                            uiState.isSyncLoading -> uiState.syncStatus.ifEmpty { "正在同步数据..." }
-                            uiState.showSyncSuccess -> "同步成功"
-                            else -> uiState.lastSyncTimeText
-                        },
-                        trailingContent = @Composable {
-                            AnimatedContent(
-                                targetState = when {
-                                    uiState.isSyncLoading -> 1 // Loading
-                                    uiState.showSyncSuccess -> 2 // Success
-                                    else -> 0 // Default
-                                },
-                                label = "SyncStatusAnimation"
-                            ) { state ->
-                                when (state) {
-                                    1 -> CircularProgressIndicator(
-                                        progress = { uiState.syncProgress },
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                    2 -> Icon(
-                                        imageVector = Icons.Rounded.CheckCircle,
-                                        contentDescription = null,
-                                        tint = Color(0xFF34C759), // Green
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    else -> Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        },
-                        onClick = {
-                            if (!uiState.isSyncLoading) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.syncToCloud()
-                            }
-                        }
-                    )
-                     HorizontalDivider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-                    PremiumSettingsItem(
-                        icon = Icons.Rounded.CloudDownload,
-                        iconTint = Color(0xFF32ADE6), // Cyan
-                        title = "从云端恢复",
-                        subtitle = when {
-                            uiState.isRestoreLoading -> "正在恢复数据..."
-                            uiState.showRestoreSuccess -> "恢复成功"
-                            else -> uiState.lastRestoreTimeText
-                        },
-                        trailingContent = {
-                            AnimatedContent(
-                                targetState = when {
-                                    uiState.isRestoreLoading -> 1 // Loading
-                                    uiState.showRestoreSuccess -> 2 // Success
-                                    else -> 0 // Default
-                                },
-                                label = "RestoreStatusAnimation"
-                            ) { state ->
-                                when (state) {
-                                    1 -> CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    2 -> Icon(
-                                        imageVector = Icons.Rounded.CheckCircle,
-                                        contentDescription = null,
-                                        tint = Color(0xFF34C759), // Green
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    else -> Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        },
-                        onClick = {
-                            if (!uiState.isRestoreLoading) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.restoreFromCloud()
-                            }
-                        }
-                    )
-
-                }
+                // [Native Mirror] 遵循 rules.md: 1.1，移除所有同步状态 UI。
+                // 实时同步已完全自动化且无感。
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -364,7 +262,7 @@ fun AccountManagementScreen(
                     viewModel.dismissDialog()
                 },
                 onBackup = {
-                    viewModel.syncToCloud()
+                    // viewModel.syncToCloud() // 移除手动备份，逻辑已自动化
                 },
                 useDarkTheme = useDarkTheme
             )
@@ -372,15 +270,7 @@ fun AccountManagementScreen(
         else -> {}
     }
 
-    // Restore Confirm Dialog
-    if (uiState.showRestoreConfirmDialog) {
-        RestoreConfirmDialog(
-            isLoading = uiState.isRestoreLoading,
-            onDismiss = { viewModel.cancelRestoreConfirmation() },
-            onConfirm = { viewModel.confirmRestoreAfterWarning() },
-            useDarkTheme = useDarkTheme
-        )
-    }
+    // [Native Mirror] 移除恢复确认对话框
 }
 
 

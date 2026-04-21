@@ -53,7 +53,7 @@ fun CategoryWordsScreen(
     category: String,
     categoryTitle: String,
     onNavigateBack: () -> Unit,
-    onNavigateToWordDetail: (Int) -> Unit = {},
+    onNavigateToWordDetail: (String) -> Unit = {},
     viewModel: CategoryWordsViewModel = hiltViewModel()
 ) {
     // 加载单词数据

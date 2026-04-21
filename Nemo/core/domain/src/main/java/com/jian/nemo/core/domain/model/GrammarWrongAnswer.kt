@@ -8,8 +8,8 @@ package com.jian.nemo.core.domain.model
  * - 业务逻辑使用的数据结构
  */
 data class GrammarWrongAnswer(
-    val id: Int,
-    val grammarId: Int,
+    val id: String,
+    val grammarId: String,
     val grammar: Grammar?,  // 关联的语法信息
     val testMode: String,  // 测试模式
     val userAnswer: String,  // 用户的错误答案

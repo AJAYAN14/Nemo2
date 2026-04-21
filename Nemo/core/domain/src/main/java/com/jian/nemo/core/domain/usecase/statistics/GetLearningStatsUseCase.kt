@@ -89,10 +89,9 @@ class GetLearningStatsUseCase @Inject constructor(
                 )
             }
 
-            // 已掌握数量 (repetitionCount > 0 且未跳过) & 总数
             val totalAndMasteredFlow = combine(
-                wordRepository.getAllLearnedWords().map { it.size },
-                grammarRepository.getAllLearnedGrammars().map { it.size },
+                wordRepository.getAllLearnedWords(),
+                grammarRepository.getAllLearnedGrammars(),
                 wordRepository.getAllWordsByLevel("N1"),
                 wordRepository.getAllWordsByLevel("N2"),
                 wordRepository.getAllWordsByLevel("N3"),
@@ -100,8 +99,8 @@ class GetLearningStatsUseCase @Inject constructor(
                 wordRepository.getAllWordsByLevel("N5"),
                 grammarRepository.getAllGrammars()
             ) { args ->
-                val masteredWords = args[0] as Int
-                val masteredGrammars = args[1] as Int
+                val learnedWords = args[0] as List<com.jian.nemo.core.domain.model.Word>
+                val learnedGrammars = args[1] as List<com.jian.nemo.core.domain.model.Grammar>
                 val n1 = args[2] as List<*>
                 val n2 = args[3] as List<*>
                 val n3 = args[4] as List<*>
@@ -110,7 +109,17 @@ class GetLearningStatsUseCase @Inject constructor(
                 val allGrammars = args[7] as List<*>
 
                 val totalWords = n1.size + n2.size + n3.size + n4.size + n5.size
-                MasteredAndTotalData(masteredWords, masteredGrammars, totalWords, allGrammars.size)
+                val matureWords = learnedWords.count { it.stability >= 21 }
+                val matureGrammars = learnedGrammars.count { it.stability >= 21 }
+
+                MasteredAndTotalData(
+                    masteredWords = learnedWords.size,
+                    masteredGrammars = learnedGrammars.size,
+                    matureWords = matureWords,
+                    matureGrammars = matureGrammars,
+                    totalWords = totalWords,
+                    totalGrammars = allGrammars.size
+                )
             }
 
             // 3. 最终组合 (避免超过 5 个 Flow 导致的类型推断问题)
@@ -140,6 +149,8 @@ class GetLearningStatsUseCase @Inject constructor(
                     todayReviewedGrammars = reviewedGrammarsToday,
                     masteredWords = totalMastered.masteredWords,
                     masteredGrammars = totalMastered.masteredGrammars,
+                    matureWords = totalMastered.matureWords,
+                    matureGrammars = totalMastered.matureGrammars,
                     dueWords = dueCounts.dueWords,
                     dueGrammars = dueCounts.dueGrammars,
                     wordDailyGoal = settings.wordDailyGoal,
@@ -174,6 +185,8 @@ class GetLearningStatsUseCase @Inject constructor(
     private data class MasteredAndTotalData(
         val masteredWords: Int,
         val masteredGrammars: Int,
+        val matureWords: Int,
+        val matureGrammars: Int,
         val totalWords: Int,
         val totalGrammars: Int
     )

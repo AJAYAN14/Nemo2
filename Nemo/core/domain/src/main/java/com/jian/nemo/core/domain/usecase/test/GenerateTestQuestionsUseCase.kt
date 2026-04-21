@@ -170,9 +170,9 @@ class GenerateTestQuestionsUseCase @Inject constructor(
             }
         } else emptyList()
 
-        // 3. 始终获取 JSON 语法题目 (只要包含语法测试且题型支持)
+        // 3. 始终获取远程语法题目 (只要包含语法测试且题型支持)
         val isGrammarMc = contentType != "words" && questionType == QuestionType.MULTIPLE_CHOICE
-        val jsonGrammarQuestions = if (isGrammarMc) {
+        val remoteGrammarQuestions = if (isGrammarMc) {
             try {
                 val levels = level.split(",")
                 val allLoadedQuestions = mutableListOf<GrammarTestQuestion>()
@@ -191,12 +191,7 @@ class GenerateTestQuestionsUseCase @Inject constructor(
                 val filteredQuestions = if (source != "all" && grammars.isNotEmpty()) {
                     val targetIds = grammars.map { it.id }.toSet()
                     allLoadedQuestions.filter { q ->
-                        try {
-                            val gid = extractNumericId(q.targetGrammarId)
-                            targetIds.contains(gid)
-                        } catch (_: Exception) {
-                            false
-                        }
+                        targetIds.contains(q.targetGrammarId)
                     }
                 } else {
                     allLoadedQuestions
@@ -217,10 +212,10 @@ class GenerateTestQuestionsUseCase @Inject constructor(
              // 我们从 Distractor Pool 中构建 Map，以便所有题目都能找到对应的实体（即使题目不在 Target Pool 中）
              if (allGrammarsForDistractors.isNotEmpty()) {
                  allGrammarsForDistractors.associateBy { it.id }
-             } else emptyMap()
-        } else emptyMap()
+             } else emptyMap<String, Grammar>()
+        } else emptyMap<String, Grammar>()
 
-        println("NemoTestDebug: Fetched data: TargetWords=${words.size}, DistractorWords=${allWordsForDistractors.size}, TargetGrammars=${grammars.size}, DistractorGrammars=${allGrammarsForDistractors.size}, JSON=${jsonGrammarQuestions.size}")
+        println("NemoTestDebug: Fetched data: TargetWords=${words.size}, DistractorWords=${allWordsForDistractors.size}, TargetGrammars=${grammars.size}, DistractorGrammars=${allGrammarsForDistractors.size}, RemoteQuestions=${remoteGrammarQuestions.size}")
 
 
 
@@ -255,21 +250,20 @@ class GenerateTestQuestionsUseCase @Inject constructor(
                         })
                     }
 
-                    if (jsonGrammarQuestions.isNotEmpty()) {
-                         // ... JSON logic ...
-                         val sortedJson = if (prioritizeNew || prioritizeWrong) {
-                             jsonGrammarQuestions.sortedBy { q ->
-                                 val id = try { extractNumericId(q.targetGrammarId) } catch(_:Exception){0}
-                                 val g = grammarEntityMap[id]
+                    if (remoteGrammarQuestions.isNotEmpty()) {
+                         // ... logic ...
+                         val sortedRemote = if (prioritizeNew || prioritizeWrong) {
+                             remoteGrammarQuestions.sortedBy { q ->
+                                 val g = grammarEntityMap[q.targetGrammarId]
                                  if (g != null) {
                                      if (prioritizeNew) g.repetitionCount.toDouble()
                                      else g.difficulty.toDouble()
                                  } else 0.0
                              }
-                          } else jsonGrammarQuestions.shuffled()
+                          } else remoteGrammarQuestions.shuffled()
 
-                         questions.addAll(sortedJson.take(grammarMcCount).mapNotNull {
-                             val q = testQuestionFactory.mapJsonToMultipleChoice(it, mode, grammarEntityMap, shuffleOptions)
+                         questions.addAll(sortedRemote.take(grammarMcCount).mapNotNull {
+                             val q = testQuestionFactory.mapRemoteToMultipleChoice(it, mode, grammarEntityMap, shuffleOptions)
                              if (q.grammar != null) q else null
                          })
                     } else if (grammars.isNotEmpty()) {
@@ -287,9 +281,9 @@ class GenerateTestQuestionsUseCase @Inject constructor(
                         testQuestionFactory.createMultipleChoice(it, mode, allWordsForDistractors, shuffleOptions)
                     })
                 } else if (contentType == "grammar") {
-                    if (jsonGrammarQuestions.isNotEmpty()) {
-                        questions.addAll(jsonGrammarQuestions.shuffled().take(mcCount).mapNotNull {
-                             val q = testQuestionFactory.mapJsonToMultipleChoice(it, mode, grammarEntityMap, shuffleOptions)
+                    if (remoteGrammarQuestions.isNotEmpty()) {
+                        questions.addAll(remoteGrammarQuestions.shuffled().take(mcCount).mapNotNull {
+                             val q = testQuestionFactory.mapRemoteToMultipleChoice(it, mode, grammarEntityMap, shuffleOptions)
                              if (q.grammar != null) q else null
                         })
                     } else if (grammars.isNotEmpty()) {
@@ -417,25 +411,24 @@ class GenerateTestQuestionsUseCase @Inject constructor(
             if (questionType == QuestionType.SORTING && grammars.isNotEmpty()) {
                 // 排序题 (单词保留，语法移除)
                  // Grammar Sorting removed.
-            } else if (questionType == QuestionType.MULTIPLE_CHOICE) {
+                } else if (questionType == QuestionType.MULTIPLE_CHOICE) {
                 // 选择题
-                // 🎯 Use JSON questions if available
-                if (jsonGrammarQuestions.isNotEmpty()) {
-                     // For JSON questions, we don't have easy metrics for priority unless we link to entities.
+                // 🎯 Use remote questions if available
+                if (remoteGrammarQuestions.isNotEmpty()) {
+                     // For remote questions, we don't have easy metrics for priority unless we link to entities.
                      // We did create grammarEntityMap.
-                     val sortedJson = if (prioritizeNew || prioritizeWrong) {
-                          jsonGrammarQuestions.sortedBy { q ->
-                              val id = try { extractNumericId(q.targetGrammarId) } catch(_:Exception){0}
-                              val g = grammarEntityMap[id]
+                     val sortedRemote = if (prioritizeNew || prioritizeWrong) {
+                          remoteGrammarQuestions.sortedBy { q ->
+                              val g = grammarEntityMap[q.targetGrammarId]
                               if (g != null) {
                                   if (prioritizeNew) g.repetitionCount.toDouble()
                                   else g.difficulty.toDouble()
                               } else 0.0
                           }
-                      } else jsonGrammarQuestions.shuffled()
+                      } else remoteGrammarQuestions.shuffled()
 
-                     questions.addAll(sortedJson.take(grammarCount).map {
-                         testQuestionFactory.mapJsonToMultipleChoice(it, mode, grammarEntityMap, shuffleOptions)
+                     questions.addAll(sortedRemote.take(grammarCount).map {
+                         testQuestionFactory.mapRemoteToMultipleChoice(it, mode, grammarEntityMap, shuffleOptions)
                      })
                 } else if (grammars.isNotEmpty()) {
                     questions.addAll(selectedGrammars.map { grammar ->
@@ -450,16 +443,5 @@ class GenerateTestQuestionsUseCase @Inject constructor(
         println("NemoTestDebug: Generation complete. Total questions: ${result.size}")
 
         return result
-    }
-
-    private fun extractNumericId(id: String): Int {
-        return try {
-            val parts = id.split("_")
-            val levelNum = parts[0].substring(1).toInt() // "N1" -> 1
-            val num = parts[1].toInt()                // "001" -> 1
-            levelNum * 1000 + num
-        } catch (_: Exception) {
-            0
-        }
     }
 }

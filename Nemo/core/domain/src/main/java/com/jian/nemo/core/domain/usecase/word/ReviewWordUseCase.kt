@@ -40,8 +40,8 @@ class ReviewWordUseCase @Inject constructor(
      *   - 5: 完美记忆
      * @return Result<Word> 更新后的单词
      */
-    suspend operator fun invoke(
-        wordId: Int,
+    suspend fun invoke(
+        wordId: String,
         quality: Int
     ): Result<Word> {
         require(quality in 0..5) { "Quality must be 0-5, got $quality" }

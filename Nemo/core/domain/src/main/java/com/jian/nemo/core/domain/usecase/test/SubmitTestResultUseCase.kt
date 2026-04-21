@@ -98,7 +98,7 @@ class SubmitTestResultUseCase @Inject constructor(
                     }
 
                     val grammarWrongAnswer = GrammarWrongAnswer(
-                        id = 0, // Insert 会自动处理 ID
+                        id = java.util.UUID.randomUUID().toString(), // Insert 会自动处理 ID
                         grammarId = grammarId,
                         grammar = null,
                         testMode = testMode,
@@ -142,7 +142,7 @@ class SubmitTestResultUseCase @Inject constructor(
                 } else {
                     // 答错: 插入或更新 (重置计数为0)
                     val wrongAnswer = WrongAnswer(
-                        id = 0,
+                        id = java.util.UUID.randomUUID().toString(),
                         wordId = wordId,
                         word = null,
                         testMode = testMode,

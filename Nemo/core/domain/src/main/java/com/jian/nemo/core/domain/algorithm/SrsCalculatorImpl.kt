@@ -76,27 +76,21 @@ class SrsCalculatorImpl @Inject constructor(
         val newState = fsrs.step(currentState, rating, elapsedDays)
 
         // 5. 计算新间隔 (带 Fuzz)
+        // 5. 更新次数和间隔 (Logic Authority: 对齐 Supabase RPC)
+        val newRepetitionCount = item.repetitionCount + 1
+        val newLapses = if (quality < 3) item.lapses + 1 else item.lapses
+        
         val newInterval: Int
-        val newRepetitionCount: Int
-
         if (quality < 3) {
-            // 失败: 不增加成功复习次数
-            newRepetitionCount = item.repetitionCount 
-            // 失败时的间隔逻辑: 通常由 FSRS stability 决定 ( Again 后的稳定性很小 )
-            newInterval = 1 // 强制 1 天或根据稳定性计算
+            newInterval = 1 // 失败后强制复习
         } else {
-            // 成功
-            newRepetitionCount = item.repetitionCount + 1
-            val seed = buildFuzzSeed(item, today, quality, newRepetitionCount)
+            // [Fuzz Seed] 使用更新前的次数 (v_current.reps) 对齐服务端
+            val seed = buildFuzzSeed(item, item.repetitionCount)
             newInterval = fsrs.nextIntervalDaysWithFuzz(newState.stability, seed)
         }
 
         // 6. 计算日期
-        val nextReviewDate = if (newRepetitionCount == 0 && quality < 3) {
-            0L // 新卡失败，不设置复习日期
-        } else {
-            today + newInterval
-        }
+        val nextReviewDate = today + newInterval
 
         val firstLearnedDate = when {
             item.repetitionCount == 0 && quality >= 3 -> today // 新卡首次通过
@@ -107,6 +101,7 @@ class SrsCalculatorImpl @Inject constructor(
 
         return SrsUpdateResult(
             repetitionCount = newRepetitionCount,
+            lapses = newLapses,
             stability = newState.stability,
             difficulty = newState.difficulty,
             interval = newInterval,
@@ -125,13 +120,21 @@ class SrsCalculatorImpl @Inject constructor(
         }
     }
 
-    private fun buildFuzzSeed(item: SrsItem, today: Long, quality: Int, repetitions: Int): Long {
-        val itemId = when (item) {
-            is Word -> item.id
-            is Grammar -> item.id
-            else -> 0
+    private fun buildFuzzSeed(item: SrsItem, repetitions: Int): Long {
+        // [Logic Parity] 对齐 Web/Server 的 buildFsrsDeterministicSeed
+        val cardId = item.id ?: ""
+        val cardSeed = hashStringToUint32(cardId)
+        return (cardSeed + repetitions.toLong()) and 0xFFFFFFFFL
+    }
+
+    private fun hashStringToUint32(input: String): Long {
+        // FNV-1a 32-bit 对齐 Web 版 hashStringToUint32
+        var hash = 2166136261L
+        for (char in input) {
+            hash = hash xor char.code.toLong()
+            // 在 Kotlin 中使用 Int 乘法模拟 imul，然后转回 Long 并截断
+            hash = (hash.toInt() * 16777619).toLong() and 0xFFFFFFFFL
         }
-        // 使用 Long 组合种子，对齐确定性逻辑
-        return (itemId.toLong() shl 32) xor (today shl 8) xor (quality.toLong() shl 4) xor repetitions.toLong()
+        return hash
     }
 }

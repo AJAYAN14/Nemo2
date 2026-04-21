@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 20,
-    "identityHash": "d7ccaa15e48d429cff4ca9d8a59ea991",
+    "version": 22,
+    "identityHash": "ee7edd5e8c3a28569ba518c746440ecc",
     "entities": [
       {
         "tableName": "words",
@@ -411,12 +411,12 @@
       },
       {
         "tableName": "test_records",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` INTEGER NOT NULL, `total_questions` INTEGER NOT NULL, `correct_answers` INTEGER NOT NULL, `test_mode` TEXT NOT NULL, `uuid` TEXT NOT NULL, `is_deleted` INTEGER NOT NULL, `deleted_time` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `date` INTEGER NOT NULL, `total_questions` INTEGER NOT NULL, `correct_answers` INTEGER NOT NULL, `test_mode` TEXT NOT NULL, `is_deleted` INTEGER NOT NULL, `deleted_time` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -444,12 +444,6 @@
             "notNull": true
           },
           {
-            "fieldPath": "uuid",
-            "columnName": "uuid",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
             "fieldPath": "isDeleted",
             "columnName": "is_deleted",
             "affinity": "INTEGER",
@@ -469,7 +463,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -479,12 +473,12 @@
       },
       {
         "tableName": "wrong_answers",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `word_id` TEXT NOT NULL, `test_mode` TEXT NOT NULL, `user_answer` TEXT NOT NULL, `correct_answer` TEXT NOT NULL, `uuid` TEXT NOT NULL, `is_deleted` INTEGER NOT NULL, `deleted_time` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `consecutive_correct_count` INTEGER NOT NULL, FOREIGN KEY(`word_id`) REFERENCES `words`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `word_id` TEXT NOT NULL, `test_mode` TEXT NOT NULL, `user_answer` TEXT NOT NULL, `correct_answer` TEXT NOT NULL, `is_deleted` INTEGER NOT NULL, `deleted_time` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `consecutive_correct_count` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`word_id`) REFERENCES `words`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -508,12 +502,6 @@
           {
             "fieldPath": "correctAnswer",
             "columnName": "correct_answer",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "uuid",
-            "columnName": "uuid",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -543,7 +531,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -575,12 +563,12 @@
       },
       {
         "tableName": "grammar_wrong_answers",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `grammar_id` TEXT NOT NULL, `test_mode` TEXT NOT NULL, `user_answer` TEXT NOT NULL, `correct_answer` TEXT NOT NULL, `question_type` TEXT NOT NULL, `question_text` TEXT NOT NULL, `options_json` TEXT NOT NULL, `explanation` TEXT, `uuid` TEXT NOT NULL, `is_deleted` INTEGER NOT NULL, `deleted_time` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `consecutive_correct_count` INTEGER NOT NULL, FOREIGN KEY(`grammar_id`) REFERENCES `grammars`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `grammar_id` TEXT NOT NULL, `test_mode` TEXT NOT NULL, `user_answer` TEXT NOT NULL, `correct_answer` TEXT NOT NULL, `question_type` TEXT NOT NULL, `question_text` TEXT NOT NULL, `options_json` TEXT NOT NULL, `explanation` TEXT, `is_deleted` INTEGER NOT NULL, `deleted_time` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `consecutive_correct_count` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`grammar_id`) REFERENCES `grammars`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -632,12 +620,6 @@
             "notNull": false
           },
           {
-            "fieldPath": "uuid",
-            "columnName": "uuid",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
             "fieldPath": "isDeleted",
             "columnName": "is_deleted",
             "affinity": "INTEGER",
@@ -663,7 +645,7 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -777,7 +759,7 @@
       },
       {
         "tableName": "review_logs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `item_id` INTEGER NOT NULL, `item_type` TEXT NOT NULL, `review_date` INTEGER NOT NULL, `interval_days` INTEGER NOT NULL, `rating` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `item_id` TEXT NOT NULL, `item_type` TEXT NOT NULL, `review_date` INTEGER NOT NULL, `interval_days` INTEGER NOT NULL, `rating` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -788,7 +770,7 @@
           {
             "fieldPath": "itemId",
             "columnName": "item_id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -1094,18 +1076,18 @@
       },
       {
         "tableName": "favorite_questions",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `grammar_id` INTEGER, `json_id` TEXT, `question_type` TEXT NOT NULL, `question_text` TEXT NOT NULL, `options_json` TEXT NOT NULL, `correct_answer` TEXT NOT NULL, `explanation` TEXT, `timestamp` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `grammar_id` TEXT, `json_id` TEXT, `question_type` TEXT NOT NULL, `question_text` TEXT NOT NULL, `options_json` TEXT NOT NULL, `correct_answer` TEXT NOT NULL, `explanation` TEXT, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
             "fieldPath": "grammarId",
             "columnName": "grammar_id",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": false
           },
           {
@@ -1152,7 +1134,69 @@
           }
         ],
         "primaryKey": {
-          "autoGenerate": true,
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "grammar_questions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `target_grammar_id` TEXT NOT NULL, `target_usage_index` INTEGER NOT NULL, `type` TEXT NOT NULL, `question` TEXT NOT NULL, `options` TEXT NOT NULL, `correct_index` INTEGER NOT NULL, `explanation` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetGrammarId",
+            "columnName": "target_grammar_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetUsageIndex",
+            "columnName": "target_usage_index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "question",
+            "columnName": "question",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "options",
+            "columnName": "options",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "correctIndex",
+            "columnName": "correct_index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "explanation",
+            "columnName": "explanation",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
           "columnNames": [
             "id"
           ]
@@ -1164,7 +1208,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd7ccaa15e48d429cff4ca9d8a59ea991')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ee7edd5e8c3a28569ba518c746440ecc')"
     ]
   }
 }

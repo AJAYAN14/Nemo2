@@ -309,7 +309,7 @@ class CardMatchingOrchestrator @Inject constructor(
         currentQuestion.pairs.forEach { word ->
             wrongAnswerRepository.insertWrongAnswer(
                 WrongAnswer(
-                    id = 0,
+                    id = java.util.UUID.randomUUID().toString(),
                     wordId = word.id,
                     word = null,
                     testMode = "card_matching",
@@ -332,7 +332,7 @@ class CardMatchingOrchestrator @Inject constructor(
 
     private fun updateCardState(
         state: TestUiState,
-        cardId: Int,
+        cardId: String,
         cardType: CardType,
         newState: CardState
     ): TestUiState {

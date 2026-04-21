@@ -20,7 +20,7 @@ interface GrammarRepository {
     /**
      * 根据ID获取语法
      */
-    fun getGrammarById(id: Int): Flow<Grammar?>
+    fun getGrammarById(id: String): Flow<Grammar?>
 
     /**
      * 获取所有语法
@@ -95,7 +95,7 @@ interface GrammarRepository {
     /**
      * 根据ID列表批量获取语法
      */
-    suspend fun getGrammarsByIds(ids: List<Int>): List<Grammar>
+    suspend fun getGrammarsByIds(ids: List<String>): List<Grammar>
 
     /**
      * 搜索语法
@@ -125,17 +125,17 @@ interface GrammarRepository {
     /**
      * 更新收藏状态
      */
-    suspend fun updateFavoriteStatus(grammarId: Int, isFavorite: Boolean): Result<Unit>
+    suspend fun updateFavoriteStatus(grammarId: String, isFavorite: Boolean): Result<Unit>
 
     /**
      * 标记为跳过
      */
-    suspend fun markAsSkipped(grammarId: Int): Result<Unit>
+    suspend fun markAsSkipped(grammarId: String): Result<Unit>
 
     /**
      * 取消跳过
      */
-    suspend fun unmarkAsSkipped(grammarId: Int): Result<Unit>
+    suspend fun unmarkAsSkipped(grammarId: String): Result<Unit>
 
     // ========== 批量操作 ==========
 

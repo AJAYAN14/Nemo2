@@ -25,14 +25,14 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["grammar_id"])]
 )
 data class GrammarWrongAnswerEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     /**
      * 语法ID (外键)
      */
     @ColumnInfo(name = "grammar_id")
-    val grammarId: Int,
+    val grammarId: String,
 
     /**
      * 测试模式
@@ -76,10 +76,6 @@ data class GrammarWrongAnswerEntity(
     @ColumnInfo(name = "explanation")
     val explanation: String? = null,
 
-    /**
-     * 记录唯一标识 (用于跨设备同步)
-     */
-    val uuid: String = java.util.UUID.randomUUID().toString(),
 
     /**
      * 是否已删除

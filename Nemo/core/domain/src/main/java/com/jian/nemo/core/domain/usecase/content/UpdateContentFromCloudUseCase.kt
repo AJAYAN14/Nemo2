@@ -32,6 +32,11 @@ class UpdateContentFromCloudUseCase @Inject constructor(
             if (grammars.isNotEmpty()) {
                 contentUpdateApplier.applyGrammars(level, grammars)
             }
+
+            val questions = contentRepository.fetchRemoteGrammarQuestions(level)
+            if (questions.isNotEmpty()) {
+                contentUpdateApplier.applyGrammarQuestions(level, questions)
+            }
         }
 
         settingsRepository.setLastContentVersion(remoteVersion)

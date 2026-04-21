@@ -34,8 +34,8 @@ import com.jian.nemo.core.ui.component.common.CommonHeader
 @Composable
 fun HistoricalStatisticsScreen(
     onBack: () -> Unit,
-    onNavigateToWordDetail: (Int) -> Unit,
-    onNavigateToGrammarDetail: (Int) -> Unit,
+    onNavigateToWordDetail: (String) -> Unit,
+    onNavigateToGrammarDetail: (String) -> Unit,
     viewModel: HistoricalStatisticsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()

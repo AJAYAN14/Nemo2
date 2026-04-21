@@ -25,14 +25,14 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["word_id"])]
 )
 data class WrongAnswerEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: String = java.util.UUID.randomUUID().toString(),
 
     /**
      * 单词ID (外键)
      */
     @ColumnInfo(name = "word_id")
-    val wordId: Int,
+    val wordId: String,
 
     /**
      * 测试模式
@@ -53,10 +53,6 @@ data class WrongAnswerEntity(
     @ColumnInfo(name = "correct_answer")
     val correctAnswer: String,
 
-    /**
-     * 记录唯一标识 (用于跨设备同步)
-     */
-    val uuid: String = java.util.UUID.randomUUID().toString(),
 
     /**
      * 是否已删除

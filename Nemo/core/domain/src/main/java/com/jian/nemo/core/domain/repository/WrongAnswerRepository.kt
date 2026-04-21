@@ -24,12 +24,12 @@ interface WrongAnswerRepository {
     /**
      * 获取指定单词的错题记录
      */
-    fun getWrongAnswersByWordId(wordId: Int): Flow<List<WrongAnswer>>
+    fun getWrongAnswersByWordId(wordId: String): Flow<List<WrongAnswer>>
 
     /**
      * 获取所有错题单词的ID列表
      */
-    suspend fun getAllWrongWordIds(): List<Int>
+    suspend fun getAllWrongWordIds(): List<String>
 
     /**
      * 插入错题记录
@@ -39,7 +39,7 @@ interface WrongAnswerRepository {
     /**
      * 删除指定单词的错题记录
      */
-    suspend fun deleteByWordId(wordId: Int): Result<Unit>
+    suspend fun deleteByWordId(wordId: String): Result<Unit>
 
     /**
      * 删除所有错题记录
@@ -47,7 +47,7 @@ interface WrongAnswerRepository {
     /**
      * 获取指定单词的错题记录 (同步)
      */
-    suspend fun getWrongAnswerByWordIdSync(wordId: Int): WrongAnswer?
+    suspend fun getWrongAnswerByWordIdSync(wordId: String): WrongAnswer?
 
     /**
      * 删除所有错题记录

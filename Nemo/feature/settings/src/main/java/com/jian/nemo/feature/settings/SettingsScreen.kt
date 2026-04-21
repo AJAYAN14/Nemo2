@@ -53,23 +53,9 @@ fun SettingsScreen(
     // 对话框状态
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showConflictDialog by remember { mutableStateOf(false) }
-    var showRepairDialog by remember { mutableStateOf(false) } // Repair Dialog
     var isResetting by remember { mutableStateOf(false) }
     var resetErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    // 导出文件选择器
-    val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        uri?.let { viewModel.onEvent(SettingsEvent.ExportData(it)) }
-    }
-
-    // 导入文件选择器
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let { viewModel.onEvent(SettingsEvent.ImportData(it)) }
-    }
 
     val useDarkTheme = when (uiState.darkMode) {
         DarkModeOption.LIGHT -> false
@@ -97,6 +83,14 @@ fun SettingsScreen(
     val density = LocalDensity.current
     val statusBarHeight = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
     val navigationBarHeight = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.statusMessage) {
+        uiState.statusMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -135,43 +129,8 @@ fun SettingsScreen(
                             thickness = 0.5.dp
                         )
 
-                        // 自动同步
-                        val conflictCount = uiState.lastSyncConflictCount
-                        val lastSyncTime = uiState.lastSyncTime
-                        val subtitleText = if (conflictCount > 0) {
-                            val date = Date(lastSyncTime)
-                            val format = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
-                            "上次同步：${format.format(date)} (含 $conflictCount 个冲突)"
-                        } else if (lastSyncTime > 0L) {
-                            val date = Date(lastSyncTime)
-                            val format = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
-                            "上次同步：${format.format(date)}"
-                        } else {
-                            "学习后自动同步到云端"
-                        }
-
-                        SquircleSettingItem(
-                            icon = Icons.Rounded.CloudSync,
-                            iconColor = NemoCyan,
-                            title = "自动同步",
-                            subtitle = subtitleText,
-                            onClick = {
-                                if (uiState.lastSyncConflictCount > 0) {
-                                    showConflictDialog = true
-                                } else {
-                                    viewModel.onEvent(SettingsEvent.SyncData)
-                                }
-                            },
-                            showDivider = false,
-                            trailing = {
-                                NemoGooeyToggle(
-                                    checked = uiState.isAutoSyncEnabled,
-                                    onCheckedChange = { viewModel.onEvent(SettingsEvent.SetAutoSyncEnabled(it)) },
-                                    activeColor = MaterialTheme.colorScheme.primary,
-                                    inactiveColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                )
-                            }
-                        )
+                        // [Native Mirror] 遵循 rules.md: 1.1，移除所有同步相关的手动 UI
+                        // 同步已完全自动化，用户无需感知。
                     } else {
                         // 未登录
                         SquircleSettingItem(
@@ -344,25 +303,6 @@ fun SettingsScreen(
             item {
                 SettingsSectionTitle("数据")
                 PremiumCard {
-                    SquircleSettingItem(
-                        icon = Icons.Rounded.FileDownload,
-                        iconColor = NemoSecondary,
-                        title = "导出同步数据",
-                        subtitle = "导出本地同步文件",
-                        onClick = {
-                             val fileName = "nemo_sync_${SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())}.json"
-                            exportLauncher.launch(fileName)
-                        },
-                        showDivider = true
-                    )
-                     SquircleSettingItem(
-                        icon = Icons.Rounded.FileUpload,
-                        iconColor = NemoPrimary,
-                        title = "导入同步数据",
-                        subtitle = "从文件恢复进度",
-                        onClick = { importLauncher.launch(arrayOf("application/json", "text/*")) },
-                        showDivider = true
-                    )
                      SquircleSettingItem(
                         icon = Icons.Rounded.Delete,
                         iconColor = NemoDanger, // NemoRed/Danger
@@ -371,16 +311,6 @@ fun SettingsScreen(
                         onClick = {
                             isResetting = false
                             showConfirmDialog = true
-                        },
-                        showDivider = false
-                    )
-                     SquircleSettingItem(
-                        icon = Icons.Rounded.Build,
-                        iconColor = NemoPrimary,
-                         title = "修复本地数据",
-                        subtitle = "清理重复数据 (同步计数异常时使用)",
-                        onClick = {
-                            showRepairDialog = true
                         },
                         showDivider = false
                     )
@@ -416,17 +346,12 @@ fun SettingsScreen(
             }
         }
 
-        // 提示消息 Snackbar
-        com.jian.nemo.core.ui.component.common.NemoSnackbar(
-            visible = uiState.syncMessage != null,
-            message = uiState.syncMessage ?: "",
-            type = com.jian.nemo.core.ui.component.common.NemoSnackbarType.INFO,
-            icon = Icons.Rounded.Info,
-            autoDismissMs = null, // ViewModel 控制消失
-            onDismiss = null,
+        // [Native Mirror] 移除同步状态流
+        SnackbarHost(
+            hostState = snackbarHostState,
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = statusBarHeight + 8.dp) // Added status bar offset
+                .align(Alignment.BottomCenter)
+                .padding(bottom = navigationBarHeight + 80.dp)
         )
     }
 
@@ -472,44 +397,10 @@ fun SettingsScreen(
                 showConfirmDialog = false
             }
         )
+
     }
 
-    // 冲突解决对话框
-    if (showConflictDialog) {
-        ConflictResolutionDialog(
-            conflictCount = uiState.lastSyncConflictCount,
-            useDarkTheme = useDarkTheme,
-            onDismiss = { showConflictDialog = false },
-            onResolve = { resolution ->
-                viewModel.onEvent(SettingsEvent.ResolveConflict(resolution))
-                showConflictDialog = false
-            }
-        )
-    }
-
-    // 修复确认对话框
-    if (showRepairDialog) {
-        AlertDialog(
-            onDismissRequest = { showRepairDialog = false },
-            title = { Text("修复本地数据") },
-            text = { Text("此操作将扫描并删除本地重复的单词和语法数据。\n\n如果您发现同步数量显示异常(例如翻倍)，请尝试此操作。\n\n修复前建议先【立即同步】以防万一。") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.onEvent(SettingsEvent.RepairLocalData)
-                        showRepairDialog = false
-                    }
-                ) {
-                    Text("开始修复")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRepairDialog = false }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
+    // [Native Mirror] 移除冲突解决与修复对话框，由后端原子逻辑保证一致性
 }
 
 /**

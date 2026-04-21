@@ -19,7 +19,7 @@ interface StudyRepository {
      * @param itemType 'word' | 'grammar'
      * @param rating 1:Again, 2:Hard, 3:Good, 4:Easy
      */
-    suspend fun processReview(itemId: Int, itemType: String, rating: Int)
+    suspend fun processReview(itemId: String, itemType: String, rating: Int)
 
     /**
      * 开始实时监听云端变更

@@ -11,11 +11,11 @@ interface FavoriteQuestionRepository {
 
     suspend fun insertFavoriteQuestion(question: FavoriteQuestion)
 
-    suspend fun deleteFavoriteQuestion(id: Int)
+    suspend fun deleteFavoriteQuestion(id: String)
 
-    suspend fun isFavorite(grammarId: Int?, jsonId: String?): Boolean
+    suspend fun isFavorite(grammarId: String?, jsonId: String?): Boolean
 
-    suspend fun removeFavorite(grammarId: Int?, jsonId: String?)
+    suspend fun removeFavorite(grammarId: String?, jsonId: String?)
 
     suspend fun clearAll()
 }

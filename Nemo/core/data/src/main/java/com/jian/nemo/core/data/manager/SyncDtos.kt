@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SyncWordStateDto(
     @SerialName("user_id") val userId: String,
-    @SerialName("word_id") val wordId: Int,
+    @SerialName("word_id") val wordId: String,
     @SerialName("repetition_count") val repetitionCount: Int,
     @SerialName("stability") val stability: Float = 0f,
     @SerialName("difficulty") val difficulty: Float = 0f,
@@ -33,7 +33,7 @@ data class SyncWordStateDto(
 @Serializable
 data class SyncGrammarStateDto(
     @SerialName("user_id") val userId: String,
-    @SerialName("grammar_id") val grammarId: Int,
+    @SerialName("grammar_id") val grammarId: String,
     @SerialName("repetition_count") val repetitionCount: Int,
     @SerialName("stability") val stability: Float = 0f,
     @SerialName("difficulty") val difficulty: Float = 0f,
@@ -82,7 +82,7 @@ data class SyncTestRecordDto(
 data class SyncWrongAnswerDto(
     @SerialName("user_id") val userId: String,
     @SerialName("uuid") val uuid: String,
-    @SerialName("word_id") val wordId: Int,
+    @SerialName("word_id") val wordId: String,
     @SerialName("test_mode") val testMode: String,
     @SerialName("user_answer") val userAnswer: String,
     @SerialName("correct_answer") val correctAnswer: String,
@@ -96,7 +96,7 @@ data class SyncWrongAnswerDto(
 data class SyncGrammarWrongAnswerDto(
     @SerialName("user_id") val userId: String,
     @SerialName("uuid") val uuid: String,
-    @SerialName("grammar_id") val grammarId: Int,
+    @SerialName("grammar_id") val grammarId: String,
     @SerialName("test_mode") val testMode: String,
     @SerialName("user_answer") val userAnswer: String,
     @SerialName("correct_answer") val correctAnswer: String,
@@ -109,7 +109,7 @@ data class SyncGrammarWrongAnswerDto(
 @Serializable
 data class SyncFavoriteQuestionDto(
     @SerialName("user_id") val userId: String,
-    @SerialName("grammar_id") val grammarId: Int?,
+    @SerialName("grammar_id") val grammarId: String?,
     @SerialName("json_id") val jsonId: String?,
     @SerialName("question_type") val questionType: String,
     @SerialName("question_text") val questionText: String,
@@ -130,76 +130,7 @@ data class SyncAppSettingsDto(
 // Mappers (Cloud DTO <-> Local Entity)
 // ===================================
 
-fun SyncWordStateDto.toEntity() = WordStudyStateEntity(
-    wordId = wordId,
-    repetitionCount = repetitionCount,
-    stability = stability,
-    difficulty = difficulty,
-    interval = interval,
-    nextReviewDate = nextReviewDate,
-    isFavorite = isFavorite,
-    isSkipped = isSkipped,
-    isDeleted = isDeleted,
-    deletedTime = deletedTime,
-    lastModifiedTime = lastModifiedTime,
-    lastReviewedDate = lastReviewedDate,
-    firstLearnedDate = firstLearnedDate,
-    buriedUntilDay = buriedUntilDay
-)
-
-fun WordStudyStateEntity.toSyncDto(userId: String) = SyncWordStateDto(
-    userId = userId,
-    wordId = wordId,
-    repetitionCount = repetitionCount,
-    stability = stability,
-    difficulty = difficulty,
-    interval = interval,
-    nextReviewDate = nextReviewDate,
-    isFavorite = isFavorite,
-    isSkipped = isSkipped,
-    isDeleted = isDeleted,
-    deletedTime = deletedTime,
-    lastModifiedTime = lastModifiedTime,
-    lastReviewedDate = lastReviewedDate,
-    firstLearnedDate = firstLearnedDate,
-    buriedUntilDay = buriedUntilDay
-)
-
-fun SyncGrammarStateDto.toEntity() = GrammarStudyStateEntity(
-    grammarId = grammarId,
-    repetitionCount = repetitionCount,
-    stability = stability,
-    difficulty = difficulty,
-    interval = interval,
-    nextReviewDate = nextReviewDate,
-    isFavorite = isFavorite,
-    isSkipped = isSkipped,
-    isDeleted = isDeleted,
-    deletedTime = deletedTime,
-    lastModifiedTime = lastModifiedTime,
-    lastReviewedDate = lastReviewedDate,
-    firstLearnedDate = firstLearnedDate,
-    buriedUntilDay = buriedUntilDay
-)
-
-fun GrammarStudyStateEntity.toSyncDto(userId: String) = SyncGrammarStateDto(
-    userId = userId,
-    grammarId = grammarId,
-    repetitionCount = repetitionCount,
-    stability = stability,
-    difficulty = difficulty,
-    interval = interval,
-    nextReviewDate = nextReviewDate,
-    isFavorite = isFavorite,
-    isSkipped = isSkipped,
-    isDeleted = isDeleted,
-    deletedTime = deletedTime,
-    lastModifiedTime = lastModifiedTime,
-    lastReviewedDate = lastReviewedDate,
-    firstLearnedDate = firstLearnedDate,
-    buriedUntilDay = buriedUntilDay
-)
-
+// Mappers for old state entities removed
 fun SyncStudyRecordDto.toEntity() = StudyRecordEntity(
     date = date,
     learnedWords = learnedWords,
@@ -230,7 +161,7 @@ fun StudyRecordEntity.toSyncDto(userId: String) = SyncStudyRecordDto(
 )
 
 fun SyncTestRecordDto.toEntity() = TestRecordEntity(
-    uuid = uuid,
+    id = uuid,
     date = date,
     totalQuestions = totalQuestions,
     correctAnswers = correctAnswers,
@@ -242,7 +173,7 @@ fun SyncTestRecordDto.toEntity() = TestRecordEntity(
 
 fun TestRecordEntity.toSyncDto(userId: String) = SyncTestRecordDto(
     userId = userId,
-    uuid = uuid,
+    uuid = id,
     date = date,
     totalQuestions = totalQuestions,
     correctAnswers = correctAnswers,
@@ -253,7 +184,7 @@ fun TestRecordEntity.toSyncDto(userId: String) = SyncTestRecordDto(
 )
 
 fun SyncWrongAnswerDto.toEntity() = WrongAnswerEntity(
-    uuid = uuid,
+    id = uuid,
     wordId = wordId,
     testMode = testMode,
     userAnswer = userAnswer,
@@ -266,7 +197,7 @@ fun SyncWrongAnswerDto.toEntity() = WrongAnswerEntity(
 
 fun WrongAnswerEntity.toSyncDto(userId: String) = SyncWrongAnswerDto(
     userId = userId,
-    uuid = uuid,
+    uuid = id,
     wordId = wordId,
     testMode = testMode,
     userAnswer = userAnswer,
@@ -278,7 +209,7 @@ fun WrongAnswerEntity.toSyncDto(userId: String) = SyncWrongAnswerDto(
 )
 
 fun SyncGrammarWrongAnswerDto.toEntity() = GrammarWrongAnswerEntity(
-    uuid = uuid,
+    id = uuid,
     grammarId = grammarId,
     testMode = testMode,
     userAnswer = userAnswer,
@@ -291,7 +222,7 @@ fun SyncGrammarWrongAnswerDto.toEntity() = GrammarWrongAnswerEntity(
 
 fun GrammarWrongAnswerEntity.toSyncDto(userId: String) = SyncGrammarWrongAnswerDto(
     userId = userId,
-    uuid = uuid,
+    uuid = id,
     grammarId = grammarId,
     testMode = testMode,
     userAnswer = userAnswer,

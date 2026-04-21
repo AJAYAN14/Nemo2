@@ -14,7 +14,6 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.rpc
-import com.jian.nemo.core.data.util.DataSeedService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -47,7 +46,6 @@ class SupabaseSyncManager @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val database: NemoDatabase,
     private val syncMetadata: SyncMetadata,
-    private val dataSeedService: DataSeedService,
     private val contentRepository: com.jian.nemo.core.domain.repository.ContentRepository,
     private val contentUpdateApplier: com.jian.nemo.core.domain.repository.ContentUpdateApplier,
     @ApplicationScope private val scope: CoroutineScope
@@ -73,10 +71,7 @@ class SupabaseSyncManager @Inject constructor(
         emit(SyncProgress.Running("正在准备同步...", 0, 0))
         
         try {
-            // 1. 确保本地词库已初始化
-            dataSeedService.ensureDataSeeded()
-
-            // 2. 字典内容同步 (增量)
+            // 1. 字典内容同步 (增量)
             syncDictionary()
 
             // 3. 时间校验 (RPC)
@@ -91,17 +86,31 @@ class SupabaseSyncManager @Inject constructor(
             
             // 4. 拉取所有进度并更新本地 (Native Mirror 核心逻辑)
             // 严格遵循 rules.md: 3.A/3.B，本地只作为一个视图，服务端是权威
-            val remoteProgress = supabaseClient.postgrest[TABLE_USER_PROGRESS]
-                .select(columns = Columns.ALL) {
-                    filter { eq("user_id", userId) }
-                }.decodeList<UserProgressEntity>()
+            val lastSyncTime = settingsRepository.getLastSyncTime()
+            val remoteProgress = if (!force && lastSyncTime > 0L) {
+                // [Incremental Sync] 仅拉取上次同步后变更的数据，降低前台全量拉取压力
+                val safeTime = lastSyncTime - 60 * 1000L // 1分钟冗余
+                val lastSyncIso = kotlinx.datetime.Instant.fromEpochMilliseconds(safeTime).toString()
+                supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                    .select(columns = Columns.ALL) {
+                        filter {
+                            eq("user_id", userId)
+                            gte("updated_at", lastSyncIso)
+                        }
+                    }.decodeList<UserProgressEntity>()
+            } else {
+                // [Full Sync] 全量拉取
+                supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                    .select(columns = Columns.ALL) {
+                        filter { eq("user_id", userId) }
+                    }.decodeList<UserProgressEntity>()
+            }
             
             database.withTransaction {
                 // 这里使用 insertAll (OnConflictStrategy.REPLACE) 确保本地状态与服务器一致
                 userProgressDao.insertAll(remoteProgress)
                 
-                // [Native Mirror] 如果本地有服务器没有的记录，理论上如果是离线产生的应该在 Outbox 中，
-                // 这里我们暂且以服务器为准。
+                // [Native Mirror] 增量拉取不处理软删除逻辑（假定数据主要由本地软清理或服务端极少硬删除）
             }
 
             settingsRepository.setLastSyncTime(DateTimeUtils.getCurrentCompensatedMillis())
@@ -206,6 +215,11 @@ class SupabaseSyncManager @Inject constructor(
                 val remoteGrammars = contentRepository.fetchRemoteGrammars(level)
                 if (remoteGrammars.isNotEmpty()) {
                     contentUpdateApplier.applyGrammars(level, remoteGrammars)
+                }
+
+                val remoteQuestions = contentRepository.fetchRemoteGrammarQuestions(level)
+                if (remoteQuestions.isNotEmpty()) {
+                    contentUpdateApplier.applyGrammarQuestions(level, remoteQuestions)
                 }
             }
 

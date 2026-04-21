@@ -11,7 +11,7 @@ package com.jian.nemo.core.domain.model
  * 3. 包含业务逻辑方法和向后兼容方法
  */
 data class Grammar(
-    val id: Int,
+    override val id: String, // 对齐 SrsItem
 
     // ========== 核心内容 ==========
     /**
@@ -37,6 +37,7 @@ data class Grammar(
 
     // ========== SRS 复习字段 (FSRS 6) ==========
     override val repetitionCount: Int = 0,
+    override val lapses: Int = 0,
     override val interval: Int = 0,
     override val stability: Double = 0.0,
     override val difficulty: Double = 0.0,

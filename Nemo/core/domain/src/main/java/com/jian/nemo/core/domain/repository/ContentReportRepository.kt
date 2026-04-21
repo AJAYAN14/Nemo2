@@ -12,5 +12,5 @@ interface ContentReportRepository {
      * @param itemId 条目 ID (单词或语法 ID)
      * @param itemType 条目类型 ("word" 或 "grammar")
      */
-    suspend fun reportContentError(itemId: Int, itemType: String): Result<Unit>
+    suspend fun reportContentError(itemId: String, itemType: String): Result<Unit>
 }

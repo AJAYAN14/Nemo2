@@ -30,7 +30,7 @@ data class UserProgressEntity(
     val itemType: String, // 'word' | 'grammar'
 
     @ColumnInfo(name = "item_id")
-    val itemId: Int,
+    val itemId: String,
 
     // ========== FSRS State (Calculated by Server RPC) ==========
     

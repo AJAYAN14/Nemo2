@@ -46,22 +46,36 @@ class StudyRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun processReview(itemId: Int, itemType: String, rating: Int) {
+    override suspend fun processReview(itemId: String, itemType: String, rating: Int) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
         val now = Clock.System.now()
         
         // 1. 本地算法预估 (遵循 rules.md: 3.B 离线补偿)
+        // [FOR OPTIMISTIC UI PREVIEW ONLY]
+        // 这里的计算仅用于乐观 UI 更新和离线占位。真正的 FSRS 核心逻辑由服务端的 
+        // fn_process_review_atomic_v3 (Logic Authority) 负责计算。
         val elapsedDays = calculateElapsedDays(progress.lastReview, now)
         val currentState = Fsrs6Algorithm.MemoryState(progress.stability, progress.difficulty)
         val newState = algorithm.step(currentState, rating, elapsedDays)
         
-        // 注意：这里为了简化，暂不计算 Fuzz，等 RPC 返回最终结果
-        val nextReview = now.plus(1.days) // 临时占位
+        val newReps = if (rating == 1) progress.reps else progress.reps + 1
+        val newLapses = if (rating == 1) progress.lapses + 1 else progress.lapses
+        
+        // [Offline Compensation] Accurate local Fuzz calculation for Optimistic UI
+        val intervalDays = if (rating == 1) {
+            0 // Again falls back to due immediately
+        } else {
+            val seed = algorithm.buildFsrsDeterministicSeed(progress.id, progress.reps)
+            algorithm.nextIntervalDaysWithFuzz(newState.stability, seed)
+        }
+        val nextReview = now.plus(intervalDays.days)
 
         val localUpdated = progress.copy(
             stability = newState.stability,
             difficulty = newState.difficulty,
             state = if (rating == 1) (if (progress.state >= 2) 3 else 1) else 2,
+            reps = newReps,
+            lapses = newLapses,
             lastReview = now.toString(),
             nextReview = nextReview.toString()
         )
@@ -99,65 +113,50 @@ class StudyRepositoryImpl @Inject constructor(
         val pending = syncOutboxDao.getPendingTasks()
         
         for (task in pending) {
+            val progress = userProgressDao.getByItem(task.itemType, task.itemId) 
+                ?: continue
+
             try {
                 syncOutboxDao.setSyncingStatus(task.id, true)
-                
-                val progress = userProgressDao.getByItem(task.itemType, task.itemId) 
-                    ?: continue
 
-                // 1. 本地再次计算 (确保使用最新的 FSRS 6 参数)
-                val now = Instant.parse(task.createdAt)
-                val elapsedDays = calculateElapsedDays(progress.lastReview, now)
-                val nextState = algorithm.step(
-                    Fsrs6Algorithm.MemoryState(progress.stability, progress.difficulty),
-                    task.rating,
-                    elapsedDays
-                )
+                // [Logic Authority] 遵循 rules.md: 3.B，不再由客户端计算稳定性/难度
+                // 仅发送 rating 和必要元数据，由服务器 RPC (v3) 负责算法执行
                 
-                // 计算间隔 (这里简化，实际应考虑 Fuzz，但在 RPC 中云端会重新计算)
-                val interval = algorithm.nextIntervalDaysWithFuzz(nextState.stability, task.id) // 暂用 task.id 作为随机种子
-
-                // 2. 构建 RPC 参数 (严格对齐 Web 端)
-                val params = ProcessReviewRpcParams(
-                    userId = userId,
-                    progressId = progress.id,
-                    itemType = task.itemType,
-                    itemId = task.itemId,
-                    rating = task.rating,
-                    prevStability = progress.stability,
-                    prevDifficulty = progress.difficulty,
-                    prevState = progress.state,
-                    prevLearningStep = progress.learningStep,
-                    prevBuriedUntil = progress.buriedUntil,
-                    nextStability = nextState.stability,
-                    nextDifficulty = nextState.difficulty,
-                    nextElapsedDays = elapsedDays.toInt(),
-                    nextScheduledDays = interval,
-                    nextReps = progress.reps + 1,
-                    nextLapses = if (task.rating == 1) progress.lapses + 1 else progress.lapses,
-                    nextState = if (task.rating == 1) 3 else 2, // 简化逻辑
-                    nextLearningStep = 0,
-                    nextLastReview = now.toString(),
-                    nextReview = (now + interval.days).toString(),
-                    nextBuriedUntil = null,
-                    epochDay = (now.toEpochMilliseconds() / 86400000).toInt(),
-                    studyField = if (task.itemType == "word") "reviewed_words" else "reviewed_grammars",
-                    studyDelta = 1,
-                    requestId = "android-${task.id}",
-                    expectedLastReview = progress.lastReview
+                val params = mapOf(
+                    "p_user_id" to userId,
+                    "p_progress_id" to progress.id,
+                    "p_rating" to task.rating,
+                    "p_request_id" to "android-${task.id}",
+                    "p_epoch_day" to (Instant.parse(task.createdAt).toEpochMilliseconds() / 86400000).toInt(),
+                    "p_study_field" to (if (task.itemType == "word") "reviewed_words" else "reviewed_grammars"),
+                    "p_expected_last_review" to progress.lastReview
                 )
 
-                // 3. 执行 RPC
-                val response = supabase.postgrest.rpc("fn_process_review_atomic", Json.encodeToJsonElement(params).jsonObject)
+                // 调用服务端重构后的 v3 RPC
+                supabase.postgrest.rpc("fn_process_review_atomic_v3", Json.encodeToJsonElement(params).jsonObject)
                 
-                // 4. 同步成功，删除任务并更新本地
-                // 注意：这里由于 Realtime 会自动推回更新，所以我们其实可以只删任务，
-                // 但为了双保险，这里也手动更新一下。
+                // 同步成功，删除任务
                 syncOutboxDao.deleteById(task.id)
                 
             } catch (e: Exception) {
-                syncOutboxDao.incrementAttempts(task.id)
-                e.printStackTrace()
+                if (e.message?.contains("STALE_DATA_CONFLICT") == true) {
+                    // [Conflict Resolution] 服务器数据更新，本地数据陈旧。
+                    // 强制拉取这条数据的最新状态并覆盖本地，成功后再删除本地的无效重试任务
+                    try {
+                        val remoteProgressResponse = supabase.postgrest["user_progress"]
+                            .select { filter { eq("id", progress.id) } }
+                            .decodeSingleOrNull<UserProgressEntity>()
+                        if (remoteProgressResponse != null) {
+                            userProgressDao.insert(remoteProgressResponse)
+                            syncOutboxDao.deleteById(task.id)
+                        }
+                    } catch (fetchErr: Exception) {
+                        fetchErr.printStackTrace()
+                    }
+                } else {
+                    syncOutboxDao.incrementAttempts(task.id)
+                    e.printStackTrace()
+                }
             }
         }
     }

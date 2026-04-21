@@ -34,7 +34,7 @@ data class GrammarUsageEntity(
      * 关联的语法ID
      */
     @ColumnInfo(name = "grammar_id")
-    val grammarId: Int,
+    val grammarId: String,
 
     /**
      * 用法子类型（可选）

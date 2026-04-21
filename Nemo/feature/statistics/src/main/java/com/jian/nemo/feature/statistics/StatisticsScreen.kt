@@ -44,8 +44,8 @@ import com.jian.nemo.feature.statistics.model.StatisticSource
 @Composable
 fun StatisticsScreen(
     onBack: () -> Unit,
-    onNavigateToWordDetail: (Int) -> Unit,
-    onNavigateToGrammarDetail: (Int) -> Unit,
+    onNavigateToWordDetail: (String) -> Unit,
+    onNavigateToGrammarDetail: (String) -> Unit,
     viewModel: StatisticsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -147,7 +147,7 @@ fun StatisticsSectionTitle(text: String) {
 @Composable
 fun StatisticsListCard(
     items: List<StatisticDisplayItem>,
-    onItemClick: (Int) -> Unit,
+    onItemClick: (String) -> Unit,
     isWord: Boolean,
     showSourceBadge: Boolean = true
 ) {

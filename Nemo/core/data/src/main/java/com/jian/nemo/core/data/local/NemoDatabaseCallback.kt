@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.jian.nemo.core.data.util.DataSeedService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -19,30 +18,16 @@ import javax.inject.Singleton
 @Singleton
 class NemoDatabaseCallback @Inject constructor(
     @ApplicationContext private val context: Context,
-    @ApplicationScope private val applicationScope: CoroutineScope,
-    private val dataSeedService: DataSeedService
+    @ApplicationScope private val applicationScope: CoroutineScope
 ) : RoomDatabase.Callback() {
-
-    companion object {
-        private const val TAG = "NemoDatabaseCallback"
-    }
-
-    override fun onCreate(db: SupportSQLiteDatabase) {
-        super.onCreate(db)
-        Log.d(TAG, "🗄️ 数据库首次创建 (初始化由 onOpen 接管)")
-    }
 
     override fun onOpen(db: SupportSQLiteDatabase) {
         super.onOpen(db)
-        Log.i(TAG, "🔵 数据库已打开，启动数据填充检查")
+        Log.i(TAG, "🔵 数据库已打开")
+    }
 
-        applicationScope.launch {
-            try {
-                dataSeedService.ensureDataSeeded()
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ 数据填充失败: ${e.message}", e)
-            }
-        }
+    companion object {
+        private const val TAG = "NemoDatabaseCallback"
     }
 }
 

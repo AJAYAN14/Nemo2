@@ -43,7 +43,7 @@ enum class CardState {
  * @param state 卡片状态
  */
 data class MatchableCard(
-    val id: Int,
+    val id: String,
     val text: String,
     val type: CardType,
     val state: CardState = CardState.DEFAULT
