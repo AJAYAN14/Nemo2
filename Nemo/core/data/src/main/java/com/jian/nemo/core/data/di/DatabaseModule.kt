@@ -114,21 +114,13 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideWordStudyStateDao(database: NemoDatabase): WordStudyStateDao = database.wordStudyStateDao()
-
-    @Provides
-    @Singleton
-    fun provideGrammarStudyStateDao(database: NemoDatabase): GrammarStudyStateDao = database.grammarStudyStateDao()
-
-    @Provides
-    @Singleton
-    fun provideFavoriteQuestionDao(database: NemoDatabase): FavoriteQuestionDao = database.favoriteQuestionDao()
-
-    @Provides
-    @Singleton
     fun provideUserProgressDao(database: NemoDatabase): UserProgressDao = database.userProgressDao()
 
     @Provides
     @Singleton
     fun provideSyncOutboxDao(database: NemoDatabase): SyncOutboxDao = database.syncOutboxDao()
+
+    @Provides
+    @Singleton
+    fun provideFavoriteQuestionDao(database: NemoDatabase): FavoriteQuestionDao = database.favoriteQuestionDao()
 }

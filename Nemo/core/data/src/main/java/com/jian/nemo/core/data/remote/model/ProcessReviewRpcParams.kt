@@ -20,7 +20,7 @@ data class ProcessReviewRpcParams(
     @SerialName("p_prev_difficulty") val prevDifficulty: Double,
     @SerialName("p_prev_state") val prevState: Int,
     @SerialName("p_prev_learning_step") val prevLearningStep: Int,
-    @SerialName("p_prev_buried_until") val prevBuriedUntil: Long,
+    @SerialName("p_prev_buried_until") val prevBuriedUntil: String?,
     
     // Calculated Next states
     @SerialName("p_next_stability") val nextStability: Double,
@@ -33,7 +33,7 @@ data class ProcessReviewRpcParams(
     @SerialName("p_next_learning_step") val nextLearningStep: Int,
     @SerialName("p_next_last_review") val nextLastReview: String?,
     @SerialName("p_next_review") val nextReview: String?,
-    @SerialName("p_next_buried_until") val nextBuriedUntil: Long,
+    @SerialName("p_next_buried_until") val nextBuriedUntil: String?,
     
     // Statistics & Sync
     @SerialName("p_epoch_day") val epochDay: Int?,

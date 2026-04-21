@@ -22,14 +22,14 @@ interface SrsItem {
      * - 0: 未学习 (新卡)
      * - >0: 稳定性 (天)
      */
-    val stability: Float
+    val stability: Double
 
     /**
      * 难度 (FSRS)
      * - 0: 未学习 (新卡)
      * - 1-10: 难度值
      */
-    val difficulty: Float
+    val difficulty: Double
 
     /**
      * 下次复习间隔（天数）
@@ -58,8 +58,8 @@ interface SrsItem {
  */
 data class SrsUpdateResult(
     val repetitionCount: Int,
-    val stability: Float,
-    val difficulty: Float,
+    val stability: Double,
+    val difficulty: Double,
     val interval: Int,
     val nextReviewDate: Long,
     val lastReviewedDate: Long?,

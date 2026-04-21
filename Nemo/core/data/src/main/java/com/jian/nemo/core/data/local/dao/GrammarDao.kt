@@ -7,8 +7,6 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.jian.nemo.core.data.local.entity.GrammarEntity
-import com.jian.nemo.core.data.local.entity.GrammarStudyStateUpdate
-import com.jian.nemo.core.data.local.entity.GrammarStudyStateEntity
 import com.jian.nemo.core.data.local.entity.relations.GrammarWithUsages
 import kotlinx.coroutines.flow.Flow
 
@@ -30,12 +28,6 @@ interface GrammarDao {
     @Update
     suspend fun update(grammar: GrammarEntity)
 
-    /**
-     * 批量更新进度
-     */
-    @Update(entity = GrammarStudyStateEntity::class)
-    suspend fun updateStudyState(updates: List<GrammarStudyStateUpdate>): Int
-
     @Query("SELECT id FROM grammars WHERE id IN (:ids)")
     suspend fun getIdsIn(ids: List<Int>): List<Int>
 
@@ -49,13 +41,12 @@ interface GrammarDao {
      * 逻辑删除语法
      */
     @Query("""
-        UPDATE grammar_study_states SET
-        is_deleted = 1,
-        deleted_time = :deletedTime,
-        last_modified_time = :deletedTime
-        WHERE grammar_id IN (:ids)
+        UPDATE user_progress SET
+        state = -1,
+        updated_at = :updatedTime
+        WHERE item_id IN (:ids) AND item_type = 'grammar'
     """)
-    suspend fun softDeleteByIds(ids: List<Int>, deletedTime: Long)
+    suspend fun softDeleteByIds(ids: List<Int>, updatedTime: String)
 
     @Query("DELETE FROM grammars WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Int>)
@@ -74,22 +65,22 @@ interface GrammarDao {
      */
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.last_modified_time > :sinceTime
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.updated_at > :sinceTime
     """)
-    suspend fun getModifiedSince(sinceTime: Long): List<GrammarEntity>
+    suspend fun getModifiedSince(sinceTime: String): List<GrammarEntity>
 
     @Query("""
-        SELECT COUNT(*) FROM grammar_study_states
-        WHERE last_modified_time > :timestamp
+        SELECT COUNT(*) FROM user_progress
+        WHERE updated_at > :timestamp AND item_type = 'grammar'
     """)
-    suspend fun countModifiedSince(timestamp: Long): Int
+    suspend fun countModifiedSince(timestamp: String): Int
 
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE g.id = :id
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getById(id: Int): Flow<GrammarEntity?>
@@ -100,9 +91,9 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE g.id = :id
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getGrammarWithUsages(id: Int): Flow<GrammarWithUsages?>
@@ -113,8 +104,8 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getAllGrammarsWithUsages(): Flow<List<GrammarWithUsages>>
@@ -126,9 +117,9 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE UPPER(g.grammar_level) IN (:levels)
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getGrammarsByLevelsWithUsages(levels: List<String>): Flow<List<GrammarWithUsages>>
@@ -136,11 +127,10 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE UPPER(g.grammar_level) = UPPER(:level)
-        AND (s.repetition_count IS NULL OR s.repetition_count = 0)
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.reps IS NULL OR s.reps = 0)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
         ORDER BY g.id ASC
     """)
@@ -152,11 +142,10 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE UPPER(g.grammar_level) = UPPER(:level)
-        AND (s.repetition_count IS NULL OR s.repetition_count = 0)
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.reps IS NULL OR s.reps = 0)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
         ORDER BY RANDOM()
     """)
@@ -165,47 +154,44 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.next_review_date <= :currentDate
-        AND s.repetition_count > 0
-        AND s.is_skipped = 0
-        AND s.is_deleted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.next_review <= :currentDate
+        AND s.reps > 0
+        AND s.state != -1
         AND g.is_delisted = 0
-        ORDER BY s.next_review_date ASC
+        ORDER BY s.next_review ASC
     """)
-    fun getDueGrammarsWithUsages(currentDate: Long): Flow<List<GrammarWithUsages>>
+    fun getDueGrammarsWithUsages(currentDate: String): Flow<List<GrammarWithUsages>>
 
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.first_learned_date = :todayEpochDay
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.created_at >= :todayISO
+        AND s.state != -1
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
-    fun getTodayLearnedGrammarsWithUsages(todayEpochDay: Long): Flow<List<GrammarWithUsages>>
+    fun getTodayLearnedGrammarsWithUsages(todayISO: String): Flow<List<GrammarWithUsages>>
 
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.last_reviewed_date = :todayEpochDay
-        AND s.repetition_count > 0
-        AND s.first_learned_date < :todayEpochDay
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.last_review >= :todayISO
+        AND s.reps > 0
+        AND s.created_at < :todayISO
+        AND s.state != -1
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
-    fun getTodayReviewedGrammarsWithUsages(todayEpochDay: Long): Flow<List<GrammarWithUsages>>
+    fun getTodayReviewedGrammarsWithUsages(todayISO: String): Flow<List<GrammarWithUsages>>
 
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.is_favorite = 1 AND s.is_deleted = 0 AND g.is_delisted = 0 ORDER BY g.id DESC
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.is_favorite = 1 AND s.state != -1 AND g.is_delisted = 0 ORDER BY g.id DESC
     """)
     fun getFavoriteGrammarsWithUsages(): Flow<List<GrammarWithUsages>>
 
@@ -215,8 +201,8 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.is_skipped = 1 AND s.is_deleted = 0 AND g.is_delisted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.state = -1 AND g.is_delisted = 0
         ORDER BY g.id DESC LIMIT :limit
     """)
     fun getSkippedGrammarsWithUsages(limit: Int): Flow<List<GrammarWithUsages>>
@@ -224,21 +210,19 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.repetition_count > 0
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.reps > 0
+        AND s.state != -1
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
     fun getAllLearnedGrammarsWithUsages(): Flow<List<GrammarWithUsages>>
 
     @Query("""
-        SELECT COUNT(*) FROM grammar_study_states s
-        JOIN grammars g ON s.grammar_id = g.id
-        WHERE s.repetition_count > 0
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        SELECT COUNT(*) FROM user_progress s
+        JOIN grammars g ON s.item_id = g.id AND s.item_type = 'grammar'
+        WHERE s.reps > 0
+        AND s.state != -1
         AND g.is_delisted = 0
     """)
     fun getLearnedGrammarCount(): Flow<Int>
@@ -249,11 +233,10 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.repetition_count > 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.reps > 0
         AND UPPER(g.grammar_level) = UPPER(:level)
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        AND s.state != -1
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -272,9 +255,9 @@ interface GrammarDao {
     @Transaction
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE g.grammar LIKE '%' || :query || '%'
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
         ORDER BY g.id ASC
     """)
@@ -292,26 +275,22 @@ interface GrammarDao {
     @Query("""
         SELECT
             g.id, g.grammar, g.grammar_level,
-            s.repetition_count AS repetitionCount,
+            s.reps AS reps,
             s.stability AS stability,
             s.difficulty AS difficulty,
-            s.interval AS interval,
-            s.next_review_date AS nextReviewDate,
+            s.scheduled_days AS interval,
+            s.next_review AS nextReview,
             s.is_favorite AS isFavorite,
-            s.is_skipped AS isSkipped,
-            s.is_deleted AS isDeleted,
-            s.deleted_time AS deletedTime,
-            s.last_modified_time AS lastModifiedTime,
-            s.last_reviewed_date AS lastReviewedDate,
-            s.first_learned_date AS firstLearnedDate
+            s.state AS state,
+            s.updated_at AS updatedAt,
+            s.last_review AS lastReview,
+            s.created_at AS createdAt
         FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.repetition_count > 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.reps > 0
         OR s.is_favorite = 1
-        OR s.is_skipped = 1
-        OR s.is_deleted = 1
-        OR s.first_learned_date IS NOT NULL
-        OR s.last_modified_time > 0
+        OR s.state = -1
+        OR s.created_at IS NOT NULL
     """)
     fun getExportGrammarsCursor(): android.database.Cursor
 
@@ -323,8 +302,8 @@ interface GrammarDao {
      */
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getAllGrammars(): Flow<List<GrammarEntity>>
@@ -334,10 +313,9 @@ interface GrammarDao {
      */
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.repetition_count > 0
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.reps > 0
+        AND s.state != -1
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -354,9 +332,9 @@ interface GrammarDao {
      */
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE UPPER(g.grammar_level) IN (:levels)
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getAllGrammarsByLevels(levels: List<String>): Flow<List<GrammarEntity>>
@@ -366,11 +344,10 @@ interface GrammarDao {
      */
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE UPPER(g.grammar_level) = UPPER(:level)
-        AND (s.repetition_count IS NULL OR s.repetition_count = 0)
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.reps IS NULL OR s.reps = 0)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
         ORDER BY g.id ASC
     """)
@@ -381,61 +358,59 @@ interface GrammarDao {
      */
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.next_review_date <= :currentDate
-        AND s.repetition_count > 0
-        AND s.is_skipped = 0
-        AND s.is_deleted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.next_review <= :currentDate
+        AND s.reps > 0
+        AND s.state != -1
         AND g.is_delisted = 0
-        ORDER BY s.next_review_date ASC
+        ORDER BY s.next_review ASC
     """)
-    fun getDueGrammars(currentDate: Long): Flow<List<GrammarEntity>>
+    fun getDueGrammars(currentDate: String): Flow<List<GrammarEntity>>
 
     @Query("""
         SELECT COUNT(*) FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.next_review_date <= :currentDate
-        AND s.repetition_count > 0
-        AND s.is_skipped = 0
-        AND s.is_deleted = 0
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.next_review <= :currentDate
+        AND s.reps > 0
+        AND s.state != -1
         AND g.is_delisted = 0
     """)
-    fun getDueGrammarsCount(currentDate: Long): Flow<Int>
+    fun getDueGrammarsCount(currentDate: String): Flow<Int>
 
     /**
      * 获取今日学习的语法
      */
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.first_learned_date = :todayEpochDay
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.created_at >= :todayISO
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
-    fun getTodayLearnedGrammars(todayEpochDay: Long): Flow<List<GrammarEntity>>
+    fun getTodayLearnedGrammars(todayISO: String): Flow<List<GrammarEntity>>
 
 
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.is_favorite = 1 AND s.is_deleted = 0 AND g.is_delisted = 0 ORDER BY g.id DESC
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.is_favorite = 1 AND s.state != -1 AND g.is_delisted = 0 ORDER BY g.id DESC
     """)
     fun getFavoriteGrammars(): Flow<List<GrammarEntity>>
 
-    @Query("UPDATE grammar_study_states SET is_favorite = :isFavorite, last_modified_time = :lastModifiedTime WHERE grammar_id = :grammarId")
-    suspend fun updateFavoriteStatus(grammarId: Int, isFavorite: Boolean, lastModifiedTime: Long)
+    @Query("UPDATE user_progress SET is_favorite = :isFavorite, updated_at = :updatedAt WHERE item_id = :grammarId AND item_type = 'grammar'")
+    suspend fun updateFavoriteStatus(grammarId: Int, isFavorite: Boolean, updatedAt: String)
 
     @Query("""
         SELECT g.* FROM grammars g
-        JOIN grammar_study_states s ON g.id = s.grammar_id
-        WHERE s.is_skipped = 1 AND s.is_deleted = 0 AND g.is_delisted = 0 ORDER BY g.id DESC LIMIT :limit
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE s.state = -1 AND g.is_delisted = 0 ORDER BY g.id DESC LIMIT :limit
     """)
     fun getSkippedGrammars(limit: Int): Flow<List<GrammarEntity>>
 
     @Query("""
-        SELECT COUNT(*) FROM grammar_study_states s
-        JOIN grammars g ON s.grammar_id = g.id
-        WHERE s.is_skipped = 1 AND s.is_deleted = 0 AND g.is_delisted = 0
+        SELECT COUNT(*) FROM user_progress s
+        JOIN grammars g ON s.item_id = g.id AND s.item_type = 'grammar'
+        WHERE s.state = -1 AND g.is_delisted = 0
     """)
     fun getSkippedGrammarsCount(): Flow<Int>
 
@@ -448,66 +423,66 @@ interface GrammarDao {
      */
     @Query("""
         SELECT g.* FROM grammars g
-        LEFT JOIN grammar_study_states s ON g.id = s.grammar_id
+        LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE g.grammar LIKE '%' || :query || '%'
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
         ORDER BY g.id ASC
     """)
     fun searchGrammars(query: String): Flow<List<GrammarEntity>>
 
-    @Query("DELETE FROM grammar_study_states")
+    @Query("DELETE FROM user_progress WHERE item_type = 'grammar'")
     suspend fun resetAllProgress()
 
     /**
      * 清空所有收藏
      */
-    @Query("UPDATE grammar_study_states SET is_favorite = 0 WHERE is_favorite = 1")
+    @Query("UPDATE user_progress SET is_favorite = 0 WHERE is_favorite = 1 AND item_type = 'grammar'")
     suspend fun clearAllFavorites()
 
     /**
      * 获取复习预测
      */
     @Query("""
-        SELECT s.next_review_date AS date, COUNT(*) AS count
-        FROM grammar_study_states s
-        WHERE s.next_review_date BETWEEN :startDateEpochDay AND :endDateEpochDay
-        AND s.is_skipped = 0
-        GROUP BY s.next_review_date
+        SELECT SUBSTR(s.next_review, 1, 10) AS date, COUNT(*) AS count
+        FROM user_progress s
+        WHERE s.next_review BETWEEN :startDate AND :endDate
+        AND s.state != -1 AND s.item_type = 'grammar'
+        GROUP BY SUBSTR(s.next_review, 1, 10)
     """)
-    fun getReviewForecast(startDateEpochDay: Long, endDateEpochDay: Long): Flow<List<GrammarReviewForecastTuple>>
+    fun getReviewForecast(startDate: String, endDate: String): Flow<List<GrammarReviewForecastTuple>>
 
     // ========== 等级查询 ==========
 
     @Query("""
         SELECT DISTINCT w.grammar_level
-        FROM grammar_study_states s
-        JOIN grammars w ON s.grammar_id = w.id
-        WHERE s.last_reviewed_date = :todayEpochDay
+        FROM user_progress s
+        JOIN grammars w ON s.item_id = w.id AND s.item_type = 'grammar'
+        WHERE s.last_review >= :todayISO
     """)
-    fun getTodayReviewedGrammarLevels(todayEpochDay: Long): Flow<List<String>>
+    fun getTodayReviewedGrammarLevels(todayISO: String): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.grammar_level
-        FROM grammar_study_states s
-        JOIN grammars w ON s.grammar_id = w.id
-        WHERE s.first_learned_date = :todayEpochDay
+        FROM user_progress s
+        JOIN grammars w ON s.item_id = w.id AND s.item_type = 'grammar'
+        WHERE s.created_at >= :todayISO
     """)
-    fun getTodayLearnedGrammarLevels(todayEpochDay: Long): Flow<List<String>>
+    fun getTodayLearnedGrammarLevels(todayISO: String): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.grammar_level
-        FROM grammar_study_states s
-        JOIN grammars w ON s.grammar_id = w.id
+        FROM user_progress s
+        JOIN grammars w ON s.item_id = w.id AND s.item_type = 'grammar'
         WHERE s.is_favorite = 1
     """)
     fun getFavoriteGrammarLevels(): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.grammar_level
-        FROM grammar_study_states s
-        JOIN grammars w ON s.grammar_id = w.id
-        WHERE s.repetition_count > 0
+        FROM user_progress s
+        JOIN grammars w ON s.item_id = w.id AND s.item_type = 'grammar'
+        WHERE s.reps > 0
     """)
     fun getLearnedGrammarLevels(): Flow<List<String>>
 
@@ -542,6 +517,6 @@ interface GrammarDao {
 }
 
 data class GrammarReviewForecastTuple(
-    val date: Long,
+    val date: String,
     val count: Int
 )

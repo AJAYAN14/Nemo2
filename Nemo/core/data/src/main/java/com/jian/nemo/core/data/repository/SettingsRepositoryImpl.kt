@@ -36,7 +36,8 @@ class SettingsRepositoryImpl @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val database: NemoDatabase,
     private val wordDao: WordDao,
-    private val grammarDao: GrammarDao
+    private val grammarDao: GrammarDao,
+    private val userProgressDao: com.jian.nemo.core.data.local.dao.UserProgressDao
 ) : SettingsRepository {
     // ========== 用户设置 ==========
 
@@ -1088,8 +1089,8 @@ class SettingsRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Found ${toDeleteIds.size} duplicate words. Deleting...")
                 // Use physical delete for cleanup
                 wordDao.deleteByIds(toDeleteIds)
-                // 同步清理对应的状态表 (虽然理论上 ID 不同，但为了完整性)
-                database.wordStudyStateDao().markDeletedByIds(toDeleteIds, com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis())
+                // 同步清理对应的状态表
+                userProgressDao.deleteByItemIds(toDeleteIds, "word")
                 deletedCount += toDeleteIds.size
             }
         } catch (e: Exception) {
@@ -1106,7 +1107,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Found ${toDeleteIds.size} duplicate grammars. Deleting...")
                 grammarDao.deleteByIds(toDeleteIds)
                 // 同步清理对应的状态表
-                database.grammarStudyStateDao().markDeletedByIds(toDeleteIds, com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis())
+                userProgressDao.deleteByItemIds(toDeleteIds, "grammar")
                 deletedCount += toDeleteIds.size
             }
         } catch (e: Exception) {

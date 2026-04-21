@@ -22,13 +22,11 @@ import com.jian.nemo.core.data.local.entity.*
         SettingsEntity::class,
         ReviewLogEntity::class,
         SyncMetadataEntity::class,
-        WordStudyStateEntity::class,
-        GrammarStudyStateEntity::class,
-        FavoriteQuestionEntity::class,
         UserProgressEntity::class,
-        SyncOutboxEntity::class
+        SyncOutboxEntity::class,
+        FavoriteQuestionEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = true
 )
 abstract class NemoDatabase : RoomDatabase() {
@@ -45,10 +43,8 @@ abstract class NemoDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun reviewLogDao(): ReviewLogDao
     abstract fun syncMetadataDao(): SyncMetadataDao
-
-    abstract fun wordStudyStateDao(): WordStudyStateDao
-    abstract fun grammarStudyStateDao(): GrammarStudyStateDao
     abstract fun favoriteQuestionDao(): FavoriteQuestionDao
+
     abstract fun userProgressDao(): UserProgressDao
     abstract fun syncOutboxDao(): SyncOutboxDao
 

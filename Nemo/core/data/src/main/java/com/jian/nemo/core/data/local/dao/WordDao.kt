@@ -6,8 +6,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.jian.nemo.core.data.local.entity.WordEntity
-import com.jian.nemo.core.data.local.entity.WordStudyStateUpdate
-import com.jian.nemo.core.data.local.entity.WordStudyStateEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -43,12 +41,6 @@ interface WordDao {
     suspend fun updateAll(words: List<WordEntity>)
 
     /**
-     * 批量更新进度 (增量同步专用)
-     */
-    @Update(entity = WordStudyStateEntity::class)
-    suspend fun updateStudyState(updates: List<WordStudyStateUpdate>): Int
-
-    /**
      * 批量获取存在的ID (用于区分 Update 和 Insert)
      */
     @Query("SELECT id FROM words WHERE id IN (:ids)")
@@ -69,15 +61,15 @@ interface WordDao {
 
     /**
      * 逻辑删除单词 (User State)
+     * 注意：新架构下不再支持简单的本地删除，此方法仅用于清理。
      */
     @Query("""
-        UPDATE word_study_states SET
-        is_deleted = 1,
-        deleted_time = :deletedTime,
-        last_modified_time = :deletedTime
-        WHERE word_id IN (:ids)
+        UPDATE user_progress SET
+        state = -1,
+        updated_at = :updatedTime
+        WHERE item_id IN (:ids) AND item_type = 'word'
     """)
-    suspend fun softDeleteByIds(ids: List<Int>, deletedTime: Long)
+    suspend fun softDeleteByIds(ids: List<Int>, updatedTime: String)
 
     /**
      * 标记单词下架 (Dictionary Sync)
@@ -108,23 +100,23 @@ interface WordDao {
     suspend fun getAllWordsWithDeletedSync(): List<WordEntity>
 
     /**
-     * 获取自指定时间以来修改过的单词 (用于增量同步)
+     * 获取自指定时间以来修改过的单词 (用于增量同步) - 注意：此方法现在通过 user_progress 的 updated_at 进行判断
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.last_modified_time > :sinceTime
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.updated_at > :sinceTime
     """)
-    suspend fun getModifiedSince(sinceTime: Long): List<WordEntity>
+    suspend fun getModifiedSince(sinceTime: String): List<WordEntity>
 
     /**
      * 根据ID获取单词
      */
     @Query("""
         SELECT w.* FROM words w
-        LEFT JOIN word_study_states s ON w.id = s.word_id
+        LEFT JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE w.id = :id
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
     """)
     fun getById(id: Int): Flow<WordEntity?>
@@ -138,11 +130,10 @@ interface WordDao {
      */
     @Query("""
         SELECT w.* FROM words w
-        LEFT JOIN word_study_states s ON w.id = s.word_id
+        LEFT JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE w.level = :level
-        AND (s.repetition_count IS NULL OR s.repetition_count = 0)
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.reps IS NULL OR s.reps = 0)
+        AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
         ORDER BY w.id ASC
     """)
@@ -153,11 +144,10 @@ interface WordDao {
      */
     @Query("""
         SELECT w.* FROM words w
-        LEFT JOIN word_study_states s ON w.id = s.word_id
+        LEFT JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE w.level = :level
-        AND (s.repetition_count IS NULL OR s.repetition_count = 0)
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.reps IS NULL OR s.reps = 0)
+        AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
         ORDER BY RANDOM()
     """)
@@ -165,76 +155,72 @@ interface WordDao {
 
     /**
      * 获取到期复习单词
-     * @param currentDate 当前日期 (Epoch Day)
+     * @param currentDate 当前日期 (ISO String)
      * @return 到期复习单词列表Flow
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.next_review_date <= :currentDate
-        AND s.repetition_count > 0
-        AND s.is_skipped = 0
-        AND s.is_deleted = 0
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.next_review <= :currentDate
+        AND s.reps > 0
+        AND s.state != -1
         AND w.is_delisted = 0
-        ORDER BY s.next_review_date ASC
+        ORDER BY s.next_review ASC
     """)
-    fun getDueWords(currentDate: Long): Flow<List<WordEntity>>
+    fun getDueWords(currentDate: String): Flow<List<WordEntity>>
 
     /**
      * 获取到期复习单词数量
      */
     @Query("""
-        SELECT COUNT(*) FROM word_study_states s
-        JOIN words w ON s.word_id = w.id
-        WHERE s.next_review_date <= :currentDate
-        AND s.repetition_count > 0
-        AND s.is_skipped = 0
-        AND s.is_deleted = 0
+        SELECT COUNT(*) FROM user_progress s
+        JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
+        WHERE s.next_review <= :currentDate
+        AND s.reps > 0
+        AND s.state != -1
         AND w.is_delisted = 0
     """)
-    fun getDueWordsCount(currentDate: Long): Flow<Int>
+    fun getDueWordsCount(currentDate: String): Flow<Int>
 
     /**
      * 获取今日首次学习的单词
-     * @param todayEpochDay 今天的Epoch Day
+     * @param todayISO 今天的ISO开始字符串
      * @return 今日学习的单词列表Flow
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.first_learned_date = :todayEpochDay
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.created_at >= :todayISO
+        AND s.state != -1
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
-    fun getTodayLearnedWords(todayEpochDay: Long): Flow<List<WordEntity>>
+    fun getTodayLearnedWords(todayISO: String): Flow<List<WordEntity>>
 
     /**
      * 获取今日复习过的单词
-     * @param todayEpochDay 今天的Epoch Day
+     * @param todayISO 今天的ISO开始字符串
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.last_reviewed_date = :todayEpochDay
-        AND s.repetition_count > 0
-        AND s.first_learned_date < :todayEpochDay
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.last_review >= :todayISO
+        AND s.reps > 0
+        AND s.created_at < :todayISO
+        AND s.state != -1
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
-    fun getTodayReviewedWords(todayEpochDay: Long): Flow<List<WordEntity>>
+    fun getTodayReviewedWords(todayISO: String): Flow<List<WordEntity>>
 
     /**
      * 获取所有已学习的单词 (不包含跳过的)
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.repetition_count > 0
-        AND s.is_deleted = 0
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.reps > 0
+        AND s.state != -1
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -244,11 +230,10 @@ interface WordDao {
      * 获取所有已学习的单词总数 (不包含跳过的)
      */
     @Query("""
-        SELECT COUNT(*) FROM word_study_states s
-        JOIN words w ON s.word_id = w.id
-        WHERE s.repetition_count > 0
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        SELECT COUNT(*) FROM user_progress s
+        JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
+        WHERE s.reps > 0
+        AND s.state != -1
         AND w.is_delisted = 0
     """)
     fun getLearnedWordCount(): Flow<Int>
@@ -258,11 +243,10 @@ interface WordDao {
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.repetition_count > 0
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.reps > 0
         AND w.level = :level
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        AND s.state != -1
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -276,24 +260,24 @@ interface WordDao {
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.is_favorite = 1 AND s.is_deleted = 0 AND w.is_delisted = 0 ORDER BY w.id DESC
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.is_favorite = 1 AND s.state != -1 AND w.is_delisted = 0 ORDER BY w.id DESC
     """)
     fun getFavoriteWords(): Flow<List<WordEntity>>
 
     /**
      * 更新收藏状态
      */
-    @Query("UPDATE word_study_states SET is_favorite = :isFavorite, last_modified_time = :lastModifiedTime WHERE word_id = :wordId")
-    suspend fun updateFavoriteStatus(wordId: Int, isFavorite: Boolean, lastModifiedTime: Long)
+    @Query("UPDATE user_progress SET is_favorite = :isFavorite, updated_at = :updatedAt WHERE item_id = :wordId AND item_type = 'word'")
+    suspend fun updateFavoriteStatus(wordId: Int, isFavorite: Boolean, updatedAt: String)
 
     /**
-     * 获取跳过的单词
+     * 获取跳过的单词 (Suspend 状态)
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.is_skipped = 1 AND s.is_deleted = 0 AND w.is_delisted = 0 ORDER BY w.id DESC LIMIT :limit
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.state = -1 AND w.is_delisted = 0 ORDER BY w.id DESC LIMIT :limit
     """)
     fun getSkippedWords(limit: Int): Flow<List<WordEntity>>
 
@@ -301,9 +285,9 @@ interface WordDao {
      * 获取跳过的单词数量
      */
     @Query("""
-        SELECT COUNT(*) FROM word_study_states s
-        JOIN words w ON s.word_id = w.id
-        WHERE s.is_skipped = 1 AND s.is_deleted = 0 AND w.is_delisted = 0
+        SELECT COUNT(*) FROM user_progress s
+        JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
+        WHERE s.state = -1 AND w.is_delisted = 0
     """)
     fun getSkippedWordsCount(): Flow<Int>
 
@@ -314,9 +298,9 @@ interface WordDao {
      */
     @Query("""
         SELECT w.* FROM words w
-        LEFT JOIN word_study_states s ON w.id = s.word_id
+        LEFT JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE w.level = :level
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
         ORDER BY w.id ASC
     """)
@@ -324,17 +308,16 @@ interface WordDao {
 
     /**
      * 获取按复习日期排序的已学单词 (Adaptive Strategy Optimized Query)
-     * 用于自适应测试：优先选择最该复习的单词 (nextReviewDate 越小越优先)
+     * 用于自适应测试：优先选择最该复习的单词 (nextReview 越小越优先)
      */
     @Query("""
         SELECT w.* FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.repetition_count > 0
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.reps > 0
         AND w.level IN (:levels)
-        AND (s.is_skipped = 0 OR s.is_skipped IS NULL)
-        AND s.is_deleted = 0
+        AND s.state != -1
         AND w.is_delisted = 0
-        ORDER BY s.next_review_date ASC
+        ORDER BY s.next_review ASC
         LIMIT :limit
     """)
     suspend fun getWordsSortedByNextReviewDate(levels: List<String>, limit: Int): List<WordEntity>
@@ -444,10 +427,10 @@ interface WordDao {
      * 根据ID列表获取单词
      */
     @Query("""
-        SELECT COUNT(*) FROM word_study_states
-        WHERE last_modified_time > :timestamp
+        SELECT COUNT(*) FROM user_progress
+        WHERE updated_at > :timestamp AND item_type = 'word'
     """)
-    suspend fun countModifiedSince(timestamp: Long): Int
+    suspend fun countModifiedSince(timestamp: String): Int
 
     @Query("SELECT * FROM words WHERE id IN (:ids)")
     suspend fun getWordsByIds(ids: List<Int>): List<WordEntity>
@@ -457,11 +440,11 @@ interface WordDao {
      */
     @Query("""
         SELECT w.* FROM words w
-        LEFT JOIN word_study_states s ON w.id = s.word_id
+        LEFT JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE (w.japanese LIKE '%' || :query || '%'
         OR w.chinese LIKE '%' || :query || '%'
         OR w.hiragana LIKE '%' || :query || '%')
-        AND (s.is_deleted = 0 OR s.is_deleted IS NULL)
+        AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
         ORDER BY w.id ASC
     """)
@@ -470,13 +453,13 @@ interface WordDao {
     /**
      * 重置所有学习进度
      */
-    @Query("DELETE FROM word_study_states")
+    @Query("DELETE FROM user_progress WHERE item_type = 'word'")
     suspend fun resetAllProgress()
 
     /**
      * 清空所有收藏
      */
-    @Query("UPDATE word_study_states SET is_favorite = 0 WHERE is_favorite = 1")
+    @Query("UPDATE user_progress SET is_favorite = 0 WHERE is_favorite = 1 AND item_type = 'word'")
     suspend fun clearAllFavorites()
 
     // ========== 测试用查询 ==========
@@ -511,26 +494,22 @@ interface WordDao {
     @Query("""
         SELECT
             w.id, w.japanese, w.hiragana, w.chinese, w.level,
-            s.repetition_count AS repetitionCount,
+            s.reps AS reps,
             s.stability AS stability,
             s.difficulty AS difficulty,
-            s.interval AS interval,
-            s.next_review_date AS nextReviewDate,
+            s.scheduled_days AS interval,
+            s.next_review AS nextReview,
             s.is_favorite AS isFavorite,
-            s.is_skipped AS isSkipped,
-            s.is_deleted AS isDeleted,
-            s.deleted_time AS deletedTime,
-            s.last_modified_time AS lastModifiedTime,
-            s.last_reviewed_date AS lastReviewedDate,
-            s.first_learned_date AS firstLearnedDate
+            s.state AS state,
+            s.updated_at AS updatedAt,
+            s.last_review AS lastReview,
+            s.created_at AS createdAt
         FROM words w
-        JOIN word_study_states s ON w.id = s.word_id
-        WHERE s.repetition_count > 0
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE s.reps > 0
         OR s.is_favorite = 1
-        OR s.is_skipped = 1
-        OR s.is_deleted = 1
-        OR s.first_learned_date IS NOT NULL
-        OR s.last_modified_time > 0
+        OR s.state = -1
+        OR s.created_at IS NOT NULL
     """)
     fun getExportWordsCursor(): android.database.Cursor
 
@@ -539,49 +518,49 @@ interface WordDao {
 
     /**
      * 获取复习预测
-     * @param startDateEpochDay 开始日期
-     * @param endDateEpochDay 结束日期
+     * @param startDate 开始日期 (ISO)
+     * @param endDate 结束日期 (ISO)
      */
     @Query("""
-        SELECT s.next_review_date AS date, COUNT(*) AS count
-        FROM word_study_states s
-        WHERE s.next_review_date BETWEEN :startDateEpochDay AND :endDateEpochDay
-        AND s.is_skipped = 0
-        GROUP BY s.next_review_date
+        SELECT SUBSTR(s.next_review, 1, 10) AS date, COUNT(*) AS count
+        FROM user_progress s
+        WHERE s.next_review BETWEEN :startDate AND :endDate
+        AND s.state != -1 AND s.item_type = 'word'
+        GROUP BY SUBSTR(s.next_review, 1, 10)
     """)
-    fun getReviewForecast(startDateEpochDay: Long, endDateEpochDay: Long): Flow<List<ReviewForecastTuple>>
+    fun getReviewForecast(startDate: String, endDate: String): Flow<List<ReviewForecastTuple>>
 
     // ========== 等级查询 ==========
 
     @Query("""
         SELECT DISTINCT w.level
-        FROM word_study_states s
-        JOIN words w ON s.word_id = w.id
-        WHERE s.last_reviewed_date = :todayEpochDay
+        FROM user_progress s
+        JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
+        WHERE s.last_review >= :todayISO
     """)
-    fun getTodayReviewedLevels(todayEpochDay: Long): Flow<List<String>>
+    fun getTodayReviewedLevels(todayISO: String): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.level
-        FROM word_study_states s
-        JOIN words w ON s.word_id = w.id
-        WHERE s.first_learned_date = :todayEpochDay
+        FROM user_progress s
+        JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
+        WHERE s.created_at >= :todayISO
     """)
-    fun getTodayLearnedLevels(todayEpochDay: Long): Flow<List<String>>
+    fun getTodayLearnedLevels(todayISO: String): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.level
-        FROM word_study_states s
-        JOIN words w ON s.word_id = w.id
+        FROM user_progress s
+        JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
         WHERE s.is_favorite = 1
     """)
     fun getFavoriteLevels(): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.level
-        FROM word_study_states s
-        JOIN words w ON s.word_id = w.id
-        WHERE s.repetition_count > 0
+        FROM user_progress s
+        JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
+        WHERE s.reps > 0
     """)
     fun getLearnedLevels(): Flow<List<String>>
 
@@ -620,6 +599,6 @@ interface WordDao {
 }
 
 data class ReviewForecastTuple(
-    val date: Long,
+    val date: String,
     val count: Int
 )

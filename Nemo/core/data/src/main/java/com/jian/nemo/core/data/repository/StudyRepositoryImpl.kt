@@ -9,10 +9,7 @@ import com.jian.nemo.core.data.remote.model.ProcessReviewRpcParams
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.realtime.PostgresAction
-import io.github.jan.supabase.realtime.Realtime
-import io.github.jan.supabase.realtime.channel
-import io.github.jan.supabase.realtime.postgresChangeFlow
+import com.jian.nemo.core.data.manager.SupabaseSyncManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -35,11 +32,11 @@ class StudyRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val userProgressDao: UserProgressDao,
     private val syncOutboxDao: SyncOutboxDao,
+    private val syncManager: SupabaseSyncManager,
     @ApplicationScope private val scope: CoroutineScope
 ) : StudyRepository {
 
     private val algorithm = Fsrs6Algorithm()
-    private var realtimeChannel: io.github.jan.supabase.realtime.RealtimeChannel? = null
 
     override fun getDueItemsFlow(): Flow<List<UserProgress>> {
         val now = Clock.System.now().toString()
@@ -70,7 +67,7 @@ class StudyRepositoryImpl @Inject constructor(
         )
 
         // 2. 更新本地 Room (秒开)
-        userProgressDao.insertOrUpdate(localUpdated)
+        userProgressDao.insert(localUpdated)
 
         // 3. 入队 Outbox
         syncOutboxDao.insert(
@@ -89,46 +86,12 @@ class StudyRepositoryImpl @Inject constructor(
     }
 
     override fun startRealtimeSync() {
-        if (realtimeChannel != null) return
-
-        realtimeChannel = supabase.channel("user_progress_sync") {
-            // 筛选当前用户的变更
-        }
-
-        val changeFlow = realtimeChannel!!.postgresChangeFlow<PostgresAction>(schema = "public") {
-            table = "user_progress"
-        }
-
-        scope.launch {
-            changeFlow.collect { action ->
-                when (action) {
-                    is PostgresAction.Update -> {
-                        val updated = Json.decodeFromJsonElement<UserProgressEntity>(action.record)
-                        userProgressDao.insertOrUpdate(updated)
-                    }
-                    is PostgresAction.Insert -> {
-                        val inserted = Json.decodeFromJsonElement<UserProgressEntity>(action.record)
-                        userProgressDao.insertOrUpdate(inserted)
-                    }
-                    is PostgresAction.Delete -> {
-                        val id = action.oldRecord["id"]?.toString()
-                        if (id != null) userProgressDao.deleteById(id)
-                    }
-                    else -> {}
-                }
-            }
-        }
-
-        scope.launch {
-            realtimeChannel!!.subscribe()
-        }
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
+        syncManager.startRealtimeSync(userId)
     }
-
+    
     override fun stopRealtimeSync() {
-        scope.launch {
-            realtimeChannel?.unsubscribe()
-            realtimeChannel = null
-        }
+        syncManager.stopRealtimeSync()
     }
 
     override suspend fun syncPendingTasks() {
@@ -176,7 +139,7 @@ class StudyRepositoryImpl @Inject constructor(
                     nextLearningStep = 0,
                     nextLastReview = now.toString(),
                     nextReview = (now + interval.days).toString(),
-                    nextBuriedUntil = 0,
+                    nextBuriedUntil = null,
                     epochDay = (now.toEpochMilliseconds() / 86400000).toInt(),
                     studyField = if (task.itemType == "word") "reviewed_words" else "reviewed_grammars",
                     studyDelta = 1,

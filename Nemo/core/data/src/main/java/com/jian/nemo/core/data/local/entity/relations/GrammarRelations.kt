@@ -5,7 +5,7 @@ import androidx.room.Relation
 import com.jian.nemo.core.data.local.entity.GrammarEntity
 import com.jian.nemo.core.data.local.entity.GrammarExampleEntity
 import com.jian.nemo.core.data.local.entity.GrammarUsageEntity
-import com.jian.nemo.core.data.local.entity.GrammarStudyStateEntity
+import com.jian.nemo.core.data.local.entity.UserProgressEntity
 
 /**
  * 语法及其用法的关联数据类
@@ -25,9 +25,9 @@ data class GrammarWithUsages(
 
     @Relation(
         parentColumn = "id",
-        entityColumn = "grammar_id"
+        entityColumn = "item_id"
     )
-    val state: GrammarStudyStateEntity?
+    val state: UserProgressEntity?
 )
 
 /**

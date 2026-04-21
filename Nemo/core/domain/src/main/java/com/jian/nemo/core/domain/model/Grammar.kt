@@ -38,8 +38,8 @@ data class Grammar(
     // ========== SRS 复习字段 (FSRS 6) ==========
     override val repetitionCount: Int = 0,
     override val interval: Int = 0,
-    override val stability: Float = 0f,
-    override val difficulty: Float = 0f,
+    override val stability: Double = 0.0,
+    override val difficulty: Double = 0.0,
     override val nextReviewDate: Long = 0,
     override val lastReviewedDate: Long? = null,
     override val firstLearnedDate: Long? = null,

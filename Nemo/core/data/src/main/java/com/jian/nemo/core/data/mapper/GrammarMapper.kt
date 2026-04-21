@@ -1,8 +1,9 @@
 package com.jian.nemo.core.data.mapper
 
+import com.jian.nemo.core.common.util.DateTimeUtils
 import com.jian.nemo.core.data.local.entity.GrammarEntity
 import com.jian.nemo.core.data.local.entity.GrammarExampleEntity
-import com.jian.nemo.core.data.local.entity.GrammarStudyStateEntity
+import com.jian.nemo.core.data.local.entity.UserProgressEntity
 import com.jian.nemo.core.data.local.entity.relations.GrammarWithUsages
 import com.jian.nemo.core.data.local.entity.relations.UsageWithExamples
 import com.jian.nemo.core.domain.model.Grammar
@@ -10,14 +11,7 @@ import com.jian.nemo.core.domain.model.GrammarExample
 import com.jian.nemo.core.domain.model.GrammarUsage
 
 /**
- * GrammarEntity ↔ Grammar 映射器（重构版）
- *
- * 职责：数据层关联实体和领域层Model之间的转换
- *
- * 新结构：
- * - GrammarWithUsages (Entity) ↔ Grammar (Domain)
- * - UsageWithExamples (Entity) ↔ GrammarUsage (Domain)
- * - GrammarExampleEntity (Entity) ↔ GrammarExample (Domain)
+ * GrammarEntity ↔ Grammar 映射器
  */
 object GrammarMapper {
 
@@ -33,17 +27,17 @@ object GrammarMapper {
             isDelisted = grammar.isDelisted,
             usages = usages.sortedBy { it.usage.usageOrder }.map { it.toDomainModel() },
             // 进度信息从关联的 state 获取
-            repetitionCount = state?.repetitionCount ?: 0,
-            interval = state?.interval ?: 0,
-            stability = state?.stability ?: 0f,
-            difficulty = state?.difficulty ?: 0f,
-            nextReviewDate = state?.nextReviewDate ?: 0,
-            lastReviewedDate = state?.lastReviewedDate,
-            firstLearnedDate = state?.firstLearnedDate,
+            repetitionCount = state?.reps ?: 0,
+            interval = state?.scheduledDays ?: 0,
+            stability = state?.stability ?: 0.0,
+            difficulty = state?.difficulty ?: 0.0,
+            nextReviewDate = state?.nextReview?.let { DateTimeUtils.isoToEpochDay(it) } ?: 0L,
+            lastReviewedDate = state?.lastReview?.let { DateTimeUtils.isoToEpochDay(it) },
+            firstLearnedDate = state?.createdAt?.let { DateTimeUtils.isoToEpochDay(it) },
             isFavorite = state?.isFavorite ?: false,
-            isSkipped = state?.isSkipped ?: false,
-            buriedUntilDay = state?.buriedUntilDay ?: 0,
-            lastModifiedTime = state?.lastModifiedTime ?: 0L
+            isSkipped = state?.state == -1,
+            buriedUntilDay = state?.buriedUntil?.let { DateTimeUtils.isoToEpochDay(it) } ?: 0L,
+            lastModifiedTime = state?.updatedAt?.let { DateTimeUtils.isoToMillis(it) } ?: 0L
         )
     }
 
@@ -91,22 +85,29 @@ object GrammarMapper {
     }
 
     /**
-     * 转换为状态实体
+     * 转换为进度实体
      */
-    fun Grammar.toStudyStateEntity(): GrammarStudyStateEntity {
-        return GrammarStudyStateEntity(
-            grammarId = id,
-            repetitionCount = repetitionCount,
-            interval = interval,
+    fun Grammar.toProgressEntity(userId: String): UserProgressEntity {
+        return UserProgressEntity(
+            id = "${userId}_grammar_${id}",
+            userId = userId,
+            itemType = "grammar",
+            itemId = id,
+            reps = repetitionCount,
             stability = stability,
             difficulty = difficulty,
-            nextReviewDate = nextReviewDate,
-            lastReviewedDate = lastReviewedDate,
-            firstLearnedDate = firstLearnedDate,
+            elapsedDays = 0,
+            scheduledDays = interval,
+            lapses = 0,
+            state = if (isSkipped) -1 else 0,
+            learningStep = 0,
+            nextReview = DateTimeUtils.epochDayToIso(nextReviewDate),
+            lastReview = lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
             isFavorite = isFavorite,
-            isSkipped = isSkipped,
-            buriedUntilDay = buriedUntilDay,
-            lastModifiedTime = lastModifiedTime
+            buriedUntil = if (buriedUntilDay > 0) DateTimeUtils.epochDayToIso(buriedUntilDay) else null,
+            updatedAt = DateTimeUtils.millisToIso(lastModifiedTime),
+            level = grammarLevel,
+            createdAt = firstLearnedDate?.let { DateTimeUtils.epochDayToIso(it) } ?: DateTimeUtils.millisToIso(lastModifiedTime)
         )
     }
 

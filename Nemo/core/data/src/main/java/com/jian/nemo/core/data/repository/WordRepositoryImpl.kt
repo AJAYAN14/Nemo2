@@ -4,12 +4,8 @@ import com.jian.nemo.core.common.Result
 import com.jian.nemo.core.data.local.dao.*
 import com.jian.nemo.core.data.local.entity.TestRecordEntity
 import com.jian.nemo.core.data.local.entity.WordEntity
-import com.jian.nemo.core.data.local.entity.WordStudyStateEntity
 import com.jian.nemo.core.data.mapper.WordMapper
-import com.jian.nemo.core.data.mapper.WordMapper.toDomainModel
-import com.jian.nemo.core.data.mapper.WordMapper.toDomainModels
-import com.jian.nemo.core.data.mapper.WordMapper.toStudyStateEntity
-import com.jian.nemo.core.domain.model.ContentDelist.isDelisted
+import com.jian.nemo.core.data.mapper.WordMapper.toProgressEntity
 import com.jian.nemo.core.domain.model.PartOfSpeech
 import com.jian.nemo.core.domain.model.Word
 import com.jian.nemo.core.domain.model.ReviewForecast
@@ -22,28 +18,24 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Word Repository 实现
- *
- * 职责:
- * 1. 调用DAO获取数据
- * 2. Entity → Domain Model转换
- * 3. 异常处理
-
- */
 @Singleton
 class WordRepositoryImpl @Inject constructor(
     private val wordDao: WordDao,
-    private val wordStudyStateDao: WordStudyStateDao,
-    private val testRecordDao: TestRecordDao
+    private val userProgressDao: UserProgressDao,
+    private val testRecordDao: TestRecordDao,
+    private val syncManager: com.jian.nemo.core.data.manager.SupabaseSyncManager
 ) : WordRepository {
+
+    private val userId: String
+        get() = syncManager.getCurrentUserId() ?: "local_user"
 
     private suspend fun mapWithStudyState(entities: List<WordEntity>): List<Word> {
         if (entities.isEmpty()) return emptyList()
 
-        val statesById = wordStudyStateDao
-            .getStatesByIds(entities.map { it.id })
-            .associateBy { it.wordId }
+        val itemIds = entities.map { it.id }
+        val statesById = userProgressDao
+            .getProgressByItemIds(itemIds, "word")
+            .associateBy { it.itemId }
 
         return entities.map { entity ->
             WordMapper.toDomainModel(entity, statesById[entity.id])
@@ -55,7 +47,7 @@ class WordRepositoryImpl @Inject constructor(
     override fun getWordById(id: Int): Flow<Word?> {
         return combine(
             wordDao.getById(id),
-            wordStudyStateDao.getByWordIdFlow(id)
+            userProgressDao.getProgressByItemIdFlow(id, "word")
         ) { entity, state ->
             entity?.let { WordMapper.toDomainModel(it, state) }
         }
@@ -73,7 +65,7 @@ class WordRepositoryImpl @Inject constructor(
 
         return flow
             .map { entities ->
-                mapWithStudyState(entities).filter { w -> !w.isDelisted() }
+                mapWithStudyState(entities).filter { w -> !w.isDelisted }
             }
             .catch { e ->
                 emit(emptyList())
@@ -81,9 +73,10 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getDueWords(today: Long): Flow<List<Word>> {
-        return wordDao.getDueWords(today)
+        val todayIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(today)
+        return wordDao.getDueWords(todayIso)
             .map { entities ->
-                mapWithStudyState(entities).filter { w -> !w.isDelisted() }
+                mapWithStudyState(entities).filter { w -> !w.isDelisted }
             }
             .catch { e ->
                 emit(emptyList())
@@ -95,9 +88,10 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getTodayLearnedWords(today: Long): Flow<List<Word>> {
-        return wordDao.getTodayLearnedWords(today)
+        val todayIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(today)
+        return wordDao.getTodayLearnedWords(todayIso)
             .map { entities ->
-                entities.toDomainModels()
+                mapWithStudyState(entities)
             }
             .catch { e ->
                 emit(emptyList())
@@ -105,9 +99,10 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getTodayReviewedWords(today: Long): Flow<List<Word>> {
-        return wordDao.getTodayReviewedWords(today)
+        val todayIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(today)
+        return wordDao.getTodayReviewedWords(todayIso)
             .map { entities ->
-                entities.toDomainModels()
+                mapWithStudyState(entities)
             }
             .catch { e ->
                 emit(emptyList())
@@ -116,7 +111,9 @@ class WordRepositoryImpl @Inject constructor(
 
     override fun getFavoriteWords(): Flow<List<Word>> {
         return wordDao.getFavoriteWords()
-            .map { it.toDomainModels() }
+            .map { entities ->
+                mapWithStudyState(entities)
+            }
             .catch { e ->
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
@@ -126,32 +123,30 @@ class WordRepositoryImpl @Inject constructor(
         try {
             if (levels.isEmpty()) return@withContext emptyList()
             val entities = wordDao.getWordsSortedByNextReviewDate(levels, limit)
-            entities.toDomainModels()
+            mapWithStudyState(entities)
         } catch (e: Exception) {
             emptyList()
         }
     }
 
     override fun getSkippedWords(limit: Int): Flow<List<Word>> {
-
         return wordDao.getSkippedWords(limit).map { entities ->
-            entities.map { it.toDomainModel() }
+            mapWithStudyState(entities)
         }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getAllWordsByLevel(level: String): Flow<List<Word>> {
-        // 转换为大写以匹配数据库中的level字段（N1, N2, N3, N4, N5）
         val upperLevel = level.uppercase()
-
         return wordDao.getAllWordsByLevel(upperLevel).map { entities ->
-
-            entities.map { it.toDomainModel() }
+            mapWithStudyState(entities)
         }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getAllLearnedWords(): Flow<List<Word>> {
         return wordDao.getAllLearnedWords()
-            .map { it.toDomainModels() }
+            .map { entities ->
+                mapWithStudyState(entities)
+            }
             .catch { e ->
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
@@ -160,7 +155,9 @@ class WordRepositoryImpl @Inject constructor(
     override fun getAllLearnedWordsByLevel(level: String): Flow<List<Word>> {
         val upperLevel = level.uppercase()
         return wordDao.getLearnedWordsByLevel(upperLevel)
-            .map { it.toDomainModels() }
+            .map { entities ->
+                mapWithStudyState(entities)
+            }
             .catch { e ->
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
@@ -174,10 +171,12 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getReviewForecast(startDate: Long, endDate: Long): Flow<List<ReviewForecast>> {
-        return wordDao.getReviewForecast(startDate, endDate)
+        val startIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(startDate)
+        val endIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(endDate)
+        return wordDao.getReviewForecast(startIso, endIso)
             .map { tuples ->
                 tuples.map {
-                    ReviewForecast(date = it.date, wordCount = it.count)
+                    ReviewForecast(date = com.jian.nemo.core.common.util.DateTimeUtils.isoToEpochDay(it.date), wordCount = it.count)
                 }
             }
             .catch { e ->
@@ -185,10 +184,11 @@ class WordRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-
     override fun searchWords(query: String): Flow<List<Word>> {
         return wordDao.searchWords(query)
-            .map { it.toDomainModels() }
+            .map { entities ->
+                mapWithStudyState(entities)
+            }
             .catch { e ->
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
@@ -231,7 +231,6 @@ class WordRepositoryImpl @Inject constructor(
             val t = total ?: 0
             if (t > 0) c.toFloat() / t else 0f
         }.catch { e ->
-
             emit(0f)
         }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
@@ -253,7 +252,8 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getTodayLearnedLevels(todayEpochDay: Long): Flow<List<String>> {
-        return wordDao.getTodayLearnedLevels(todayEpochDay)
+        val todayIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(todayEpochDay)
+        return wordDao.getTodayLearnedLevels(todayIso)
             .catch { e ->
                 emit(emptyList())
             }
@@ -274,7 +274,8 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getTodayReviewedLevels(todayEpochDay: Long): Flow<List<String>> {
-        return wordDao.getTodayReviewedLevels(todayEpochDay)
+        val todayIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(todayEpochDay)
+        return wordDao.getTodayReviewedLevels(todayIso)
             .catch { e ->
                 emit(emptyList())
             }
@@ -289,29 +290,21 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun getLoanWords(): List<Word> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val allWords = wordDao.getAllWords().toDomainModels()
+            val entities = wordDao.getAllWords()
+            val allWords = mapWithStudyState(entities)
             allWords.filter { word ->
                 val japanese = word.japanese
                 val hiragana = word.hiragana
-                
-                // 1. expression (japanese) 包含英文字母
                 val hasEnglish = japanese.contains(Regex("[a-zA-Z]"))
-                
-                // 用于去除干扰符号的正则
                 val symbolRegex = Regex("[・〜ー\\s\\-()（）/]")
-                
-                // 2. expression (japanese) 去除符号后全为片假名
                 val jCleaned = japanese.replace(symbolRegex, "")
                 val isKatakanaJapanese = jCleaned.isNotEmpty() && jCleaned.all { ch ->
                     Character.UnicodeBlock.of(ch) == Character.UnicodeBlock.KATAKANA
                 }
-                
-                // 3. kana (hiragana) 去除符号后全为片假名
                 val hCleaned = hiragana.replace(symbolRegex, "")
                 val isKatakanaKana = hCleaned.isNotEmpty() && hCleaned.all { ch ->
                     Character.UnicodeBlock.of(ch) == Character.UnicodeBlock.KATAKANA
                 }
-                
                 hasEnglish || isKatakanaJapanese || isKatakanaKana
             }
         } catch (e: Exception) {
@@ -339,7 +332,7 @@ class WordRepositoryImpl @Inject constructor(
                 PartOfSpeech.FIXED_EXPRESSION -> wordDao.getFixedExpressions()
                 else -> emptyList()
             }
-            entities.toDomainModels()
+            mapWithStudyState(entities)
         } catch (e: Exception) {
             emptyList()
         }
@@ -361,12 +354,8 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun updateWord(word: Word): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            // 强制刷新时间戳，确保同步系统能捕捉到改动
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            val stateEntity = word.toStudyStateEntity().copy(lastModifiedTime = now)
-
-            wordStudyStateDao.insert(stateEntity)
-
+            val progressEntity = word.toProgressEntity(userId)
+            userProgressDao.insert(progressEntity)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -378,19 +367,8 @@ class WordRepositoryImpl @Inject constructor(
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         return@withContext try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            val rowsUpdated = wordStudyStateDao.updateFavoriteStatus(wordId, isFavorite, now)
-            
-            if (rowsUpdated == 0) {
-                // 如果没有更新任何行，说明记录不存在，需要插入
-                val newState = WordStudyStateEntity(
-                    wordId = wordId,
-                    isFavorite = isFavorite,
-                    lastModifiedTime = now
-                )
-                wordStudyStateDao.insert(newState)
-
-            }
+            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.updateFavoriteStatus(wordId, "word", isFavorite, nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -399,9 +377,9 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun markAsSkipped(wordId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            wordStudyStateDao.updateSkipStatus(wordId, true, now)
-
+            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
+            // Suspend corresponds to state = -1
+            userProgressDao.updateProgressState(wordId, "word", -1, nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -410,9 +388,9 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun unmarkAsSkipped(wordId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            wordStudyStateDao.updateSkipStatus(wordId, false, now)
-
+            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
+            // Unsuspend corresponds to state = 0
+            userProgressDao.updateProgressState(wordId, "word", 0, nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -423,9 +401,8 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun resetAllProgress(): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            wordStudyStateDao.resetAllProgress(now)
-
+            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.resetAllProgress("word", nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
@@ -434,14 +411,14 @@ class WordRepositoryImpl @Inject constructor(
 
     override suspend fun clearAllFavorites(): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            wordStudyStateDao.clearAllFavorites(now)
-
+            val nowIso = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.clearAllFavorites("word", nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
+
     override suspend fun saveTestRecord(record: com.jian.nemo.core.domain.model.TestRecord): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             val entity = TestRecordEntity(
@@ -453,7 +430,6 @@ class WordRepositoryImpl @Inject constructor(
                 timestamp = record.timestamp
             )
             testRecordDao.insert(entity)
-
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)

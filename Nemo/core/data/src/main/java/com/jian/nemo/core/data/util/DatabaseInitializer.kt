@@ -22,7 +22,8 @@ class DatabaseInitializer @Inject constructor(
             Log.d(TAG, "Initializing database...")
             // 触发数据库创建 - 执行一个简单的查询
             // 使用getDueWordsCount是最轻量的查询，只返回count而非所有数据
-            database.wordDao().getDueWordsCount(System.currentTimeMillis() / 86400000).first()
+            val todayIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(System.currentTimeMillis() / 86400000)
+            database.wordDao().getDueWordsCount(todayIso).first()
             Log.d(TAG, "Database initialized successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Database initialization completed", e)

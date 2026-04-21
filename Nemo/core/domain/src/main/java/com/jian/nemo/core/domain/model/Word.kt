@@ -61,12 +61,12 @@ data class Word(
     /**
      * 记忆稳定性 (FSRS) — 多少天后回忆概率降至90%
      */
-    override val stability: Float = 0f,
+    override val stability: Double = 0.0,
 
     /**
      * 难度 (FSRS, 1-10)
      */
-    override val difficulty: Float = 0f,
+    override val difficulty: Double = 0.0,
 
     /**
      * 间隔天数

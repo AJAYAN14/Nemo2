@@ -1,5 +1,6 @@
 package com.jian.nemo.core.data.manager
 
+import com.jian.nemo.core.common.util.DateTimeUtils
 import com.jian.nemo.core.data.local.entity.*
 import com.jian.nemo.core.domain.model.*
 import kotlin.math.max
@@ -21,61 +22,56 @@ object SmartSyncMerger {
     }
 
     /**
-     * 合并单词学习进度
-     * 策略：LWW (最后写入获胜)，确保多端状态一致（如 SRS 等级、收藏状态）
+     * 合并用户学习进度 (单词或语法)
+     * 策略：LWW (最后写入获胜)
      */
-    fun mergeWordProgress(
-        local: WordStudyStateEntity,
-        remote: WordProgress
-    ): MergeResult<WordStudyStateEntity> {
-        val localTime = local.lastModifiedTime
+    fun mergeUserProgress(
+        local: UserProgressEntity,
+        remote: WordProgress // 暂时保持 WordProgress/GrammarProgress 作为 DTO 来源
+    ): MergeResult<UserProgressEntity> {
+        val localTime = DateTimeUtils.isoToMillis(local.updatedAt ?: "2000-01-01T00:00:00Z")
         val remoteTime = remote.lastModifiedTime
 
         return if (remoteTime > localTime) {
             MergeResult.RemoteUpdated(local.copy(
-                repetitionCount = remote.srsLevel,
-                stability = remote.stability,
-                difficulty = remote.difficulty,
-                interval = remote.interval,
-                nextReviewDate = remote.nextReviewDate,
-                firstLearnedDate = remote.firstLearnedDate,
-                lastReviewedDate = remote.lastReviewedDate,
+                reps = remote.srsLevel,
+                stability = remote.stability.toDouble(),
+                difficulty = remote.difficulty.toDouble(),
+                scheduledDays = remote.interval,
+                nextReview = DateTimeUtils.epochDayToIso(remote.nextReviewDate),
+                createdAt = remote.firstLearnedDate?.let { DateTimeUtils.epochDayToIso(it) } ?: local.createdAt,
+                lastReview = remote.lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
                 isFavorite = remote.isFavorite,
-                isSkipped = remote.isSkipped,
-                isDeleted = remote.isDeleted,
-                deletedTime = remote.deletedTime,
-                lastModifiedTime = remoteTime
+                state = if (remote.isSkipped) -1 else if (remote.srsLevel > 0) 2 else 0,
+                updatedAt = DateTimeUtils.millisToIso(remoteTime)
             ))
         } else {
-            // Local is newer or equal, keep local
             MergeResult.LocalKept(local)
         }
     }
 
     /**
-     * 合并语法学习进度
-     * 策略同单词进度：LWW
+     * 重载支持 GrammarProgress
      */
-    fun mergeGrammarProgress(
-        local: GrammarStudyStateEntity,
+    fun mergeUserProgress(
+        local: UserProgressEntity,
         remote: GrammarProgress
-    ): MergeResult<GrammarStudyStateEntity> {
-        val localTime = local.lastModifiedTime
+    ): MergeResult<UserProgressEntity> {
+        val localTime = DateTimeUtils.isoToMillis(local.updatedAt ?: "2000-01-01T00:00:00Z")
         val remoteTime = remote.lastModifiedTime
 
         return if (remoteTime > localTime) {
             MergeResult.RemoteUpdated(local.copy(
-                repetitionCount = remote.srsLevel,
-                stability = remote.stability,
-                difficulty = remote.difficulty,
-                interval = remote.interval,
-                nextReviewDate = remote.nextReviewDate,
-                firstLearnedDate = remote.firstLearnedDate,
-                lastReviewedDate = remote.lastReviewedDate,
+                reps = remote.srsLevel,
+                stability = remote.stability.toDouble(),
+                difficulty = remote.difficulty.toDouble(),
+                scheduledDays = remote.interval,
+                nextReview = DateTimeUtils.epochDayToIso(remote.nextReviewDate),
+                createdAt = remote.firstLearnedDate?.let { DateTimeUtils.epochDayToIso(it) } ?: local.createdAt,
+                lastReview = remote.lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
                 isFavorite = remote.isFavorite,
-                isDeleted = remote.isDeleted,
-                deletedTime = remote.deletedTime,
-                lastModifiedTime = remoteTime
+                state = if (remote.srsLevel > 0) 2 else 0,
+                updatedAt = DateTimeUtils.millisToIso(remoteTime)
             ))
         } else {
             MergeResult.LocalKept(local)

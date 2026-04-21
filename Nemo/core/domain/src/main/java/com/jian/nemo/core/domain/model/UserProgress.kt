@@ -19,7 +19,7 @@ data class UserProgress(
     val learningStep: Int,
     val lastReview: String?,
     val nextReview: String?,
-    val buriedUntil: Long,
+    val buriedUntil: String?,
     val level: String,
     val createdAt: String
 )

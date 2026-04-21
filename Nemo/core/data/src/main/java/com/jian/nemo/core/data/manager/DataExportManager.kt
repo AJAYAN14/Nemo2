@@ -3,11 +3,11 @@ package com.jian.nemo.core.data.manager
 import android.content.Context
 import android.util.Log
 
+import com.jian.nemo.core.common.util.DateTimeUtils
 import com.jian.nemo.core.data.local.NemoDatabase
 import com.jian.nemo.core.data.local.entity.GrammarWrongAnswerEntity
 import com.jian.nemo.core.data.local.entity.WrongAnswerEntity
-import com.jian.nemo.core.data.local.entity.WordStudyStateEntity
-import com.jian.nemo.core.data.local.entity.GrammarStudyStateEntity
+import com.jian.nemo.core.data.local.entity.UserProgressEntity
 import com.jian.nemo.core.data.local.entity.WordEntity
 import com.jian.nemo.core.data.local.entity.GrammarEntity
 import com.jian.nemo.core.data.local.entity.TestRecordEntity
@@ -398,10 +398,10 @@ class DataExportManager @Inject constructor(
 
             database.withTransaction {
                 val wordDao = database.wordDao()
-                val wordStudyStateDao = database.wordStudyStateDao()
+                val userProgressDao = database.userProgressDao()
                 
                 // 加载全文映射
-                val localWordStates = wordStudyStateDao.getAllSync().associateBy { it.wordId }
+                val localWordStates = userProgressDao.getByItemTypeSync("word").associateBy { it.itemId }
                 val allLocalWords = wordDao.getAllWordsSync()
                 val localWordIdMap = allLocalWords.associateBy { it.id }
                 val localWordSemanticGroups = allLocalWords.groupBy { "${it.level}_${it.japanese}" }
@@ -438,38 +438,43 @@ class DataExportManager @Inject constructor(
 
                     val localState = localWordStates[targetLocalId]
                     if (localState != null) {
-                        val result = SmartSyncMerger.mergeWordProgress(localState, remoteWord)
+                        val result = SmartSyncMerger.mergeUserProgress(localState, remoteWord)
                         if (result is SmartSyncMerger.MergeResult.RemoteUpdated) {
-                            wordStudyStateDao.insert(result.data.copy(wordId = targetLocalId))
+                            userProgressDao.insert(result.data)
                         }
                     } else {
-                        wordStudyStateDao.insert(WordStudyStateEntity(
-                            wordId = targetLocalId,
-                            repetitionCount = remoteWord.srsLevel,
-                            stability = remoteWord.stability,
-                            difficulty = remoteWord.difficulty,
-                            interval = remoteWord.interval,
-                            nextReviewDate = remoteWord.nextReviewDate,
+                        userProgressDao.insert(UserProgressEntity(
+                            id = "import_word_${targetLocalId}",
+                            userId = "default_user",
+                            itemType = "word",
+                            itemId = targetLocalId,
+                            reps = remoteWord.srsLevel,
+                            stability = remoteWord.stability.toDouble(),
+                            difficulty = remoteWord.difficulty.toDouble(),
+                            elapsedDays = 0,
+                            scheduledDays = remoteWord.interval,
+                            lapses = 0,
+                            state = if (remoteWord.isSkipped) -1 else if (remoteWord.srsLevel > 0) 2 else 0,
+                            learningStep = 0,
+                            nextReview = DateTimeUtils.epochDayToIso(remoteWord.nextReviewDate),
+                            lastReview = remoteWord.lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
                             isFavorite = remoteWord.isFavorite,
-                            isSkipped = remoteWord.isSkipped,
-                            lastModifiedTime = remoteWord.lastModifiedTime,
-                            lastReviewedDate = remoteWord.lastReviewedDate,
-                            firstLearnedDate = remoteWord.firstLearnedDate,
-                            isDeleted = remoteWord.isDeleted,
-                            deletedTime = remoteWord.deletedTime
+                            buriedUntil = null,
+                            updatedAt = DateTimeUtils.millisToIso(remoteWord.lastModifiedTime),
+                            level = remoteWord.level ?: "N5",
+                            createdAt = remoteWord.firstLearnedDate?.let { DateTimeUtils.epochDayToIso(it) } ?: DateTimeUtils.millisToIso(remoteWord.lastModifiedTime)
                         ))
                     }
                 }
                 importedWords = userData.wordProgress.size
 
                 val grammarDao = database.grammarDao()
-                val grammarStudyStateDao = database.grammarStudyStateDao()
                 
                 // 加载全文映射，用于语义匹配
-                val localGrammarStates = grammarStudyStateDao.getAllSync().associateBy { it.grammarId }
+                val localGrammarStates = userProgressDao.getByItemTypeSync("grammar").associateBy { it.itemId }
                 val allLocalGrammars = grammarDao.getAllGrammarsSync()
                 val localGrammarIdMap = allLocalGrammars.associateBy { it.id }
-                val localGrammarSemanticGroups = allLocalGrammars.groupBy { "${it.grammarLevel.uppercase()}_${it.grammar}" }
+                val localGrammarSemanticGroups = allLocalGrammars.groupBy { "${(it.grammarLevel ?: "N5").uppercase()}_${it.grammar}" }
 
                 val grammarIdRedirectMap = mutableMapOf<Int, Int>()
                 userData.grammarProgress.forEach { remoteGrammar ->
@@ -502,25 +507,31 @@ class DataExportManager @Inject constructor(
 
                     val localState = localGrammarStates[targetLocalId]
                     if (localState != null) {
-                         val result = SmartSyncMerger.mergeGrammarProgress(localState, remoteGrammar)
+                         val result = SmartSyncMerger.mergeUserProgress(localState, remoteGrammar)
                          if (result is SmartSyncMerger.MergeResult.RemoteUpdated) {
-                            grammarStudyStateDao.insert(result.data.copy(grammarId = targetLocalId))
+                            userProgressDao.insert(result.data)
                          }
                     } else {
-                         grammarStudyStateDao.insert(GrammarStudyStateEntity(
-                             grammarId = targetLocalId,
-                             repetitionCount = remoteGrammar.srsLevel,
-                             stability = remoteGrammar.stability,
-                             difficulty = remoteGrammar.difficulty,
-                             interval = remoteGrammar.interval,
-                             nextReviewDate = remoteGrammar.nextReviewDate,
+                         userProgressDao.insert(UserProgressEntity(
+                             id = "import_grammar_${targetLocalId}",
+                             userId = "default_user",
+                             itemType = "grammar",
+                             itemId = targetLocalId,
+                             reps = remoteGrammar.srsLevel,
+                             stability = remoteGrammar.stability.toDouble(),
+                             difficulty = remoteGrammar.difficulty.toDouble(),
+                             elapsedDays = 0,
+                             scheduledDays = remoteGrammar.interval,
+                             lapses = 0,
+                             state = if (remoteGrammar.srsLevel > 0) 2 else 0,
+                             learningStep = 0,
+                             nextReview = DateTimeUtils.epochDayToIso(remoteGrammar.nextReviewDate),
+                             lastReview = remoteGrammar.lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
                              isFavorite = remoteGrammar.isFavorite,
-                             lastModifiedTime = remoteGrammar.lastModifiedTime,
-                             lastReviewedDate = remoteGrammar.lastReviewedDate,
-                             firstLearnedDate = remoteGrammar.firstLearnedDate,
-                             isSkipped = false,
-                             isDeleted = remoteGrammar.isDeleted,
-                             deletedTime = remoteGrammar.deletedTime
+                             buriedUntil = null,
+                             updatedAt = DateTimeUtils.millisToIso(remoteGrammar.lastModifiedTime),
+                             level = remoteGrammar.grammarLevel ?: "N5",
+                             createdAt = remoteGrammar.firstLearnedDate?.let { DateTimeUtils.epochDayToIso(it) } ?: DateTimeUtils.millisToIso(remoteGrammar.lastModifiedTime)
                          ))
                     }
                 }
@@ -726,53 +737,43 @@ class DataExportManager @Inject constructor(
             Log.d(TAG, "开始执行数据去重修复...")
             database.withTransaction {
                 val grammarDao = database.grammarDao()
-                val grammarStudyStateDao = database.grammarStudyStateDao()
+                val userProgressDao = database.userProgressDao()
                 
                 // 1. 处理语法重复
                 val allGrammars = grammarDao.getAllGrammarsSync()
-                val groups = allGrammars.groupBy { "${it.grammarLevel.uppercase()}_${it.grammar}" }
+                val groups = allGrammars.groupBy { "${(it.grammarLevel ?: "N5").uppercase()}_${it.grammar}" }
                 
                 groups.forEach { (key, entities) ->
                     if (entities.size > 1) {
                         Log.d(TAG, "发现重复语法标题: $key, 数量: ${entities.size}")
                         
-                        // 1. 将实体分为“标准类”（种子生成的 ID >= 10000）和“非标类”
                         val standardEntities = entities.filter { it.id >= 10000 }.sortedBy { it.id }
                         val redundantEntities = entities.filter { it.id < 10000 }.sortedBy { it.id }
                         
-                        // 2. 如果标准实体有多个，它们可能是合法的同名不同义项（如 N5 的两个“が”），必须全部保留
-                        // 我们只处理真正的冗余项（非标 ID）
-                        
                         if (redundantEntities.isNotEmpty()) {
-                            // 确定一个主目标：如果有标准实体，选第一个标准实体；否则选非标实体中 ID 最小的
                             val standardTarget = standardEntities.firstOrNull() ?: redundantEntities.first()
                             val duplicateIds = redundantEntities.map { it.id }.filter { it != standardTarget.id }
                             
                             if (duplicateIds.isNotEmpty()) {
-                                // 迁移关联数据 (错题记录、收藏题目)
                                 val grammarWrongAnswerDao = database.grammarWrongAnswerDao()
                                 val favoriteQuestionDao = database.favoriteQuestionDao()
                                 
-                                // 初始化合并后的状态
-                                val standardState = grammarStudyStateDao.getByIdSync(standardTarget.id)
+                                val standardState = userProgressDao.getByItemIdSync(standardTarget.id, "grammar")
                                 var mergedState = standardState
                                 
                                 duplicateIds.forEach { dupId ->
-                                    // 迁移错题
                                     grammarWrongAnswerDao.migrateGrammarId(dupId, standardTarget.id)
-                                    // 迁移收藏
                                     favoriteQuestionDao.migrateGrammarId(dupId, standardTarget.id)
                                     
-                                    // 合并进度
-                                    val dupState = grammarStudyStateDao.getByIdSync(dupId)
+                                    val dupState = userProgressDao.getByItemIdSync(dupId, "grammar")
                                     if (dupState != null) {
                                         mergedState = if (mergedState == null) {
-                                            dupState.copy(grammarId = standardTarget.id)
+                                            dupState.copy(id = "merged_grammar_${standardTarget.id}", itemId = standardTarget.id)
                                         } else {
-                                            val localTime = mergedState!!.lastModifiedTime
-                                            val remoteTime = dupState.lastModifiedTime
+                                            val localTime = DateTimeUtils.isoToMillis(mergedState!!.updatedAt ?: "2000-01-01T00:00:00Z")
+                                            val remoteTime = DateTimeUtils.isoToMillis(dupState.updatedAt ?: "2000-01-01T00:00:00Z")
                                             if (remoteTime > localTime) {
-                                                dupState.copy(grammarId = standardTarget.id, isFavorite = mergedState!!.isFavorite || dupState.isFavorite)
+                                                dupState.copy(id = mergedState!!.id, itemId = standardTarget.id, isFavorite = mergedState!!.isFavorite || dupState.isFavorite)
                                             } else {
                                                 mergedState!!.copy(isFavorite = mergedState!!.isFavorite || dupState.isFavorite)
                                             }
@@ -780,12 +781,13 @@ class DataExportManager @Inject constructor(
                                     }
                                 }
                                 
-                                // 更新标准状态
-                                mergedState?.let { grammarStudyStateDao.insert(it) }
+                                val finalState = mergedState
+                                if (finalState != null) {
+                                    userProgressDao.insert(finalState)
+                                }
                                 
-                                // 删除冗余
                                 grammarDao.deleteByIds(duplicateIds)
-                                grammarStudyStateDao.deleteByIds(duplicateIds)
+                                userProgressDao.deleteByItemIds(duplicateIds, "grammar")
                                 Log.d(TAG, "已清理语法冗余项: $key, 保留标准 ID: ${standardTarget.id}, 删除重复 ID: $duplicateIds")
                             }
                         } else if (standardEntities.size > 1) {

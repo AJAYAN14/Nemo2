@@ -16,6 +16,9 @@ interface SyncOutboxDao {
     @Query("SELECT * FROM sync_outbox WHERE is_syncing = 0 ORDER BY id ASC")
     suspend fun getPendingTasks(): List<SyncOutboxEntity>
 
+    @Query("SELECT COUNT(*) FROM sync_outbox WHERE is_syncing = 0")
+    suspend fun getPendingCount(): Int
+
     @Query("UPDATE sync_outbox SET is_syncing = :isSyncing WHERE id = :id")
     suspend fun setSyncingStatus(id: Long, isSyncing: Boolean)
 

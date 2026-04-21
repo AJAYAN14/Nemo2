@@ -67,10 +67,16 @@ data class UserProgressEntity(
     val nextReview: String? = null,
 
     @ColumnInfo(name = "buried_until")
-    val buriedUntil: Long = 0, // Epoch Day
+    val buriedUntil: String? = null,
+
+    @ColumnInfo(name = "is_favorite")
+    val isFavorite: Boolean = false,
 
     val level: String,
 
     @ColumnInfo(name = "created_at")
-    val createdAt: String
+    val createdAt: String,
+
+    @ColumnInfo(name = "updated_at")
+    val updatedAt: String? = null
 )

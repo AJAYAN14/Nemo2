@@ -1,10 +1,11 @@
 package com.jian.nemo.core.data.repository
 
 import com.jian.nemo.core.common.Result
+import com.jian.nemo.core.common.util.DateTimeUtils
 import com.jian.nemo.core.data.local.dao.*
 import com.jian.nemo.core.data.mapper.GrammarMapper.toDomainModel
 import com.jian.nemo.core.data.mapper.GrammarMapper.toDomainModels
-import com.jian.nemo.core.data.mapper.GrammarMapper.toStudyStateEntity
+import com.jian.nemo.core.data.mapper.GrammarMapper.toProgressEntity
 import com.jian.nemo.core.domain.model.ContentDelist.isDelisted
 import com.jian.nemo.core.domain.model.Grammar
 import com.jian.nemo.core.domain.repository.GrammarRepository
@@ -15,22 +16,15 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Grammar Repository 实现
- *
- * 参考: _reference/old-nemo/.../GrammarDao.kt
- *
- * 职责:
- * 1. 调用GrammarDao获取数据
- * 2. Entity → Domain Model转换
- * 3. 异常处理
- * 4. 日志记录
- */
 @Singleton
 class GrammarRepositoryImpl @Inject constructor(
     private val grammarDao: GrammarDao,
-    private val grammarStudyStateDao: GrammarStudyStateDao
+    private val userProgressDao: UserProgressDao,
+    private val syncManager: com.jian.nemo.core.data.manager.SupabaseSyncManager
 ) : GrammarRepository {
+
+    private val userId: String
+        get() = syncManager.getCurrentUserId() ?: "local_user"
 
     // ========== 查询实现 ==========
 
@@ -38,7 +32,6 @@ class GrammarRepositoryImpl @Inject constructor(
         return grammarDao.getGrammarWithUsages(id)
             .map { it?.toDomainModel() }
             .catch { e ->
-                println("❌ 获取语法失败: id=$id, error=${e.message}")
                 emit(null)
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
@@ -47,7 +40,6 @@ class GrammarRepositoryImpl @Inject constructor(
         return grammarDao.getAllGrammarsWithUsages()
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 获取所有语法失败: error=${e.message}")
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
@@ -60,18 +52,17 @@ class GrammarRepositoryImpl @Inject constructor(
         }
 
         return flow
-            .map { it.toDomainModels().filter { g -> !g.isDelisted() } }
+            .map { it.toDomainModels().filter { g -> !g.isDelisted } }
             .catch { e ->
-                println("❌ 获取新语法失败: level=$level, random=$isRandom, error=${e.message}")
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getDueGrammars(today: Long): Flow<List<Grammar>> {
-        return grammarDao.getDueGrammarsWithUsages(today)
-            .map { it.toDomainModels().filter { g -> !g.isDelisted() } }
+        val todayIso = DateTimeUtils.epochDayToIso(today)
+        return grammarDao.getDueGrammarsWithUsages(todayIso)
+            .map { it.toDomainModels().filter { g -> !g.isDelisted } }
             .catch { e ->
-                println("❌ 获取到期语法失败: today=$today, error=${e.message}")
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
@@ -84,25 +75,24 @@ class GrammarRepositoryImpl @Inject constructor(
         return grammarDao.getSkippedGrammarsWithUsages(limit)
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 获取跳过语法失败: error=${e.message}")
                 emit(emptyList())
             }
     }
 
     override fun getTodayLearnedGrammars(today: Long): Flow<List<Grammar>> {
-        return grammarDao.getTodayLearnedGrammarsWithUsages(today)
+        val todayIso = DateTimeUtils.epochDayToIso(today)
+        return grammarDao.getTodayLearnedGrammarsWithUsages(todayIso)
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 获取今日学习语法失败: error=${e.message}")
                 emit(emptyList())
             }
     }
 
     override fun getTodayReviewedGrammars(today: Long): Flow<List<Grammar>> {
-        return grammarDao.getTodayReviewedGrammarsWithUsages(today)
+        val todayIso = DateTimeUtils.epochDayToIso(today)
+        return grammarDao.getTodayReviewedGrammarsWithUsages(todayIso)
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 获取今日复习语法失败: error=${e.message}")
                 emit(emptyList())
             }
     }
@@ -111,7 +101,6 @@ class GrammarRepositoryImpl @Inject constructor(
         return grammarDao.getFavoriteGrammarsWithUsages()
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 获取收藏语法失败: error=${e.message}")
                 emit(emptyList())
             }
     }
@@ -120,7 +109,6 @@ class GrammarRepositoryImpl @Inject constructor(
         return grammarDao.getAllLearnedGrammarsWithUsages()
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 获取已学习语法失败: error=${e.message}")
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
@@ -130,7 +118,6 @@ class GrammarRepositoryImpl @Inject constructor(
         return grammarDao.getLearnedGrammarsByLevelWithUsages(upperLevel)
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 获取等级${upperLevel}已学语法失败: error=${e.message}")
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
@@ -138,28 +125,28 @@ class GrammarRepositoryImpl @Inject constructor(
     override fun getLearnedGrammarCount(): Flow<Int> {
         return grammarDao.getLearnedGrammarCount()
             .catch { e ->
-                println("❌ 获取已学语法总数失败: error=${e.message}")
                 emit(0)
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getReviewForecast(startDate: Long, endDate: Long): Flow<List<com.jian.nemo.core.domain.model.ReviewForecast>> {
-        return grammarDao.getReviewForecast(startDate, endDate)
+        val startIso = DateTimeUtils.epochDayToIso(startDate)
+        val endIso = DateTimeUtils.epochDayToIso(endDate)
+        return grammarDao.getReviewForecast(startIso, endIso)
             .map { tuples ->
                 tuples.map {
-                    com.jian.nemo.core.domain.model.ReviewForecast(date = it.date, grammarCount = it.count)
+                    com.jian.nemo.core.domain.model.ReviewForecast(date = DateTimeUtils.isoToEpochDay(it.date), grammarCount = it.count)
                 }
             }
             .catch { e ->
-                println("❌ 获取语法复习预测失败: error=${e.message}")
                 emit(emptyList())
             }
     }
 
     override fun getTodayLearnedGrammarLevels(today: Long): Flow<List<String>> {
-        return grammarDao.getTodayLearnedGrammarLevels(today)
+        val todayIso = DateTimeUtils.epochDayToIso(today)
+        return grammarDao.getTodayLearnedGrammarLevels(todayIso)
             .catch { e ->
-                println("❌ 获取今日学习语法等级失败: today=$today, error=${e.message}")
                 emit(emptyList())
             }
     }
@@ -167,7 +154,6 @@ class GrammarRepositoryImpl @Inject constructor(
     override fun getFavoriteGrammarLevels(): Flow<List<String>> {
          return grammarDao.getFavoriteGrammarLevels()
             .catch { e ->
-                println("❌ 获取收藏语法等级失败: error=${e.message}")
                 emit(emptyList())
             }
     }
@@ -175,15 +161,14 @@ class GrammarRepositoryImpl @Inject constructor(
     override fun getLearnedGrammarLevels(): Flow<List<String>> {
          return grammarDao.getLearnedGrammarLevels()
             .catch { e ->
-                println("❌ 获取已学习语法等级失败: error=${e.message}")
                 emit(emptyList())
             }
     }
 
     override fun getTodayReviewedGrammarLevels(today: Long): Flow<List<String>> {
-         return grammarDao.getTodayReviewedGrammarLevels(today)
+        val todayIso = DateTimeUtils.epochDayToIso(today)
+         return grammarDao.getTodayReviewedGrammarLevels(todayIso)
             .catch { e ->
-                println("❌ 获取今日复习语法等级失败: today=$today, error=${e.message}")
                 emit(emptyList())
             }
     }
@@ -191,20 +176,16 @@ class GrammarRepositoryImpl @Inject constructor(
     override fun getWrongAnswerGrammarLevels(): Flow<List<String>> {
          return grammarDao.getWrongAnswerGrammarLevels()
             .catch { e ->
-                println("❌ 获取错题语法等级失败: error=${e.message}")
                 emit(emptyList())
             }
     }
 
     override fun getGrammarsByLevels(levels: List<String>): Flow<List<Grammar>> {
-        println("[GrammarRepository] 获取等级 $levels 的所有语法")
         return grammarDao.getGrammarsByLevelsWithUsages(levels)
             .map { entities ->
-                println("[GrammarRepository] 查询到 ${entities.size} 个语法")
                 entities.toDomainModels()
             }
             .catch { e ->
-                println("❌ 按等级获取语法失败: levels=$levels, error=${e.message}")
                 emit(emptyList())
             }
     }
@@ -217,7 +198,6 @@ class GrammarRepositoryImpl @Inject constructor(
                 grammarDao.getGrammarsByIdsWithUsages(ids).map { it.toDomainModel() }
             }
         } catch (e: Exception) {
-            println("❌ 批量获取语法失败: ids.size=${ids.size}, error=${e.message}")
             emptyList()
         }
     }
@@ -226,7 +206,6 @@ class GrammarRepositoryImpl @Inject constructor(
         return grammarDao.searchGrammarsWithUsages(query)
             .map { it.toDomainModels() }
             .catch { e ->
-                println("❌ 搜索语法失败: query=$query, error=${e.message}")
                 emit(emptyList())
             }
     }
@@ -235,15 +214,10 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override suspend fun updateGrammar(grammar: Grammar): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            // 🎯 强制刷新时间戳
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            val stateEntity = grammar.toStudyStateEntity().copy(lastModifiedTime = now)
-
-            grammarStudyStateDao.insert(stateEntity)
-            println("✅ 语法学习状态更新成功: ${grammar.grammar}, lastModified=$now")
+            val progressEntity = grammar.toProgressEntity(userId)
+            userProgressDao.insert(progressEntity)
             Result.Success(Unit)
         } catch (e: Exception) {
-            println("❌ 语法学习状态更新失败: ${grammar.grammar}, error=${e.message}")
             Result.Error(e)
         }
     }
@@ -253,36 +227,30 @@ class GrammarRepositoryImpl @Inject constructor(
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            grammarStudyStateDao.updateFavoriteStatus(grammarId, isFavorite, now)
-            println("✅ 语法收藏状态更新: grammarId=$grammarId, isFavorite=$isFavorite")
+            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.updateFavoriteStatus(grammarId, "grammar", isFavorite, nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
-            println("❌ 语法收藏状态更新失败: error=${e.message}")
             Result.Error(e)
         }
     }
 
     override suspend fun markAsSkipped(grammarId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            grammarStudyStateDao.updateSkipStatus(grammarId, true, now)
-            println("✅ 语法已跳过: grammarId=$grammarId")
+            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.updateProgressState(grammarId, "grammar", -1, nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
-            println("❌ 标记跳过失败: error=${e.message}")
             Result.Error(e)
         }
     }
 
     override suspend fun unmarkAsSkipped(grammarId: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            grammarStudyStateDao.updateSkipStatus(grammarId, false, now)
-            println("✅ 取消跳过: grammarId=$grammarId")
+            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.updateProgressState(grammarId, "grammar", 0, nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
-            println("❌ 取消跳过失败: error=${e.message}")
             Result.Error(e)
         }
     }
@@ -291,24 +259,20 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override suspend fun resetAllProgress(): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            grammarStudyStateDao.resetAllProgress(now)
-            println("⚠️ 所有语法进度已重置")
+            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.resetAllProgress("grammar", nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
-            println("❌ 重置进度失败: error=${e.message}")
             Result.Error(e)
         }
     }
 
     override suspend fun clearAllFavorites(): Result<Unit> {
         return try {
-            val now = com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis()
-            grammarStudyStateDao.clearAllFavorites(now)
-            println("✅ 所有语法收藏已清空")
+            val nowIso = DateTimeUtils.getCurrentCompensatedIso()
+            userProgressDao.clearAllFavorites("grammar", nowIso)
             Result.Success(Unit)
         } catch (e: Exception) {
-            println("❌ 清空收藏失败: error=${e.message}")
             Result.Error(e)
         }
     }

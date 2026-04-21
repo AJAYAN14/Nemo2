@@ -1,24 +1,19 @@
 package com.jian.nemo.core.data.mapper
 
 import com.jian.nemo.core.data.local.entity.WordEntity
-import com.jian.nemo.core.data.local.entity.WordStudyStateEntity
+import com.jian.nemo.core.data.local.entity.UserProgressEntity
 import com.jian.nemo.core.domain.model.Word
+import com.jian.nemo.core.common.util.DateTimeUtils
 
 /**
  * WordEntity ↔ Word 映射器
- *
- * 职责：数据层Entity和领域层Model之间的转换
- *
- * ⚠️ 注意字段名映射：
- * - Entity使用下划线: example_1
- * - Domain使用驼峰: example1
  */
 object WordMapper {
 
     /**
-     * 将 WordEntity 和 WordStudyStateEntity 组合转换为 Domain Model
+     * 将 WordEntity 和 UserProgressEntity 组合转换为 Domain Model
      */
-    fun toDomainModel(entity: WordEntity, state: WordStudyStateEntity?): Word {
+    fun toDomainModel(entity: WordEntity, state: UserProgressEntity?): Word {
         return Word(
             id = entity.id,
             japanese = entity.japanese,
@@ -33,27 +28,25 @@ object WordMapper {
             example3 = entity.example3,
             gloss3 = entity.gloss3,
             isDelisted = entity.isDelisted,
-            // 进度信息从 StudyState 获取，若无则使用默认值
-            repetitionCount = state?.repetitionCount ?: 0,
-            stability = state?.stability ?: 0f,
-            difficulty = state?.difficulty ?: 0f,
-            interval = state?.interval ?: 0,
-            nextReviewDate = state?.nextReviewDate ?: 0,
-            lastReviewedDate = state?.lastReviewedDate,
-            firstLearnedDate = state?.firstLearnedDate,
+            // 进度信息从 UserProgress 获取
+            repetitionCount = state?.reps ?: 0,
+            stability = state?.stability ?: 0.0,
+            difficulty = state?.difficulty ?: 0.0,
+            interval = state?.scheduledDays ?: 0,
+            nextReviewDate = state?.nextReview?.let { DateTimeUtils.isoToEpochDay(it) } ?: 0L,
+            lastReviewedDate = state?.lastReview?.let { DateTimeUtils.isoToEpochDay(it) },
+            firstLearnedDate = state?.createdAt?.let { DateTimeUtils.isoToEpochDay(it) },
             isFavorite = state?.isFavorite ?: false,
-            isSkipped = state?.isSkipped ?: false,
-            buriedUntilDay = state?.buriedUntilDay ?: 0,
-            lastModifiedTime = state?.lastModifiedTime ?: 0L // 进度信息从 StudyState 获取，若无则使用默认值 0L
+            isSkipped = state?.state == -1,
+            buriedUntilDay = state?.buriedUntil?.let { DateTimeUtils.isoToEpochDay(it) } ?: 0L,
+            lastModifiedTime = state?.updatedAt?.let { DateTimeUtils.isoToMillis(it) } ?: 0L
         )
     }
 
     /**
-     * 兼容旧版调用 (仅从 Entity 转换，通常用于没有任何学习记录的生词)
-     * ⚠️ 注意：此方法返回的 Word 进度字段均为默认值
+     * 兼容旧版调用 (仅从 Entity 转换)
      */
     fun WordEntity.toDomainModel(): Word = toDomainModel(this, null)
-
 
     /**
      * Domain Model转Entity
@@ -73,27 +66,33 @@ object WordMapper {
             example3 = example3,
             gloss3 = gloss3,
             isDelisted = isDelisted
-            // 进度字段已移除
         )
     }
 
     /**
-     * 转换为状态实体
+     * 转换为进度实体
      */
-    fun Word.toStudyStateEntity(): WordStudyStateEntity {
-        return WordStudyStateEntity(
-            wordId = id,
-            repetitionCount = repetitionCount,
+    fun Word.toProgressEntity(userId: String): UserProgressEntity {
+        return UserProgressEntity(
+            id = "${userId}_word_${id}",
+            userId = userId,
+            itemType = "word",
+            itemId = id,
+            reps = repetitionCount,
             stability = stability,
             difficulty = difficulty,
-            interval = interval,
-            nextReviewDate = nextReviewDate,
-            lastReviewedDate = lastReviewedDate,
-            firstLearnedDate = firstLearnedDate,
+            elapsedDays = 0, // Need to handle this
+            scheduledDays = interval,
+            lapses = 0, // Need to handle this
+            state = if (isSkipped) -1 else 0,
+            learningStep = 0, // Need to handle this
+            nextReview = DateTimeUtils.epochDayToIso(nextReviewDate),
+            lastReview = lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
             isFavorite = isFavorite,
-            isSkipped = isSkipped,
-            buriedUntilDay = buriedUntilDay,
-            lastModifiedTime = lastModifiedTime
+            buriedUntil = if (buriedUntilDay > 0) DateTimeUtils.epochDayToIso(buriedUntilDay) else null,
+            updatedAt = DateTimeUtils.millisToIso(lastModifiedTime),
+            level = level,
+            createdAt = firstLearnedDate?.let { DateTimeUtils.epochDayToIso(it) } ?: DateTimeUtils.millisToIso(lastModifiedTime)
         )
     }
 

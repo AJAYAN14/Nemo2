@@ -166,4 +166,45 @@ object DateTimeUtils {
         val localDate = epochDayToLocalDate(epochDay)
         return String.format(Locale.CHINA, "%02d月%02d日", localDate.monthValue, localDate.dayOfMonth)
     }
+
+    /**
+     * 将 Epoch Day 转换为 ISO 8601 字符串 (用于发送给服务端)
+     * @param epochDay Epoch Day
+     * @return ISO 8601 字符串 (00:00:00Z)
+     */
+    fun epochDayToIso(epochDay: Long): String {
+        val localDate = LocalDate.ofEpochDay(epochDay)
+        return "${localDate}T00:00:00Z"
+    }
+
+    /**
+     * 将 ISO 8601 字符串转换为 Epoch Day
+     * @param isoString ISO 8601 时间字符串
+     * @return Epoch Day
+     */
+    fun isoToEpochDay(isoString: String): Long {
+        val datePart = isoString.substringBefore('T')
+        return LocalDate.parse(datePart).toEpochDay()
+    }
+
+    /**
+     * 获取当前补偿后的 ISO 8601 字符串
+     */
+    fun getCurrentCompensatedIso(): String {
+        return formatIso8601(Date(getCurrentCompensatedMillis()))
+    }
+
+    /**
+     * 将毫秒时间戳转换为 ISO 8601 字符串
+     */
+    fun millisToIso(millis: Long): String {
+        return formatIso8601(Date(millis))
+    }
+
+    /**
+     * 将 ISO 8601 字符串转换为毫秒时间戳
+     */
+    fun isoToMillis(isoString: String): Long {
+        return parseIso8601(isoString)?.time ?: 0L
+    }
 }

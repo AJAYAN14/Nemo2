@@ -4,48 +4,44 @@ import com.jian.nemo.core.domain.model.ReviewLog
 import kotlin.math.max
 
 /**
- * 轻量个性化参数微调器。
- *
- * 说明：
- * - 目标是上线兼容优先，不做激进重拟合。
- * - 日志不足时直接返回 null（保持默认参数）。
- * - 仅小幅调整少量参数，且有硬性边界。
+ * 轻量个性化参数微调器 (Double 精度版)。
+ * 遵循 rules.md: 3.D Algorithm Precision
  */
 object FsrsParameterOptimizer {
 
     private const val MIN_LOGS_FOR_TUNING = 400
 
     data class OptimizationResult(
-        val parameters: FloatArray,
+        val parameters: DoubleArray,
         val sampleSize: Int,
-        val againRate: Float,
-        val hardRate: Float
+        val againRate: Double,
+        val hardRate: Double
     )
 
     fun optimize(
         logs: List<ReviewLog>,
-        base: FloatArray = FsrsAlgorithm.DEFAULT_PARAMETERS
+        base: DoubleArray = Fsrs6Algorithm.DEFAULT_PARAMETERS
     ): OptimizationResult? {
         if (logs.size < MIN_LOGS_FOR_TUNING) return null
 
         val tuned = base.clone()
-        val total = logs.size.toFloat()
-        val againRate = logs.count { it.rating <= 2 }.toFloat() / total
-        val hardRate = logs.count { it.rating == 3 }.toFloat() / total
+        val total = logs.size.toDouble()
+        val againRate = logs.count { it.rating <= 2 }.toDouble() / total
+        val hardRate = logs.count { it.rating == 3 }.toDouble() / total
 
         // 1) 忘记率偏高：收紧间隔增长；忘记率偏低：适度放宽。
-        val againDrift = againRate - 0.25f
-        tuned[11] = tuned[11] * clamp(1f + againDrift * 0.50f, 0.92f, 1.08f) // failure base
-        tuned[8] = tuned[8] * clamp(1f - againDrift * 0.35f, 0.92f, 1.08f)   // success growth exp
-        tuned[16] = tuned[16] * clamp(1f - againDrift * 0.25f, 0.94f, 1.06f)  // easy bonus
+        val againDrift = againRate - 0.25
+        tuned[11] = tuned[11] * clamp(1.0 + againDrift * 0.50, 0.92, 1.08) // failure base
+        tuned[8] = tuned[8] * clamp(1.0 - againDrift * 0.35, 0.92, 1.08)   // success growth exp
+        tuned[16] = tuned[16] * clamp(1.0 - againDrift * 0.25, 0.94, 1.06)  // easy bonus
 
         // 2) Hard 比例偏高：略微增加 hard penalty（更保守）；反之放宽。
-        val hardDrift = hardRate - 0.20f
-        tuned[15] = tuned[15] * clamp(1f - hardDrift * 0.40f, 0.90f, 1.10f)
+        val hardDrift = hardRate - 0.20
+        tuned[15] = tuned[15] * clamp(1.0 - hardDrift * 0.40, 0.90, 1.10)
 
         // 3) 稳定性保护，避免参数异常导致极端结果。
-        tuned[11] = max(0.5f, tuned[11])
-        tuned[16] = max(1.1f, tuned[16])
+        tuned[11] = max(0.5, tuned[11])
+        tuned[16] = max(1.1, tuned[16])
 
         return OptimizationResult(
             parameters = tuned,
@@ -55,7 +51,7 @@ object FsrsParameterOptimizer {
         )
     }
 
-    private fun clamp(value: Float, min: Float, max: Float): Float {
+    private fun clamp(value: Double, min: Double, max: Double): Double {
         return value.coerceIn(min, max)
     }
 }
