@@ -4,6 +4,7 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { useUI } from "@/components/providers/UIProvider";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -11,6 +12,9 @@ export function ClientLayoutWrapper({ children }: { children: React.ReactNode })
   
   // Activate global shortcuts (Esc, Space, etc.)
   useGlobalShortcuts();
+  
+  // Enable real-time synchronization with cloud (Supabase Realtime)
+  useRealtimeSync();
   
   // Immersive routes where navigation is hidden and padding should be removed
   const isImmersive = (pathname.startsWith("/learn") || 
