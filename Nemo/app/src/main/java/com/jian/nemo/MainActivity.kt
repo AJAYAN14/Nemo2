@@ -53,6 +53,8 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import com.jian.nemo.core.common.util.SyncEvent
 import com.jian.nemo.core.common.util.SyncMessageBus
+import com.jian.nemo.core.ui.component.common.NemoSnackbar
+import com.jian.nemo.core.ui.component.common.NemoSnackbarType
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 
@@ -270,6 +272,16 @@ fun NemoApp(
                 }
             )
         }
+
+        // --- 全局通知组件 (NemoSnackbar) ---
+        NemoSnackbar(
+            visible = uiState.showSnackbar,
+            message = uiState.snackbarMessage,
+            type = uiState.snackbarType,
+            onDismiss = { viewModel.dismissSnackbar() },
+            modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding()) // 避开状态栏
+        )
     }
 
     // 监听应用更新检查事件
@@ -277,10 +289,10 @@ fun NemoApp(
         viewModel.updateCheckEvents.collect { event ->
             when (event) {
                 is UpdateCheckEvent.NoUpdateAvailable -> {
-                    android.widget.Toast.makeText(context, "已是最新版本", android.widget.Toast.LENGTH_SHORT).show()
+                    viewModel.showSnackbar("已是最新版本", NemoSnackbarType.INFO)
                 }
                 is UpdateCheckEvent.Error -> {
-                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
+                    viewModel.showSnackbar(event.message, NemoSnackbarType.ERROR)
                 }
             }
         }
@@ -291,10 +303,10 @@ fun NemoApp(
         syncMessageBus.syncEvents.collect { event: SyncEvent ->
             when (event) {
                 is SyncEvent.Success -> {
-                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
+                    viewModel.showSnackbar(event.message, NemoSnackbarType.SUCCESS)
                 }
                 is SyncEvent.Error -> {
-                    android.widget.Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
+                    viewModel.showSnackbar(event.message, NemoSnackbarType.ERROR)
                 }
             }
         }

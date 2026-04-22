@@ -44,6 +44,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.jian.nemo.core.designsystem.theme.BentoColors
 import com.jian.nemo.core.designsystem.theme.NemoPrimary
@@ -63,6 +65,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val haptic = LocalHapticFeedback.current
     
     // --- 环形进度加载控制逻辑 ---
     var isInitialLoading by remember { mutableStateOf(true) }
@@ -504,7 +507,12 @@ fun HomeScreen(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                onClick = { onNavigateToLearning(uiState.selectedLevel, uiState.learningMode) }
+                                onClick = { 
+                                    viewModel.onStartLearningClick(
+                                        onReady = { onNavigateToLearning(uiState.selectedLevel, uiState.learningMode) },
+                                        onNotReady = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+                                    )
+                                }
                             ),
                         shape = RoundedCornerShape(24.dp),
                         color = if (uiState.learningMode == LearningMode.Word) BentoColors.Primary else BentoColors.GrammarPrimary,

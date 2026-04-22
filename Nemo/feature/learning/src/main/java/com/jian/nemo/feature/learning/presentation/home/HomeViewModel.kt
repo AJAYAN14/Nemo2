@@ -24,7 +24,8 @@ class HomeViewModel @Inject constructor(
     private val settingsRepository: com.jian.nemo.core.domain.repository.SettingsRepository,
     private val notificationRepository: NotificationRepositoryImpl,
     private val configRepository: ConfigRepository,
-    private val getUserFlowUseCase: GetUserFlowUseCase
+    private val getUserFlowUseCase: GetUserFlowUseCase,
+    private val syncMessageBus: com.jian.nemo.core.common.util.SyncMessageBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -97,7 +98,9 @@ class HomeViewModel @Inject constructor(
                     currentState.copy(
                         stats = todayStats,
                         currentProgress = progress,
-                        dailyGoal = goal
+                        dailyGoal = goal,
+                        totalWords = stats.totalWords,
+                        totalGrammars = stats.totalGrammars
                     )
                 }
             }
@@ -174,6 +177,20 @@ class HomeViewModel @Inject constructor(
             _uiState.update { it.copy(activeNotification = null) }
         }
     }
+
+    /**
+     * 点击“开始学习”时的拦截逻辑
+     */
+    fun onStartLearningClick(onReady: () -> Unit, onNotReady: () -> Unit) {
+        if (!_uiState.value.isDataReady) {
+            viewModelScope.launch {
+                syncMessageBus.emit(com.jian.nemo.core.common.util.SyncEvent.Error("词库资料正在导入中，请稍候..."))
+            }
+            onNotReady()
+            return
+        }
+        onReady()
+    }
 }
 
 data class HomeUiState(
@@ -196,6 +213,8 @@ data class HomeUiState(
     val titleResId: Int = R.string.title_word_learning,
     val currentProgress: Int = 0,
     val dailyGoal: Int = 0,
+    val totalWords: Int = 0,
+    val totalGrammars: Int = 0,
     
     // User Context
     val user: User? = null
@@ -217,6 +236,9 @@ data class HomeUiState(
 
     val dailyCompletionRate: Int
         get() = if (dailyGoal > 0) ((currentProgress.toFloat() / dailyGoal) * 100).toInt().coerceIn(0, 100) else 0
+
+    val isDataReady: Boolean
+        get() = if (learningMode == LearningMode.Word) totalWords > 0 else totalGrammars > 0
 }
 
 /**

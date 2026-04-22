@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.jian.nemo.core.ui.component.common.NemoSnackbarType
 import java.io.File
 import javax.inject.Inject
 
@@ -227,6 +228,20 @@ class MainViewModel @Inject constructor(
     fun dismissGoogleTtsDialog() {
         _uiState.update { it.copy(showGoogleTtsDialog = false) }
     }
+
+    fun showSnackbar(message: String, type: NemoSnackbarType = NemoSnackbarType.INFO) {
+        _uiState.update { 
+            it.copy(
+                showSnackbar = true,
+                snackbarMessage = message,
+                snackbarType = type
+            )
+        }
+    }
+
+    fun dismissSnackbar() {
+        _uiState.update { it.copy(showSnackbar = false) }
+    }
 }
 
 data class MainUiState(
@@ -238,7 +253,10 @@ data class MainUiState(
     val showGoogleTtsDialog: Boolean = false,
     val isDownloadingGoogleTts: Boolean = false,
     val googleTtsDownloadProgress: Float = 0f,
-    val currentUser: User? = null
+    val currentUser: User? = null,
+    val showSnackbar: Boolean = false,
+    val snackbarMessage: String = "",
+    val snackbarType: NemoSnackbarType = NemoSnackbarType.INFO
 )
 
 sealed interface UpdateCheckEvent {
