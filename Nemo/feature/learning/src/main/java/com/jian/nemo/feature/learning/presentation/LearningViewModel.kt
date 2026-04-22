@@ -54,7 +54,7 @@ import javax.inject.Inject
  * 学习项封装 (统一 Word 和 Grammar)
  */
 sealed class LearningItem {
-    abstract val id: String
+    abstract val id: Long
     abstract val isNew: Boolean
     abstract val displayName: String
     abstract val repetitionCount: Int
@@ -68,7 +68,7 @@ sealed class LearningItem {
         override val step: Int = 0,
         override val dueTime: Long = 0
     ) : LearningItem() {
-        override val id: String get() = word.id
+        override val id: Long get() = word.id
         override val isNew: Boolean get() = word.repetitionCount == 0
         override val displayName: String get() = word.japanese
         override val repetitionCount: Int get() = word.repetitionCount
@@ -79,7 +79,7 @@ sealed class LearningItem {
         override val step: Int = 0,
         override val dueTime: Long = 0
     ) : LearningItem() {
-        override val id: String get() = grammar.id
+        override val id: Long get() = grammar.id
         override val isNew: Boolean get() = grammar.repetitionCount == 0
         override val displayName: String get() = grammar.grammar
         override val repetitionCount: Int get() = grammar.repetitionCount
@@ -157,16 +157,16 @@ class LearningViewModel @Inject constructor(
     val uiState: StateFlow<LearningUiState> = _uiState.asStateFlow()
 
     /** 学习阶段追踪 (ItemId -> StepIndex) */
-    private val _learningSteps = mutableMapOf<String, Int>()
+    private val _learningSteps = mutableMapOf<Long, Int>()
 
     /** Anki-Mode: 到期时间记录 (ID -> DueTime Epoch Millis) */
-    private val _learningDueTimes = mutableMapOf<String, Long>()
+    private val _learningDueTimes = mutableMapOf<Long, Long>()
 
     /** 失败次数追踪 (用于钉子户检测)，使用 StateFlow 确保并发安全 */
-    private val _lapseCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    private val _lapseCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
 
     /** 重入队标记 (用于红标显示) */
-    private val _requeuedItems = mutableSetOf<String>()
+    private val _requeuedItems = mutableSetOf<Long>()
 
     /** 会话锁定的学习日 (用于零点跨天保护) */
     private var _sessionLockedDay: Long? = null
@@ -404,6 +404,24 @@ class LearningViewModel @Inject constructor(
                     settingsRepository.setDarkMode(nextMode)
                 }
             }
+            is LearningEvent.RefreshData -> {
+                viewModelScope.launch {
+                    _uiState.update { it.copy(status = LearningStatus.Loading) }
+                    try {
+                        studyRepository.performFullSync()
+                        // 重新开始当前等级的学习
+                        startLearning(_uiState.value.selectedLevel)
+                        _uiState.update { it.copy(successMessage = "数据已强制同步") }
+                    } catch (e: Exception) {
+                        _uiState.update { 
+                            it.copy(
+                                status = LearningStatus.Error,
+                                error = "刷新失败: ${e.message}"
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -536,16 +554,22 @@ class LearningViewModel @Inject constructor(
             savedSession = savedSession,
             getItemsByIds = { ids -> wordRepository.getWordsByIds(ids) },
             getDueItems = {
-                val r = getDueWordsUseCase().first { it !is Result.Loading }
-                if (r is Result.Success) r.data else emptyList()
-            },
-            getNewItems = {
-                val isRandom = settingsRepository.isRandomNewContentEnabledFlow.first()
-                val r = getNewWordsUseCase(level, isRandom).first { it !is Result.Loading }
+                val r = getDueWordsUseCase(level).first { it !is Result.Loading }
                 if (r is Result.Success) r.data else emptyList()
             },
             getItemId = { it.id },
-            filterByLevel = { it.level == level }
+            isLearned = { it.repetitionCount > 0 },
+            seedNewItems = {
+                val isRandom = settingsRepository.isRandomNewContentEnabledFlow.first()
+                val epochDay = (System.currentTimeMillis() / 86400000).toInt()
+                studyRepository.seedDailyNewItems(
+                    itemType = "word",
+                    limit = dailyGoal,
+                    level = level,
+                    isRandom = isRandom,
+                    epochDay = epochDay
+                )
+            }
         )
     }
 
@@ -562,16 +586,22 @@ class LearningViewModel @Inject constructor(
             savedSession = savedSession,
             getItemsByIds = { ids -> grammarRepository.getGrammarsByIds(ids) },
             getDueItems = {
-                val r = getDueGrammarsUseCase().first { it !is Result.Loading }
-                if (r is Result.Success) r.data else emptyList()
-            },
-            getNewItems = {
-                val isRandom = settingsRepository.isRandomNewContentEnabledFlow.first()
-                val r = getNewGrammarsUseCase(level, isRandom).first { it !is Result.Loading }
+                val r = getDueGrammarsUseCase(level).first { it !is Result.Loading }
                 if (r is Result.Success) r.data else emptyList()
             },
             getItemId = { it.id },
-            filterByLevel = { it.grammarLevel == level }
+            isLearned = { it.repetitionCount > 0 },
+            seedNewItems = {
+                val isRandom = settingsRepository.isRandomNewContentEnabledFlow.first()
+                val epochDay = (System.currentTimeMillis() / 86400000).toInt()
+                studyRepository.seedDailyNewItems(
+                    itemType = "grammar",
+                    limit = dailyGoal,
+                    level = level,
+                    isRandom = isRandom,
+                    epochDay = epochDay
+                )
+            }
         )
     }
 
@@ -910,7 +940,7 @@ class LearningViewModel @Inject constructor(
                     quality == 5 -> {
                         println("熟词速通: ${currentItem.displayName}")
                         _learningSteps.remove(currentItem.id)
-                        studyRepository.processReview(currentItem.id.toLongOrNull() ?: 0L, if (currentItem is LearningItem.WordItem) "word" else "grammar", 5)
+                        studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", 5)
                         handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                     }
 
@@ -946,7 +976,7 @@ class LearningViewModel @Inject constructor(
                             )
                             handleScheduleResult(result)
                         } else {
-                            studyRepository.processReview(currentItem.id.toLongOrNull() ?: 0L, if (currentItem is LearningItem.WordItem) "word" else "grammar", quality)
+                            studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", quality)
                             handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                         }
                     }
@@ -1079,7 +1109,7 @@ class LearningViewModel @Inject constructor(
                 if (!result.item.isNew && result.quality < 5) {
                     processRelearningGraduation(result.item)
                 } else {
-                    studyRepository.processReview(result.item.id.toLongOrNull() ?: 0L, if (result.item is LearningItem.WordItem) "word" else "grammar", result.quality)
+                    studyRepository.processReview(result.item.id, if (result.item is LearningItem.WordItem) "word" else "grammar", result.quality)
                     handleSrsUpdateResult(Result.Success(Unit), result.item.isNew, isLapse = false)
                 }
             }
@@ -1559,7 +1589,7 @@ class LearningViewModel @Inject constructor(
         }
     }
 
-    private fun saveSessionState(ids: List<String>, index: Int, level: String) {
+    private fun saveSessionState(ids: List<Long>, index: Int, level: String) {
         val waitingUntil = _uiState.value.waitingUntil
         viewModelScope.launch {
             when (_uiState.value.learningMode) {
@@ -1650,7 +1680,7 @@ class LearningViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 studyRepository.buryItem(
-                    itemId = currentItem.id.toLongOrNull() ?: 0L,
+                    itemId = currentItem.id,
                     itemType = if (currentItem is LearningItem.WordItem) "word" else "grammar",
                     epochDay = today.toLong()
                 )
@@ -1676,7 +1706,7 @@ class LearningViewModel @Inject constructor(
         // 1. 持久化暂停状态 (使用统一的 StudyRepository 接口，不再操作 Word/Grammar 表)
         try {
             studyRepository.suspendItem(
-                itemId = item.id.toLongOrNull() ?: 0L,
+                itemId = item.id,
                 itemType = if (item is LearningItem.WordItem) "word" else "grammar"
             )
         } catch (e: Exception) {

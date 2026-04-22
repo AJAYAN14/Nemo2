@@ -132,6 +132,8 @@ dependencies {
     implementation(libs.supabase.functions)
     implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.websockets)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)
 

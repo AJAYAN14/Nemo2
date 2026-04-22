@@ -74,7 +74,7 @@ private val higColors = listOf(
 /**
  * 获取随机贴纸文件名
  */
-private fun getStickerForWord(wordId: String): String {
+private fun getStickerForWord(wordId: Long): String {
     val stickers = listOf(
         "bad_taste", "birthday", "cleaning", "confused", "cooking",
         "cool", "eating_noodles", "headache", "listening_music", "love",
@@ -89,7 +89,7 @@ private fun getStickerForWord(wordId: String): String {
 /**
  * 根据单词 ID 获取稳定的随机颜色
  */
-private fun getColorForWord(wordId: String): Color {
+private fun getColorForWord(wordId: Long): Color {
     val index = abs(wordId.hashCode()) % higColors.size
     return higColors[index]
 }

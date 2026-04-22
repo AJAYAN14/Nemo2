@@ -18,7 +18,7 @@ data class FavoriteQuestionEntity(
      * 关联的语法ID (可选)
      */
     @ColumnInfo(name = "grammar_id")
-    val grammarId: String? = null,
+    val grammarId: Long? = null,
 
     /**
      * JSON题目ID (可选，对应 GrammarTestQuestion.id)

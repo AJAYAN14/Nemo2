@@ -34,10 +34,10 @@ class GrammarDetailViewModel @Inject constructor(
     private val _playingAudioId = MutableStateFlow<String?>(null)
     val playingAudioId = _playingAudioId.asStateFlow()
 
-    private val startGrammarId: String = checkNotNull(savedStateHandle["grammarId"])
+    private val startGrammarId: Long = checkNotNull(savedStateHandle["grammarId"])
 
     // Context IDs for Swipe Navigation
-    private val _contextIds = MutableStateFlow<List<String>>(emptyList())
+    private val _contextIds = MutableStateFlow<List<Long>>(emptyList())
     val contextIds = _contextIds.asStateFlow()
 
     private val _currentGrammar = MutableStateFlow<Grammar?>(null)
@@ -83,7 +83,7 @@ class GrammarDetailViewModel @Inject constructor(
         }
     }
 
-    fun getGrammarFlow(id: String): kotlinx.coroutines.flow.Flow<Grammar?> {
+    fun getGrammarFlow(id: Long): kotlinx.coroutines.flow.Flow<Grammar?> {
         return grammarRepository.getGrammarById(id)
     }
 
@@ -123,7 +123,7 @@ class GrammarDetailViewModel @Inject constructor(
         _showReportDialog.value = false
     }
 
-    fun reportContentError(grammarId: String) {
+    fun reportContentError(grammarId: Long) {
         _showReportDialog.value = false
         viewModelScope.launch {
             val result = contentReportRepository.reportContentError(grammarId, "grammar")

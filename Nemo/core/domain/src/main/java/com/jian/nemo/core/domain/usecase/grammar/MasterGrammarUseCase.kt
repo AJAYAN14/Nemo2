@@ -30,7 +30,7 @@ class MasterGrammarUseCase @Inject constructor(
     private val settingsRepository: SettingsRepository
 ) {
     suspend fun invoke(
-        grammarId: String,
+        grammarId: Long,
         quality: Int = 3
     ): Result<Grammar> {
         return try {

@@ -30,7 +30,7 @@ import com.jian.nemo.core.domain.model.Grammar
 @Composable
 fun FavoriteGrammarsScreen(
     viewModel: FavoriteGrammarsViewModel = hiltViewModel(),
-    onGrammarClick: (String) -> Unit = {},
+    onGrammarClick: (Long) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -122,7 +122,7 @@ fun FavoriteGrammarsScreen(
                 ) {
                     items(
                         items = uiState.favoriteGrammars,
-                        key = { "favorite_grammar_${it.id}" }
+                        key = { it.id }
                     ) { grammar ->
                         Box(modifier = Modifier.animateListItem()) {
                             FavoriteGrammarItem(

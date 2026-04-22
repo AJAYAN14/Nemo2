@@ -37,7 +37,7 @@ class FavoriteQuestionRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun isFavorite(grammarId: String?, jsonId: String?): Boolean {
+    override suspend fun isFavorite(grammarId: Long?, jsonId: String?): Boolean {
         return withContext(Dispatchers.IO) {
             when {
                 jsonId != null -> favoriteQuestionDao.isFavoriteByJsonId(jsonId)
@@ -47,7 +47,7 @@ class FavoriteQuestionRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun removeFavorite(grammarId: String?, jsonId: String?) {
+    override suspend fun removeFavorite(grammarId: Long?, jsonId: String?) {
         withContext(Dispatchers.IO) {
             when {
                 jsonId != null -> favoriteQuestionDao.deleteByJsonId(jsonId)

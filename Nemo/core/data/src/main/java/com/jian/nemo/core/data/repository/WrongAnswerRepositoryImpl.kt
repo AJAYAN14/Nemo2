@@ -61,7 +61,7 @@ class WrongAnswerRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override suspend fun getWrongAnswerByWordIdSync(wordId: String): WrongAnswer? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun getWrongAnswerByWordIdSync(wordId: Long): WrongAnswer? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             wrongAnswerDao.getWrongAnswerByWordIdSync(wordId)?.toDomainModel()
         } catch (e: Exception) {
@@ -70,7 +70,7 @@ class WrongAnswerRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getWrongAnswersByWordId(wordId: String): Flow<List<WrongAnswer>> {
+    override fun getWrongAnswersByWordId(wordId: Long): Flow<List<WrongAnswer>> {
         return wrongAnswerDao.getWrongAnswersByWordId(wordId)
             .map { entities ->
                 val word = try {
@@ -100,7 +100,7 @@ class WrongAnswerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getAllWrongWordIds(): List<String> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun getAllWrongWordIds(): List<Long> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             wrongAnswerDao.getAllWrongWordIds()
         } catch (e: Exception) {
@@ -109,7 +109,7 @@ class WrongAnswerRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteByWordId(wordId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun deleteByWordId(wordId: Long): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             wrongAnswerDao.markDeletedByWordId(wordId, com.jian.nemo.core.common.util.DateTimeUtils.getCurrentCompensatedMillis())
             println("✅ 标记记录为已删除: wordId=$wordId")

@@ -13,7 +13,7 @@ interface SrsItem {
     /**
      * 唯一 ID (如 user_progress.id)，用于确定性抖动计算
      */
-    val id: String?
+    val progressId: String?
     /**
      * 复习次数（已成功复习的次数）
      * - 0: 未学习

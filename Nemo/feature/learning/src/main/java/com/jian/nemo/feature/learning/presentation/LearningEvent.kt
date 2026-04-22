@@ -190,4 +190,8 @@ sealed interface LearningEvent {
      * 循环切换显示模式
      */
     data object CycleDarkMode : LearningEvent
+    /**
+     * 强制刷新数据 (重新同步并加载会话)
+     */
+    data object RefreshData : LearningEvent
 }

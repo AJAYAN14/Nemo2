@@ -32,7 +32,7 @@ data class GrammarWrongAnswerEntity(
      * 语法ID (外键)
      */
     @ColumnInfo(name = "grammar_id")
-    val grammarId: String,
+    val grammarId: Long,
 
     /**
      * 测试模式

@@ -29,7 +29,7 @@ class ReviewGrammarUseCase @Inject constructor(
      * @return Result<Grammar> 更新后的语法
      */
     suspend fun invoke(
-        grammarId: String,
+        grammarId: Long,
         quality: Int
     ): Result<Grammar> {
         require(quality in 0..5) { "Quality must be 0-5, got $quality" }

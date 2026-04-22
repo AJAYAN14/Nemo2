@@ -83,10 +83,9 @@ class ReviewViewModel @Inject constructor(
     // ========== Relearning 内部状态 ==========
 
     /** 重学步进追踪 (ItemId -> StepIndex) */
-    private val _relearningSteps = mutableMapOf<String, Int>()
-
+    private val _relearningSteps = mutableMapOf<Long, Int>()
     /** 重学到期时间 (ItemId -> DueTime Epoch Millis) */
-    private val _relearningDueTimes = mutableMapOf<String, Long>()
+    private val _relearningDueTimes = mutableMapOf<Long, Long>()
 
     /** 重学步进配置 (分钟列表) */
     private var _relearningStepsConfig: List<Int> = listOf(1, 10)
@@ -115,19 +114,21 @@ class ReviewViewModel @Inject constructor(
                 _learnAheadLimitMinutes = settingsRepository.learnAheadLimitFlow.first().coerceAtLeast(0)
                 _leechThreshold = settingsRepository.leechThresholdFlow.first().coerceAtLeast(1)
                 _leechAction = settingsRepository.leechActionFlow.first()
-
+ 
                 val relearningStepsStr = settingsRepository.relearningStepsFlow.first()
                 _relearningStepsConfig = parseSteps(relearningStepsStr)
-
+ 
                 // 1. Get Due Words
-                val dueWordsResult = getDueWordsUseCase().first { it !is Result.Loading }
+                val wordLevel = settingsRepository.preferredWordLevelFlow.first()
+                val dueWordsResult = getDueWordsUseCase(wordLevel).first { it !is Result.Loading }
                 val dueWords = if (dueWordsResult is Result.Success) dueWordsResult.data else emptyList()
-
+ 
                 // 2. Get Due Grammars
-                val dueGrammarsResult = getDueGrammarsUseCase().first { it !is Result.Loading }
+                val grammarLevel = settingsRepository.preferredGrammarLevelFlow.first()
+                val dueGrammarsResult = getDueGrammarsUseCase(grammarLevel).first { it !is Result.Loading }
                 val dueGrammars = if (dueGrammarsResult is Result.Success) dueGrammarsResult.data else emptyList()
-
-                // 3. 全局混排：按 due day 排序后统一调度，避免单词/语法分段处理
+ 
+                // 3. 全局混排
                 val combinedList = (dueWords.map { ReviewPreviewItem.WordItem(it) } +
                     dueGrammars.map { ReviewPreviewItem.GrammarItem(it) })
                     .sortedWith(compareBy<ReviewPreviewItem> { it.dueDay }.thenBy { it.itemId })
@@ -333,7 +334,7 @@ class ReviewViewModel @Inject constructor(
      */
     private suspend fun processDirectSrs(item: ReviewPreviewItem, quality: Int) {
         studyRepository.processReview(
-            itemId = item.itemId.toLongOrNull() ?: 0L,
+            itemId = item.itemId,
             itemType = if (item is ReviewPreviewItem.WordItem) "word" else "grammar",
             rating = quality
         )
@@ -646,7 +647,7 @@ class ReviewViewModel @Inject constructor(
 // ========== ReviewPreviewItem 辅助扩展 ==========
 
 /** 获取项目 ID */
-val ReviewPreviewItem.itemId: String
+val ReviewPreviewItem.itemId: Long
     get() = when (this) {
         is ReviewPreviewItem.WordItem -> word.id
         is ReviewPreviewItem.GrammarItem -> grammar.id

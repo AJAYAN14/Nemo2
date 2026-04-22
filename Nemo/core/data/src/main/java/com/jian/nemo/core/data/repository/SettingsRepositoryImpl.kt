@@ -414,44 +414,44 @@ class SettingsRepositoryImpl @Inject constructor(
 
     // ========== 今日复习记录 (临时统计) ==========
 
-    override suspend fun addTodayTestedWordId(id: String) {
+    override suspend fun addTodayTestedWordId(id: Long) {
         dataStore.edit { preferences ->
             val set = preferences[PreferencesKeys.TODAY_TESTED_WORD_IDS] ?: emptySet<String>()
-            preferences[PreferencesKeys.TODAY_TESTED_WORD_IDS] = set + id
+            preferences[PreferencesKeys.TODAY_TESTED_WORD_IDS] = set + id.toString()
         }
     }
 
-    override suspend fun addTodayWrongWordId(id: String) {
+    override suspend fun addTodayWrongWordId(id: Long) {
         dataStore.edit { preferences ->
             val set = preferences[PreferencesKeys.TODAY_WRONG_WORD_IDS] ?: emptySet<String>()
-            preferences[PreferencesKeys.TODAY_WRONG_WORD_IDS] = set + id
+            preferences[PreferencesKeys.TODAY_WRONG_WORD_IDS] = set + id.toString()
         }
     }
 
-    override suspend fun addTodayTestedGrammarId(id: String) {
+    override suspend fun addTodayTestedGrammarId(id: Long) {
         dataStore.edit { preferences ->
             val set = preferences[PreferencesKeys.TODAY_TESTED_GRAMMAR_IDS] ?: emptySet<String>()
-            preferences[PreferencesKeys.TODAY_TESTED_GRAMMAR_IDS] = set + id
+            preferences[PreferencesKeys.TODAY_TESTED_GRAMMAR_IDS] = set + id.toString()
         }
     }
 
-    override suspend fun addTodayWrongGrammarId(id: String) {
+    override suspend fun addTodayWrongGrammarId(id: Long) {
         dataStore.edit { preferences ->
             val set = preferences[PreferencesKeys.TODAY_WRONG_GRAMMAR_IDS] ?: emptySet<String>()
-            preferences[PreferencesKeys.TODAY_WRONG_GRAMMAR_IDS] = set + id
+            preferences[PreferencesKeys.TODAY_WRONG_GRAMMAR_IDS] = set + id.toString()
         }
     }
 
     // 🎯 P3修复: 获取今日测试的单词/语法ID
-    override suspend fun getTodayTestedWordIds(): Set<String> {
+    override suspend fun getTodayTestedWordIds(): Set<Long> {
         return dataStore.data.map { preferences ->
-            preferences[PreferencesKeys.TODAY_TESTED_WORD_IDS] ?: emptySet<String>()
+            preferences[PreferencesKeys.TODAY_TESTED_WORD_IDS]?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet<Long>()
         }.first()
     }
 
-    override suspend fun getTodayTestedGrammarIds(): Set<String> {
+    override suspend fun getTodayTestedGrammarIds(): Set<Long> {
         return dataStore.data.map { preferences ->
-            preferences[PreferencesKeys.TODAY_TESTED_GRAMMAR_IDS] ?: emptySet<String>()
+            preferences[PreferencesKeys.TODAY_TESTED_GRAMMAR_IDS]?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet<Long>()
         }.first()
     }
 
@@ -794,7 +794,7 @@ class SettingsRepositoryImpl @Inject constructor(
 
     // ========== 学习会话持久化 (单词) ==========
 
-    override suspend fun saveWordSession(ids: List<String>, currentIndex: Int, level: String, steps: Map<String, Int>, waitingUntil: Long) {
+    override suspend fun saveWordSession(ids: List<Long>, currentIndex: Int, level: String, steps: Map<Long, Int>, waitingUntil: Long) {
         val resetHour = learningDayResetHourFlow.first()
         val today = DateTimeUtils.getLearningDay(resetHour)
         val idsString = ids.joinToString(",")
@@ -837,12 +837,12 @@ class SettingsRepositoryImpl @Inject constructor(
             // 只有当会话存在、不为空且是今天的会话时才返回
             if (idsString.isNotEmpty() && level != null && startDate == today) {
                 try {
-                    val ids = idsString.split(",")
+                    val ids = idsString.split(",").mapNotNull { it.toLongOrNull() }
 
                     val steps = if (stepsString.isNotEmpty()) {
                         stepsString.split("|").associate {
                             val parts = it.split(":")
-                            parts[0] to parts[1].toInt()
+                            parts[0].toLong() to parts[1].toInt()
                         }
                     } else {
                         emptyMap()
@@ -876,7 +876,7 @@ class SettingsRepositoryImpl @Inject constructor(
 
     // ========== 学习会话持久化 (语法) ==========
 
-    override suspend fun saveGrammarSession(ids: List<String>, currentIndex: Int, level: String, steps: Map<String, Int>, waitingUntil: Long) {
+    override suspend fun saveGrammarSession(ids: List<Long>, currentIndex: Int, level: String, steps: Map<Long, Int>, waitingUntil: Long) {
         val resetHour = learningDayResetHourFlow.first()
         val today = DateTimeUtils.getLearningDay(resetHour)
         val idsString = ids.joinToString(",")
@@ -905,12 +905,12 @@ class SettingsRepositoryImpl @Inject constructor(
             // 只有当会话存在、不为空且是今天的会话时才返回
             if (idsString.isNotEmpty() && level != null && startDate == today) {
                 try {
-                    val ids = idsString.split(",")
+                    val ids = idsString.split(",").mapNotNull { it.toLongOrNull() }
 
                     val steps = if (stepsString.isNotEmpty()) {
                         stepsString.split("|").associate {
                             val parts = it.split(":")
-                            parts[0] to parts[1].toInt()
+                            parts[0].toLong() to parts[1].toInt()
                         }
                     } else {
                         emptyMap()
@@ -943,15 +943,15 @@ class SettingsRepositoryImpl @Inject constructor(
 
     // ========== Leech/Lapse Management (Phase 3) ==========
 
-    override val wordLapsesFlow: Flow<Map<String, Int>> = dataStore.data.map { preferences ->
+    override val wordLapsesFlow: Flow<Map<Long, Int>> = dataStore.data.map { preferences ->
         parseLapseMap(preferences[PreferencesKeys.KEY_WORD_LAPSES])
     }
 
-    override val grammarLapsesFlow: Flow<Map<String, Int>> = dataStore.data.map { preferences ->
+    override val grammarLapsesFlow: Flow<Map<Long, Int>> = dataStore.data.map { preferences ->
         parseLapseMap(preferences[PreferencesKeys.KEY_GRAMMAR_LAPSES])
     }
 
-    override suspend fun incrementWordLapse(wordId: String) {
+    override suspend fun incrementWordLapse(wordId: Long) {
         dataStore.edit { preferences ->
             val currentMap = parseLapseMap(preferences[PreferencesKeys.KEY_WORD_LAPSES]).toMutableMap()
             val currentLapse = currentMap[wordId] ?: 0
@@ -961,7 +961,7 @@ class SettingsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun incrementGrammarLapse(grammarId: String) {
+    override suspend fun incrementGrammarLapse(grammarId: Long) {
         dataStore.edit { preferences ->
             val currentMap = parseLapseMap(preferences[PreferencesKeys.KEY_GRAMMAR_LAPSES]).toMutableMap()
             val currentLapse = currentMap[grammarId] ?: 0
@@ -971,7 +971,7 @@ class SettingsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun resetWordLapse(wordId: String) {
+    override suspend fun resetWordLapse(wordId: Long) {
         dataStore.edit { preferences ->
             val currentMap = parseLapseMap(preferences[PreferencesKeys.KEY_WORD_LAPSES]).toMutableMap()
             if (currentMap.containsKey(wordId)) {
@@ -982,7 +982,7 @@ class SettingsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun resetGrammarLapse(grammarId: String) {
+    override suspend fun resetGrammarLapse(grammarId: Long) {
         dataStore.edit { preferences ->
             val currentMap = parseLapseMap(preferences[PreferencesKeys.KEY_GRAMMAR_LAPSES]).toMutableMap()
             if (currentMap.containsKey(grammarId)) {
@@ -994,20 +994,23 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     // Helper to parse "id:count|id:count"
-    private fun parseLapseMap(json: String?): Map<String, Int> {
+    private fun parseLapseMap(json: String?): Map<Long, Int> {
         if (json.isNullOrEmpty()) return emptyMap()
         return try {
-            json.split("|").associate {
+            json.split("|").mapNotNull {
                 val parts = it.split(":")
-                parts[0] to parts[1].toInt()
-            }
+                if (parts.size == 2) {
+                    val id = parts[0].toLongOrNull()
+                    if (id != null) id to parts[1].toInt() else null
+                } else null
+            }.toMap()
         } catch (e: Exception) {
             emptyMap()
         }
     }
 
     // Helper to serialize
-    private fun serializeLapseMap(map: Map<String, Int>): String {
+    private fun serializeLapseMap(map: Map<Long, Int>): String {
         return map.entries.joinToString("|") { "${it.key}:${it.value}" }
     }
 
@@ -1087,7 +1090,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 // Use physical delete for cleanup
                 wordDao.deleteByIds(toDeleteIds)
                 // 同步清理对应的状态表
-                userProgressDao.deleteByItemIds(toDeleteIds.map { it.toLongOrNull() ?: 0L }, "word")
+                userProgressDao.deleteByItemIds(toDeleteIds, "word")
                 deletedCount += toDeleteIds.size
             }
         } catch (e: Exception) {
@@ -1104,7 +1107,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Found ${toDeleteIds.size} duplicate grammars. Deleting...")
                 grammarDao.deleteByIds(toDeleteIds)
                 // 同步清理对应的状态表
-                userProgressDao.deleteByItemIds(toDeleteIds.map { it.toLongOrNull() ?: 0L }, "grammar")
+                userProgressDao.deleteByItemIds(toDeleteIds, "grammar")
                 deletedCount += toDeleteIds.size
             }
         } catch (e: Exception) {

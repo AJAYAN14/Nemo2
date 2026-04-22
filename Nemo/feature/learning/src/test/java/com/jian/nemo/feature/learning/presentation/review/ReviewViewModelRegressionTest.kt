@@ -265,6 +265,8 @@ class ReviewViewModelRegressionTest {
                 "getLeechActionFlow" -> flowOf(leechAction)
                 "getWordLapsesFlow" -> flowOf(emptyMap<String, Int>())
                 "getGrammarLapsesFlow" -> flowOf(emptyMap<String, Int>())
+                "getPreferredWordLevelFlow" -> flowOf("N5")
+                "getPreferredGrammarLevelFlow" -> flowOf("N5")
                 "incrementWordLapse", "incrementGrammarLapse" -> Unit
                 else -> defaultReturn(methodName)
             }

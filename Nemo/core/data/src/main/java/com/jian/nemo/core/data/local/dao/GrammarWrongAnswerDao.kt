@@ -38,22 +38,22 @@ interface GrammarWrongAnswerDao {
     fun getExportWrongAnswersCursor(): android.database.Cursor
 
     @Query("SELECT * FROM grammar_wrong_answers WHERE grammar_id = :grammarId AND is_deleted = 0 ORDER BY timestamp DESC")
-    fun getWrongAnswersByGrammarId(grammarId: String): Flow<List<GrammarWrongAnswerEntity>>
+    fun getWrongAnswersByGrammarId(grammarId: Long): Flow<List<GrammarWrongAnswerEntity>>
 
     /**
      * 获取指定语法的错题记录 (同步) - 用于做题时判断
      */
     @Query("SELECT * FROM grammar_wrong_answers WHERE grammar_id = :grammarId AND is_deleted = 0 LIMIT 1")
-    suspend fun getWrongAnswerByGrammarIdSync(grammarId: String): GrammarWrongAnswerEntity?
+    suspend fun getWrongAnswerByGrammarIdSync(grammarId: Long): GrammarWrongAnswerEntity?
 
     @Query("SELECT DISTINCT T2.grammar_level FROM grammar_wrong_answers T1 JOIN grammars T2 ON T1.grammar_id = T2.id WHERE T1.is_deleted = 0")
     fun getWrongAnswerGrammarLevels(): Flow<List<String>>
 
     @Query("SELECT DISTINCT grammar_id FROM grammar_wrong_answers WHERE is_deleted = 0")
-    suspend fun getAllWrongGrammarIds(): List<String>
+    suspend fun getAllWrongGrammarIds(): List<Long>
 
     @Query("UPDATE grammar_wrong_answers SET is_deleted = 1, deleted_time = :time, timestamp = :time WHERE grammar_id = :grammarId")
-    suspend fun markDeletedByGrammarId(grammarId: String, time: Long)
+    suspend fun markDeletedByGrammarId(grammarId: Long, time: Long)
 
     /**
      * 逻辑删除所有语法错题记录

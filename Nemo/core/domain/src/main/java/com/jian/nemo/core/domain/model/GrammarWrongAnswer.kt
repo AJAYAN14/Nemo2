@@ -9,7 +9,7 @@ package com.jian.nemo.core.domain.model
  */
 data class GrammarWrongAnswer(
     val id: String,
-    val grammarId: String,
+    val grammarId: Long,
     val grammar: Grammar?,  // 关联的语法信息
     val testMode: String,  // 测试模式
     val userAnswer: String,  // 用户的错误答案

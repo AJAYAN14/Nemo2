@@ -36,7 +36,7 @@ class GenerateCardMatchingQuestionsUseCase @Inject constructor(
         // 每5个单词为一组
         return processedWords.chunked(5).mapIndexed { index, wordGroup ->
             TestQuestion.CardMatching(
-                id = index.toString(),
+                id = index.toLong(),
                 pairs = wordGroup
             )
         }

@@ -26,13 +26,13 @@ interface FavoriteQuestionDao {
     suspend fun deleteById(id: String)
 
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_questions WHERE grammar_id = :grammarId LIMIT 1)")
-    suspend fun isFavoriteByGrammarId(grammarId: String): Boolean
+    suspend fun isFavoriteByGrammarId(grammarId: Long): Boolean
 
     @Query("SELECT EXISTS(SELECT 1 FROM favorite_questions WHERE json_id = :jsonId LIMIT 1)")
     suspend fun isFavoriteByJsonId(jsonId: String): Boolean
 
     @Query("DELETE FROM favorite_questions WHERE grammar_id = :grammarId")
-    suspend fun deleteByGrammarId(grammarId: String)
+    suspend fun deleteByGrammarId(grammarId: Long)
 
     @Query("DELETE FROM favorite_questions WHERE json_id = :jsonId")
     suspend fun deleteByJsonId(jsonId: String)
@@ -72,5 +72,5 @@ interface FavoriteQuestionDao {
     fun getExportFavoritesCursor(): android.database.Cursor
 
     @Query("UPDATE favorite_questions SET grammar_id = :newId WHERE grammar_id = :oldId")
-    suspend fun migrateGrammarId(oldId: String, newId: String)
+    suspend fun migrateGrammarId(oldId: String, newId: Long)
 }

@@ -50,7 +50,7 @@ interface WordDao {
      * 批量获取存在的ID (用于区分 Update 和 Insert)
      */
     @Query("SELECT id FROM words WHERE id IN (:ids)")
-    suspend fun getIdsIn(ids: List<String>): List<String>
+    suspend fun getIdsIn(ids: List<Long>): List<Long>
 
     /**
      * 按等级+日语匹配单词（用于云更新合并）
@@ -75,20 +75,20 @@ interface WordDao {
         updated_at = :updatedTime
         WHERE item_id IN (:ids) AND item_type = 'word'
     """)
-    suspend fun softDeleteByIds(ids: List<String>, updatedTime: String)
+    suspend fun softDeleteByIds(ids: List<Long>, updatedTime: String)
 
     /**
      * 标记单词下架 (Dictionary Sync)
      * 用于处理 JSON 源文件中已被删除的单词
      */
     @Query("UPDATE words SET is_delisted = 1 WHERE id IN (:ids)")
-    suspend fun markAsDelisted(ids: List<String>)
+    suspend fun markAsDelisted(ids: List<Long>)
 
     /**
      * 物理删除单词 (仅用于同步或特殊清理)
      */
     @Query("DELETE FROM words WHERE id IN (:ids)")
-    suspend fun deleteByIds(ids: List<String>)
+    suspend fun deleteByIds(ids: List<Long>)
 
     /**
      * 清空所有单词 (用于数据重置)
@@ -125,7 +125,7 @@ interface WordDao {
         AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
     """)
-    fun getById(id: String): Flow<WordEntity?>
+    fun getById(id: Long): Flow<WordEntity?>
 
     // ========== 学习相关查询 ==========
 
@@ -167,6 +167,18 @@ interface WordDao {
     @Query("""
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
+        WHERE (s.state = 0 OR s.next_review <= :currentDate)
+        AND (:level = 'ALL' OR UPPER(w.level) = UPPER(:level))
+        AND s.state IN (0, 1, 2, 3)
+        AND s.buried_until <= :currentEpochDay
+        AND w.is_delisted = 0
+        ORDER BY s.state ASC, s.next_review ASC
+    """)
+    fun getDueWordsByLevel(currentDate: String, level: String, currentEpochDay: Long): Flow<List<WordEntity>>
+
+    @Query("""
+        SELECT w.* FROM words w
+        JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE s.next_review <= :currentDate
         AND s.reps > 0
         AND s.state != -1
@@ -197,7 +209,7 @@ interface WordDao {
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE s.created_at >= :todayISO
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -213,7 +225,7 @@ interface WordDao {
         WHERE s.last_review >= :todayISO
         AND s.reps > 0
         AND s.created_at < :todayISO
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -226,7 +238,7 @@ interface WordDao {
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE s.reps > 0
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -239,7 +251,7 @@ interface WordDao {
         SELECT COUNT(*) FROM user_progress s
         JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
         WHERE s.reps > 0
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND w.is_delisted = 0
     """)
     fun getLearnedWordCount(): Flow<Int>
@@ -252,7 +264,7 @@ interface WordDao {
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE s.reps > 0
         AND w.level = :level
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -275,7 +287,7 @@ interface WordDao {
      * 更新收藏状态
      */
     @Query("UPDATE user_progress SET is_favorite = :isFavorite, updated_at = :updatedAt WHERE item_id = :wordId AND item_type = 'word'")
-    suspend fun updateFavoriteStatus(wordId: String, isFavorite: Boolean, updatedAt: String)
+    suspend fun updateFavoriteStatus(wordId: Long, isFavorite: Boolean, updatedAt: String)
 
     /**
      * 获取跳过的单词 (Suspend 状态)
@@ -439,7 +451,7 @@ interface WordDao {
     suspend fun countModifiedSince(timestamp: String): Int
 
     @Query("SELECT * FROM words WHERE id IN (:ids)")
-    suspend fun getWordsByIds(ids: List<String>): List<WordEntity>
+    suspend fun getWordsByIds(ids: List<Long>): List<WordEntity>
 
     /**
      * 搜索单词 (匹配日文、中文、假名)
@@ -588,13 +600,13 @@ interface WordDao {
      * 用于清理本地重复数据
      */
     @Query("SELECT MIN(id) FROM words GROUP BY japanese, hiragana, chinese, level")
-    suspend fun getDuplicateKeepIds(): List<String>
+    suspend fun getDuplicateKeepIds(): List<Long>
 
     /**
      * 将指定等级下，不在给定 ID 列表中的单词标记为已下架
      */
     @Query("UPDATE words SET is_delisted = 1 WHERE level = :level AND id NOT IN (:ids)")
-    suspend fun markMissingAsDelistedById(level: String, ids: List<String>): Int
+    suspend fun markMissingAsDelistedById(level: String, ids: List<Long>): Int
 
     /**
      * 将指定等级下，不在给定日语原文列表中的单词标记为已下架

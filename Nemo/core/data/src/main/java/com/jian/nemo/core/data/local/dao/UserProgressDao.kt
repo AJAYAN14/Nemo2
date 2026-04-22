@@ -35,6 +35,17 @@ interface UserProgressDao {
         ORDER BY next_review ASC, id ASC
     """)
     fun getDueItemsFlow(nowWithBuffer: String, currentEpochDay: Long): Flow<List<UserProgressEntity>>
+    
+    @Query("""
+        SELECT * FROM user_progress 
+        WHERE item_type = :itemType
+        AND (:level = 'ALL' OR UPPER(level) = UPPER(:level))
+        AND state IN (0, 1, 2, 3) 
+        AND (state = 0 OR next_review <= :nowWithBuffer)
+        AND buried_until <= :currentEpochDay
+        ORDER BY state ASC, next_review ASC, id ASC
+    """)
+    fun getDueItemsByTypeAndLevelFlow(itemType: String, level: String, nowWithBuffer: String, currentEpochDay: Long): Flow<List<UserProgressEntity>>
 
     @Query("SELECT * FROM user_progress WHERE is_favorite = 1")
     fun getFavoriteItemsFlow(): Flow<List<UserProgressEntity>>
@@ -77,4 +88,10 @@ interface UserProgressDao {
 
     @Query("DELETE FROM user_progress WHERE item_id IN (:itemIds) AND item_type = :itemType")
     suspend fun deleteByItemIds(itemIds: List<Long>, itemType: String)
+
+    @Query("SELECT * FROM user_progress WHERE UPPER(level) = UPPER(:level)")
+    suspend fun getByLevelSync(level: String): List<UserProgressEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM words WHERE id = :itemId)")
+    suspend fun checkWordExists(itemId: Long): Boolean
 }

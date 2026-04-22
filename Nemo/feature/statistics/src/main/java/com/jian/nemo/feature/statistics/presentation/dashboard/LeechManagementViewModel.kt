@@ -27,8 +27,8 @@ enum class LeechTab { Word, Grammar }
 
 sealed class LeechEvent {
     data class TabChanged(val tab: LeechTab) : LeechEvent()
-    data class RecoverWord(val id: String) : LeechEvent()
-    data class RecoverGrammar(val id: String) : LeechEvent()
+    data class RecoverWord(val id: Long) : LeechEvent()
+    data class RecoverGrammar(val id: Long) : LeechEvent()
     object ClearMessages : LeechEvent()
 }
 
@@ -80,7 +80,7 @@ class LeechManagementViewModel @Inject constructor(
         }
     }
 
-    private fun recoverWord(id: String) {
+    private fun recoverWord(id: Long) {
         viewModelScope.launch {
             val result = recoverLeechWordUseCase(id)
             if (result is Result.Success) {
@@ -91,7 +91,7 @@ class LeechManagementViewModel @Inject constructor(
         }
     }
 
-    private fun recoverGrammar(id: String) {
+    private fun recoverGrammar(id: Long) {
         viewModelScope.launch {
             val result = recoverLeechGrammarUseCase(id)
             if (result is Result.Success) {

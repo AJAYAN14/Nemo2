@@ -191,9 +191,9 @@ private fun RowScope.LeechPillTab(
 private fun <T> LeechList(
     items: List<T>,
     emptyMessage: String,
-    onItemKey: (T) -> String,
+    onItemKey: (T) -> Long,
     itemContent: @Composable (T, () -> Unit) -> Unit,
-    onRecover: (String) -> Unit
+    onRecover: (Long) -> Unit
 ) {
     if (items.isEmpty()) {
         EmptyLeechView(message = emptyMessage)

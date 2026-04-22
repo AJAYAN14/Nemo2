@@ -3,6 +3,7 @@ package com.jian.nemo.core.data.repository
 import com.jian.nemo.core.common.Result
 import com.jian.nemo.core.common.util.DateTimeUtils
 import com.jian.nemo.core.data.local.dao.*
+import com.jian.nemo.core.data.mapper.GrammarMapper
 import com.jian.nemo.core.data.mapper.GrammarMapper.toDomainModel
 import com.jian.nemo.core.data.mapper.GrammarMapper.toDomainModels
 import com.jian.nemo.core.data.mapper.GrammarMapper.toProgressEntity
@@ -29,7 +30,7 @@ class GrammarRepositoryImpl @Inject constructor(
 
     // ========== 查询实现 ==========
 
-    override fun getGrammarById(id: String): Flow<Grammar?> {
+    override fun getGrammarById(id: Long): Flow<Grammar?> {
         return grammarDao.getGrammarWithUsages(id)
             .map { it?.toDomainModel() }
             .catch { e ->
@@ -59,17 +60,22 @@ class GrammarRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override fun getDueGrammars(today: Long): Flow<List<Grammar>> {
-        val todayIso = DateTimeUtils.epochDayToIso(today)
-        return grammarDao.getDueGrammarsWithUsages(todayIso)
+    override fun getDueGrammars(today: Long, level: String): Flow<List<Grammar>> {
+        // Web 端对齐：使用 12 小时缓冲
+        val bufferMs = 12 * 60 * 60 * 1000L
+        val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+        val currentEpochDay = System.currentTimeMillis() / 86400000
+
+        return grammarDao.getDueGrammarsByLevel(nowWithBuffer, level, currentEpochDay)
             .map { it.toDomainModels().filter { g -> !g.isDelisted } }
             .catch { e ->
+                android.util.Log.e("GrammarRepository", "获取到期语法失败: ${e.message}", e)
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getDueGrammarsCount(today: Long): Flow<Int> {
-        return getDueGrammars(today).map { it.size }
+        return getDueGrammars(today, "ALL").map { it.size }
     }
 
     override fun getSkippedGrammars(limit: Int): Flow<List<Grammar>> {
@@ -191,7 +197,7 @@ class GrammarRepositoryImpl @Inject constructor(
             }
     }
 
-    override suspend fun getGrammarsByIds(ids: List<String>): List<Grammar> {
+    override suspend fun getGrammarsByIds(ids: List<Long>): List<Grammar> {
         return try {
             if (ids.isEmpty()) {
                 emptyList()
@@ -224,32 +230,29 @@ class GrammarRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateFavoriteStatus(
-        grammarId: String,
+        grammarId: Long,
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val itemId = grammarId.toLongOrNull() ?: 0L
-            studyRepository.toggleFavorite(itemId, "grammar", isFavorite)
+            studyRepository.toggleFavorite(grammarId, "grammar", isFavorite)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
 
-    override suspend fun markAsSkipped(grammarId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun markAsSkipped(grammarId: Long): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val itemId = grammarId.toLongOrNull() ?: 0L
-            studyRepository.suspendItem(itemId, "grammar")
+            studyRepository.suspendItem(grammarId, "grammar")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
 
-    override suspend fun unmarkAsSkipped(grammarId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun unmarkAsSkipped(grammarId: Long): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val itemId = grammarId.toLongOrNull() ?: 0L
-            studyRepository.unsuspendItem(itemId, "grammar")
+            studyRepository.unsuspendItem(grammarId, "grammar")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)

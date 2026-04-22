@@ -32,7 +32,7 @@ data class WrongAnswerEntity(
      * 单词ID (外键)
      */
     @ColumnInfo(name = "word_id")
-    val wordId: String,
+    val wordId: Long,
 
     /**
      * 测试模式

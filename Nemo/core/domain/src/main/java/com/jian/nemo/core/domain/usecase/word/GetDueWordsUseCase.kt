@@ -31,15 +31,14 @@ class GetDueWordsUseCase @Inject constructor(
      * @return Flow<Result<List<Word>>> 到期复习单词列表,按复习日期排序
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    operator fun invoke(): Flow<Result<List<Word>>> {
+    operator fun invoke(level: String): Flow<Result<List<Word>>> {
         return settingsRepository.learningDayResetHourFlow.flatMapLatest { resetHour ->
             val today = DateTimeUtils.getLearningDay(resetHour)
-            wordRepository.getDueWords(today)
+            wordRepository.getDueWords(today, level)
                 .map { words ->
                     // 业务规则: 按下次复习日期排序（最早的优先）
-                    // 排除今日被搁置的卡片 (buriedUntilDay != today)
-                    words.filter { it.buriedUntilDay != today }
-                        .sortedBy { it.nextReviewDate }
+                    // SQL 中已处理 next_review 和 buried_until
+                    words.sortedBy { it.nextReviewDate }
                 }
         }.asResult()
     }

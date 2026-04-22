@@ -70,14 +70,14 @@ class TestQuestionFactory @Inject constructor() {
     fun mapRemoteToMultipleChoice(
         remoteQ: GrammarTestQuestion,
         mode: TestMode,
-        grammarMap: Map<String, Grammar>,
+        grammarMap: Map<String?, Grammar>,
         shuffleOptions: Boolean = true
     ): TestQuestion.MultipleChoice {
         // Link to real Grammar entity if possible
         val grammar = grammarMap[remoteQ.targetGrammarId]
 
         return TestQuestion.MultipleChoice(
-            id = remoteQ.id, 
+            id = extractNumericId(remoteQ.id).toLong(), 
             word = null,
             grammar = grammar,
             mode = mode,
@@ -140,7 +140,14 @@ class TestQuestionFactory @Inject constructor() {
         )
     }
 
+    // ========== Card Matching ==========
 
+    fun createCardMatching(index: Int, wordGroup: List<Word>): TestQuestion.CardMatching {
+        return TestQuestion.CardMatching(
+            id = index.toLong(),
+            pairs = wordGroup
+        )
+    }
 
     // ========== Helpers ==========
 
@@ -268,11 +275,16 @@ class TestQuestionFactory @Inject constructor() {
     private fun extractNumericId(id: String): Int {
         return try {
             val parts = id.split("_")
-            val levelNum = parts[0].substring(1).toInt()
-            val num = parts[1].toInt()
-            levelNum * 1000 + num
+            if (parts.size < 2) return id.hashCode()
+            
+            // Handle W_N3_123 or GT_N3_123
+            val levelPart = if (parts[1].startsWith("N")) parts[1] else parts[0]
+            val levelNum = levelPart.substring(1).toIntOrNull() ?: 3
+            val num = parts.last().toIntOrNull() ?: id.hashCode()
+            
+            levelNum * 10000 + (num % 10000)
         } catch (_: Exception) {
-            0
+            id.hashCode()
         }
     }
 

@@ -486,7 +486,7 @@ fun getThemeColorForPos(pos: String?, isDark: Boolean): Color = getThemeColorFor
 private fun WordCardPreview() {
     MaterialTheme {
         val word = Word(
-            id = "1",
+            id = 1L,
             japanese = "食べる",
             hiragana = "たべる",
             chinese = "吃",

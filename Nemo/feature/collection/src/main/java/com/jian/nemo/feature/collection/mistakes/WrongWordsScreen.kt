@@ -29,7 +29,7 @@ import com.jian.nemo.core.domain.model.Word
 @Composable
 fun WrongWordsScreen(
     viewModel: WrongWordsViewModel = hiltViewModel(),
-    onWordClick: (String) -> Unit = {},
+    onWordClick: (Long) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()

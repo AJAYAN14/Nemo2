@@ -122,7 +122,7 @@ class SrsCalculatorImpl @Inject constructor(
 
     private fun buildFuzzSeed(item: SrsItem, repetitions: Int): Long {
         // [Logic Parity] 对齐 Web/Server 的 buildFsrsDeterministicSeed
-        val cardId = item.id ?: ""
+        val cardId = item.progressId ?: ""
         val cardSeed = hashStringToUint32(cardId)
         return (cardSeed + repetitions.toLong()) and 0xFFFFFFFFL
     }

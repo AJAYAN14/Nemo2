@@ -27,7 +27,10 @@ import androidx.room.PrimaryKey
 )
 data class GrammarEntity(
     @PrimaryKey
-    val id: String,
+    val id: Long,
+
+    @ColumnInfo(name = "raw_id")
+    val rawId: String? = null,
 
     // ========== 核心内容字段 ==========
     /**

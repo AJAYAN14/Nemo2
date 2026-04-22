@@ -21,10 +21,10 @@ data class UndoSnapshot(
     val currentGrammarIndex: Int,
 
     // 学习状态
-    val learningSteps: Map<String, Int>,
-    val lapseCounts: Map<String, Int>,
-    val requeuedItems: Set<String>,
-    val learningDueTimes: Map<String, Long>,
+    val learningSteps: Map<Long, Int>,
+    val lapseCounts: Map<Long, Int>,
+    val requeuedItems: Set<Long>,
+    val learningDueTimes: Map<Long, Long>,
 
     // 统计
     val completedToday: Int,

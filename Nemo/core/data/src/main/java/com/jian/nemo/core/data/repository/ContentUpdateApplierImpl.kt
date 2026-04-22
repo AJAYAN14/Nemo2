@@ -39,7 +39,7 @@ class ContentUpdateApplierImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 var count = 0
-                val ids = words.map { it.id.toString() }
+                val ids = words.map { it.id }
                 
                 // 批量 UPSERT
                 val entities = words.map { it.toEntity() }
@@ -60,7 +60,7 @@ class ContentUpdateApplierImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 var count = 0
-                val ids = grammars.map { it.id.toString() }
+                val ids = grammars.map { it.id }
                 
                 grammars.forEach { dto ->
                     val grammarEntity = dto.toGrammarEntity()

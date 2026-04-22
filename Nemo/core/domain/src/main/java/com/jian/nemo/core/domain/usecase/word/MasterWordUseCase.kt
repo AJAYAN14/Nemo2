@@ -35,7 +35,7 @@ class MasterWordUseCase @Inject constructor(
      * @return Result<Word> 更新后的单词
      */
     suspend fun invoke(
-        wordId: String,
+        wordId: Long,
         quality: Int = 3
     ): Result<Word> {
         return try {

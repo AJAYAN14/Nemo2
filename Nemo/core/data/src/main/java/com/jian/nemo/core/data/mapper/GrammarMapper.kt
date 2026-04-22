@@ -16,12 +16,30 @@ import com.jian.nemo.core.domain.model.GrammarUsage
 object GrammarMapper {
 
     /**
+     * 实体转领域模型
+     * GrammarEntity -> Grammar
+     */
+    fun GrammarEntity.toDomainModel(): Grammar {
+        return Grammar(
+            id = id,
+            rawId = rawId,
+            progressId = null,
+            grammar = grammar,
+            grammarLevel = grammarLevel,
+            isDelisted = isDelisted,
+            usages = emptyList()
+        )
+    }
+
+    /**
      * 关联实体转领域模型
      * GrammarWithUsages -> Grammar
      */
     fun GrammarWithUsages.toDomainModel(): Grammar {
         return Grammar(
             id = grammar.id,
+            rawId = grammar.rawId,
+            progressId = state?.id,
             grammar = grammar.grammar,
             grammarLevel = grammar.grammarLevel,
             isDelisted = grammar.isDelisted,
@@ -78,6 +96,7 @@ object GrammarMapper {
     fun Grammar.toEntity(): GrammarEntity {
         return GrammarEntity(
             id = id,
+            rawId = rawId,
             grammar = grammar,
             grammarLevel = grammarLevel,
             isDelisted = isDelisted
@@ -89,10 +108,10 @@ object GrammarMapper {
      */
     fun Grammar.toProgressEntity(userId: String): UserProgressEntity {
         return UserProgressEntity(
-            id = "${userId}_grammar_${id}",
+            id = progressId ?: "${userId}_grammar_${id}",
             userId = userId,
             itemType = "grammar",
-            itemId = id.toLongOrNull() ?: 0L,
+            itemId = id,
             reps = repetitionCount,
             stability = stability,
             difficulty = difficulty,
@@ -115,6 +134,11 @@ object GrammarMapper {
      * 批量转换扩展函数
      */
     fun List<GrammarWithUsages>.toDomainModels(): List<Grammar> {
+        return map { it.toDomainModel() }
+    }
+
+    @JvmName("toDomainModelsFromEntities")
+    fun List<GrammarEntity>.toDomainModels(): List<Grammar> {
         return map { it.toDomainModel() }
     }
 }

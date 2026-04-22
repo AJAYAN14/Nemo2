@@ -1,5 +1,6 @@
 package com.jian.nemo.core.data.repository
 
+import android.util.Log
 import com.jian.nemo.core.common.Result
 import com.jian.nemo.core.data.local.dao.*
 import com.jian.nemo.core.data.local.entity.TestRecordEntity
@@ -33,23 +34,22 @@ class WordRepositoryImpl @Inject constructor(
     private suspend fun mapWithStudyState(entities: List<WordEntity>): List<Word> {
         if (entities.isEmpty()) return emptyList()
 
-        val itemIds = entities.map { it.id.toLongOrNull() ?: 0L }
+        val itemIds = entities.map { it.id }
         val statesById = userProgressDao
             .getProgressByItemIds(itemIds, "word")
             .associateBy { it.itemId }
 
         return entities.map { entity ->
-            WordMapper.toDomainModel(entity, statesById[entity.id.toLongOrNull() ?: 0L])
+            WordMapper.toDomainModel(entity, statesById[entity.id])
         }
     }
 
     // ========== 查询实现 ==========
 
-    override fun getWordById(id: String): Flow<Word?> {
-        val itemId = id.toLongOrNull() ?: 0L
+    override fun getWordById(id: Long): Flow<Word?> {
         return combine(
             wordDao.getById(id),
-            userProgressDao.getProgressByItemIdFlow(itemId, "word")
+            userProgressDao.getProgressByItemIdFlow(id, "word")
         ) { entity, state ->
             entity?.let { WordMapper.toDomainModel(it, state) }
         }
@@ -74,19 +74,24 @@ class WordRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override fun getDueWords(today: Long): Flow<List<Word>> {
-        val todayIso = com.jian.nemo.core.common.util.DateTimeUtils.epochDayToIso(today)
-        return wordDao.getDueWords(todayIso)
+    override fun getDueWords(today: Long, level: String): Flow<List<Word>> {
+        // Web 端对齐：使用 12 小时缓冲
+        val bufferMs = 12 * 60 * 60 * 1000L
+        val nowWithBuffer = com.jian.nemo.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+        val currentEpochDay = System.currentTimeMillis() / 86400000
+        
+        return wordDao.getDueWordsByLevel(nowWithBuffer, level.lowercase(), currentEpochDay)
             .map { entities ->
                 mapWithStudyState(entities).filter { w -> !w.isDelisted }
             }
             .catch { e ->
+                Log.e("WordRepository", "获取到期单词失败: ${e.message}", e)
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getDueWordsCount(today: Long): Flow<Int> {
-        return getDueWords(today).map { it.size }
+        return getDueWords(today, "ALL").map { it.size }
     }
 
     override fun getTodayLearnedWords(today: Long): Flow<List<Word>> {
@@ -340,7 +345,7 @@ class WordRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getWordsByIds(ids: List<String>): List<Word> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun getWordsByIds(ids: List<Long>): List<Word> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             if (ids.isEmpty()) {
                 emptyList()
@@ -365,32 +370,29 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateFavoriteStatus(
-        wordId: String,
+        wordId: Long,
         isFavorite: Boolean
     ): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         return@withContext try {
-            val itemId = wordId.toLongOrNull() ?: 0L
-            studyRepository.toggleFavorite(itemId, "word", isFavorite)
+            studyRepository.toggleFavorite(wordId, "word", isFavorite)
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
 
-    override suspend fun markAsSkipped(wordId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun markAsSkipped(wordId: Long): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val itemId = wordId.toLongOrNull() ?: 0L
-            studyRepository.suspendItem(itemId, "word")
+            studyRepository.suspendItem(wordId, "word")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
         }
     }
 
-    override suspend fun unmarkAsSkipped(wordId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun unmarkAsSkipped(wordId: Long): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
-            val itemId = wordId.toLongOrNull() ?: 0L
-            studyRepository.unsuspendItem(itemId, "word")
+            studyRepository.unsuspendItem(wordId, "word")
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)

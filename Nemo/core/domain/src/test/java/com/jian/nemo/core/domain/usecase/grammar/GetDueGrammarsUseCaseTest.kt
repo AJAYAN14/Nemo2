@@ -47,10 +47,10 @@ class GetDueGrammarsUseCaseTest {
             createTestGrammar(id = 1, nextReviewDate = 99L, repetitionCount = 1),
             createTestGrammar(id = 2, nextReviewDate = 100L, repetitionCount = 2)
         )
-        every { grammarRepository.getDueGrammars(100L) } returns flowOf(dueGrammars)
+        every { grammarRepository.getDueGrammars(100L, "N5") } returns flowOf(dueGrammars)
 
         // When & Then
-        useCase().test {
+        useCase("N5").test {
             awaitItem() // Loading
 
             val successResult = awaitItem()
@@ -64,10 +64,10 @@ class GetDueGrammarsUseCaseTest {
     @Test
     fun `invoke should return empty list when no due grammars`() = runTest {
         // Given
-        every { grammarRepository.getDueGrammars(100L) } returns flowOf(emptyList())
+        every { grammarRepository.getDueGrammars(100L, "N5") } returns flowOf(emptyList())
 
         // When & Then
-        useCase().test {
+        useCase("N5").test {
             awaitItem() // Loading
 
             val successResult = awaitItem()
@@ -82,7 +82,7 @@ class GetDueGrammarsUseCaseTest {
     fun `invoke should handle repository errors`() = runTest {
         // Given
         val exception = RuntimeException("Database error")
-        every { grammarRepository.getDueGrammars(100L) } returns kotlinx.coroutines.flow.flow {
+        every { grammarRepository.getDueGrammars(100L, "N5") } returns kotlinx.coroutines.flow.flow {
             throw exception
         }
 

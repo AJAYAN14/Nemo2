@@ -49,7 +49,7 @@ import com.jian.nemo.feature.learning.presentation.CardBadge
 /**
  * 获取随机贴纸文件名 (Grammar Version)
  */
-private fun getStickerForGrammar(grammarId: String): String {
+private fun getStickerForGrammar(grammarId: Long): String {
     val stickers = listOf(
         "bad_taste", "birthday", "cleaning", "confused", "cooking",
         "cool", "eating_noodles", "headache", "listening_music", "love",

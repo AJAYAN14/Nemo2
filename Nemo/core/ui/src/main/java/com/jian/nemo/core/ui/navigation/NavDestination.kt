@@ -74,8 +74,8 @@ object NavDestination {
     fun categoryClassification(source: String = "practice") = "category_classification/$source"
     fun categoryCardLearning(category: String, categoryTitle: String) = "category_card_learning/$category/$categoryTitle"
     fun categoryWords(category: String, categoryTitle: String) = "category_words/$category/$categoryTitle"
-    fun wordDetail(wordId: String) = "wordDetail/$wordId"
-    fun grammarDetail(grammarId: String) = "grammarDetail/$grammarId"
+    fun wordDetail(wordId: Long) = "wordDetail/$wordId"
+    fun grammarDetail(grammarId: Long) = "grammarDetail/$grammarId"
 
     // Test Route Builders
     fun testSettings(testModeId: String? = null) = if (testModeId != null) "test/settings?testModeId=$testModeId" else "test/settings"

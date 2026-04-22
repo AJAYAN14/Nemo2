@@ -23,7 +23,7 @@ interface WordRepository {
     /**
      * 根据ID获取单词
      */
-    fun getWordById(id: String): Flow<Word?>
+    fun getWordById(id: Long): Flow<Word?>
 
     /**
      * 获取指定等级的新单词（未学习且未跳过）
@@ -33,10 +33,11 @@ interface WordRepository {
     fun getNewWords(level: String, isRandom: Boolean = false): Flow<List<Word>>
 
     /**
-     * 获取到期复习的单词
+     * 获取到期复习的单词 (对齐 Web 端逻辑，包含等级过滤)
      * @param today 今天的Epoch Day
+     * @param level JLPT等级
      */
-    fun getDueWords(today: Long): Flow<List<Word>>
+    fun getDueWords(today: Long, level: String): Flow<List<Word>>
 
     /**
      * 获取到期复习的单词数量
@@ -98,7 +99,7 @@ interface WordRepository {
     /**
      * 根据ID列表批量获取单词
      */
-    suspend fun getWordsByIds(ids: List<String>): List<Word>
+    suspend fun getWordsByIds(ids: List<Long>): List<Word>
 
     /**
      * 搜索单词
@@ -174,17 +175,17 @@ interface WordRepository {
     /**
      * 更新收藏状态
      */
-    suspend fun updateFavoriteStatus(wordId: String, isFavorite: Boolean): Result<Unit>
+    suspend fun updateFavoriteStatus(wordId: Long, isFavorite: Boolean): Result<Unit>
 
     /**
      * 标记为跳过
      */
-    suspend fun markAsSkipped(wordId: String): Result<Unit>
+    suspend fun markAsSkipped(wordId: Long): Result<Unit>
 
     /**
      * 取消跳过
      */
-    suspend fun unmarkAsSkipped(wordId: String): Result<Unit>
+    suspend fun unmarkAsSkipped(wordId: Long): Result<Unit>
 
     // ========== 批量操作 ==========
 

@@ -332,7 +332,7 @@ class CardMatchingOrchestrator @Inject constructor(
 
     private fun updateCardState(
         state: TestUiState,
-        cardId: String,
+        cardId: Long,
         cardType: CardType,
         newState: CardState
     ): TestUiState {

@@ -11,10 +11,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SyncWordStateDto(
     @SerialName("user_id") val userId: String,
-    @SerialName("word_id") val wordId: String,
+    @SerialName("word_id") val wordId: Long,
     @SerialName("repetition_count") val repetitionCount: Int,
-    @SerialName("stability") val stability: Float = 0f,
-    @SerialName("difficulty") val difficulty: Float = 0f,
+    @SerialName("stability") val stability: Double = 0.0,
+    @SerialName("difficulty") val difficulty: Double = 0.0,
     @SerialName("interval") val interval: Int,
     @SerialName("next_review_date") val nextReviewDate: Long,
     @SerialName("is_favorite") val isFavorite: Boolean,
@@ -33,10 +33,10 @@ data class SyncWordStateDto(
 @Serializable
 data class SyncGrammarStateDto(
     @SerialName("user_id") val userId: String,
-    @SerialName("grammar_id") val grammarId: String,
+    @SerialName("grammar_id") val grammarId: Long,
     @SerialName("repetition_count") val repetitionCount: Int,
-    @SerialName("stability") val stability: Float = 0f,
-    @SerialName("difficulty") val difficulty: Float = 0f,
+    @SerialName("stability") val stability: Double = 0.0,
+    @SerialName("difficulty") val difficulty: Double = 0.0,
     @SerialName("interval") val interval: Int,
     @SerialName("next_review_date") val nextReviewDate: Long,
     @SerialName("is_favorite") val isFavorite: Boolean,
@@ -82,7 +82,7 @@ data class SyncTestRecordDto(
 data class SyncWrongAnswerDto(
     @SerialName("user_id") val userId: String,
     @SerialName("uuid") val uuid: String,
-    @SerialName("word_id") val wordId: String,
+    @SerialName("word_id") val wordId: Long,
     @SerialName("test_mode") val testMode: String,
     @SerialName("user_answer") val userAnswer: String,
     @SerialName("correct_answer") val correctAnswer: String,
@@ -96,7 +96,7 @@ data class SyncWrongAnswerDto(
 data class SyncGrammarWrongAnswerDto(
     @SerialName("user_id") val userId: String,
     @SerialName("uuid") val uuid: String,
-    @SerialName("grammar_id") val grammarId: String,
+    @SerialName("grammar_id") val grammarId: Long,
     @SerialName("test_mode") val testMode: String,
     @SerialName("user_answer") val userAnswer: String,
     @SerialName("correct_answer") val correctAnswer: String,
@@ -109,7 +109,7 @@ data class SyncGrammarWrongAnswerDto(
 @Serializable
 data class SyncFavoriteQuestionDto(
     @SerialName("user_id") val userId: String,
-    @SerialName("grammar_id") val grammarId: String?,
+    @SerialName("grammar_id") val grammarId: Long?,
     @SerialName("json_id") val jsonId: String?,
     @SerialName("question_type") val questionType: String,
     @SerialName("question_text") val questionText: String,

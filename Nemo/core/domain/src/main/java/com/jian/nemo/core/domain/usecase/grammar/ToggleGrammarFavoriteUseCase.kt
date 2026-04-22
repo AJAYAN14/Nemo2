@@ -13,7 +13,7 @@ import javax.inject.Inject
 class ToggleGrammarFavoriteUseCase @Inject constructor(
     private val grammarRepository: GrammarRepository
 ) {
-    suspend fun invoke(grammarId: String): Result<Unit> {
+    suspend fun invoke(grammarId: Long): Result<Unit> {
         return try {
             val grammar = grammarRepository.getGrammarById(grammarId).first()
                 ?: return Result.Error(IllegalArgumentException("语法不存在: grammarId=$grammarId"))

@@ -13,9 +13,9 @@ interface FavoriteQuestionRepository {
 
     suspend fun deleteFavoriteQuestion(id: String)
 
-    suspend fun isFavorite(grammarId: String?, jsonId: String?): Boolean
+    suspend fun isFavorite(grammarId: Long?, jsonId: String?): Boolean
 
-    suspend fun removeFavorite(grammarId: String?, jsonId: String?)
+    suspend fun removeFavorite(grammarId: Long?, jsonId: String?)
 
     suspend fun clearAll()
 }

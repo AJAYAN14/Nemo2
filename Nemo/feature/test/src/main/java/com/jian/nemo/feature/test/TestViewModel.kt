@@ -769,7 +769,7 @@ class TestViewModel @Inject constructor(
     /**
      * 切换收藏状态 (处理单词和语法)
      */
-    fun toggleFavorite(itemId: String, isFavorite: Boolean) {
+    fun toggleFavorite(itemId: Long, isFavorite: Boolean) {
         viewModelScope.launch {
             val currentQ = _uiState.value.currentQuestion
             if (currentQ != null) {

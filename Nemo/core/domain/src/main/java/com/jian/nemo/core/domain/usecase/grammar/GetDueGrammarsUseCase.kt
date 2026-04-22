@@ -31,15 +31,14 @@ class GetDueGrammarsUseCase @Inject constructor(
      * @return Flow<Result<List<Grammar>>> 到期复习语法列表,按复习日期排序
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    operator fun invoke(): Flow<Result<List<Grammar>>> {
+    operator fun invoke(level: String): Flow<Result<List<Grammar>>> {
         return settingsRepository.learningDayResetHourFlow.flatMapLatest { resetHour ->
             val today = DateTimeUtils.getLearningDay(resetHour)
-            grammarRepository.getDueGrammars(today)
+            grammarRepository.getDueGrammars(today, level)
                 .map { grammars ->
                     // 业务规则: 按下次复习日期排序（最早的优先）
-                    // 排除今日被搁置的卡片 (buriedUntilDay != today)
-                    grammars.filter { it.buriedUntilDay != today }
-                        .sortedBy { it.nextReviewDate }
+                    // SQL 中已处理 next_review 和 buried_until
+                    grammars.sortedBy { it.nextReviewDate }
                 }
         }.asResult()
     }

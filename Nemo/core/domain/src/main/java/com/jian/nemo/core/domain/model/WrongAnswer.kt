@@ -9,7 +9,7 @@ package com.jian.nemo.core.domain.model
  */
 data class WrongAnswer(
     val id: String,
-    val wordId: String,
+    val wordId: Long,
     val word: Word?,  // 关联的单词信息
     val testMode: String,  // 测试模式：multiple_choice, typing, matching, sorting
     val userAnswer: String,  // 用户的错误答案

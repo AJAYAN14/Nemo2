@@ -16,6 +16,7 @@ object WordMapper {
     fun toDomainModel(entity: WordEntity, state: UserProgressEntity?): Word {
         return Word(
             id = entity.id,
+            progressId = state?.id,
             japanese = entity.japanese,
             hiragana = entity.hiragana,
             chinese = entity.chinese,
@@ -74,10 +75,10 @@ object WordMapper {
      */
     fun Word.toProgressEntity(userId: String): UserProgressEntity {
         return UserProgressEntity(
-            id = "${userId}_word_${id}",
+            id = progressId ?: "${userId}_word_${id}",
             userId = userId,
             itemType = "word",
-            itemId = id.toLongOrNull() ?: 0L,
+            itemId = id,
             reps = repetitionCount,
             stability = stability,
             difficulty = difficulty,

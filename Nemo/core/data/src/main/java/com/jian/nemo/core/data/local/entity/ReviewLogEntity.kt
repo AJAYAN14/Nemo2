@@ -17,7 +17,7 @@ data class ReviewLogEntity(
     val id: Long = 0, // 0 triggers auto-increment
 
     @ColumnInfo(name = "item_id")
-    val itemId: String,
+    val itemId: Long,
 
     @ColumnInfo(name = "item_type")
     val itemType: String,

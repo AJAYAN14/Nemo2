@@ -53,8 +53,8 @@ class SessionPrepViewModel @Inject constructor(
             try {
 
                 // 1. 获取复习词 (Due Words)
-                // 获取所有已学习且到期的单词，不限制等级 (Review what you have learned)
-                val dueWordsResult = getDueWordsUseCase().first { it !is Result.Loading }
+                val wordLevel = settingsRepository.preferredWordLevelFlow.first()
+                val dueWordsResult = getDueWordsUseCase(wordLevel).first { it !is Result.Loading }
                 val dueWords = if (dueWordsResult is Result.Success) {
                     dueWordsResult.data
                 } else {
@@ -62,7 +62,8 @@ class SessionPrepViewModel @Inject constructor(
                 }
 
                 // 2. 获取复习语法 (Due Grammars)
-                val dueGrammarsResult = getDueGrammarsUseCase().first { it !is Result.Loading }
+                val grammarLevel = settingsRepository.preferredGrammarLevelFlow.first()
+                val dueGrammarsResult = getDueGrammarsUseCase(grammarLevel).first { it !is Result.Loading }
                 val dueGrammars = if (dueGrammarsResult is Result.Success) {
                     dueGrammarsResult.data
                 } else {

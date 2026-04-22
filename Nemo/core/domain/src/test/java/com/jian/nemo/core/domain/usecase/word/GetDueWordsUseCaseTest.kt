@@ -46,10 +46,10 @@ class GetDueWordsUseCaseTest {
         val word3 = createTestWord(id = 3, nextReviewDate = 100L) // 今天到期
         val unsortedWords = listOf(word2, word3, word1) // 乱序
 
-        every { wordRepository.getDueWords(100L) } returns flowOf(unsortedWords)
+        every { wordRepository.getDueWords(100L, "N5") } returns flowOf(unsortedWords)
 
         // When & Then
-        useCase().test {
+        useCase("N5").test {
             awaitItem() // Loading
 
             val result = awaitItem()
@@ -68,10 +68,10 @@ class GetDueWordsUseCaseTest {
     @Test
     fun `invoke should return empty list when no due words`() = runTest {
         // Given
-        every { wordRepository.getDueWords(100L) } returns flowOf(emptyList())
+        every { wordRepository.getDueWords(100L, "N5") } returns flowOf(emptyList())
 
         // When & Then
-        useCase().test {
+        useCase("N5").test {
             awaitItem() // Loading
 
             val result = awaitItem()

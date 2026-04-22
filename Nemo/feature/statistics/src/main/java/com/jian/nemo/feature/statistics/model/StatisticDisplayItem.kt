@@ -4,7 +4,7 @@ package com.jian.nemo.feature.statistics.model
  * 统计显示项数据模型
  */
 data class StatisticDisplayItem(
-    val id: String,
+    val id: Long,
     val japanese: String,
     val hiragana: String,
     val chinese: String,

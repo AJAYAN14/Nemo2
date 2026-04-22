@@ -24,8 +24,8 @@ class SrsIntervalPreview @Inject constructor(
      */
     fun calculate(
         item: SrsItem?,
-        itemId: String,
-        steps: Map<String, Int>?,
+        itemId: Long,
+        steps: Map<Long, Int>?,
         learningStepsConfig: List<Int>,
         relearningStepsConfig: List<Int>,
         today: Long

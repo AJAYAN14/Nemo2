@@ -35,7 +35,7 @@ interface GrammarDao {
     suspend fun update(grammar: GrammarEntity)
 
     @Query("SELECT id FROM grammars WHERE id IN (:ids)")
-    suspend fun getIdsIn(ids: List<String>): List<String>
+    suspend fun getIdsIn(ids: List<Long>): List<Long>
 
     /**
      * 批量插入或更新 (用于同步)
@@ -52,10 +52,10 @@ interface GrammarDao {
         updated_at = :updatedTime
         WHERE item_id IN (:ids) AND item_type = 'grammar'
     """)
-    suspend fun softDeleteByIds(ids: List<String>, updatedTime: String)
+    suspend fun softDeleteByIds(ids: List<Long>, updatedTime: String)
 
     @Query("DELETE FROM grammars WHERE id IN (:ids)")
-    suspend fun deleteByIds(ids: List<String>)
+    suspend fun deleteByIds(ids: List<Long>)
 
     /**
      * 获取所有语法 (包含已逻辑删除的)
@@ -89,7 +89,7 @@ interface GrammarDao {
         AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
-    fun getById(id: String): Flow<GrammarEntity?>
+    fun getById(id: Long): Flow<GrammarEntity?>
 
     /**
      * 获取语法（含用法和例句）
@@ -102,7 +102,7 @@ interface GrammarDao {
         AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
-    fun getGrammarWithUsages(id: String): Flow<GrammarWithUsages?>
+    fun getGrammarWithUsages(id: Long): Flow<GrammarWithUsages?>
 
     /**
      * 获取所有语法（含用法和例句）
@@ -174,7 +174,7 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.created_at >= :todayISO
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -187,7 +187,7 @@ interface GrammarDao {
         WHERE s.last_review >= :todayISO
         AND s.reps > 0
         AND s.created_at < :todayISO
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -218,7 +218,7 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.reps > 0
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -228,7 +228,7 @@ interface GrammarDao {
         SELECT COUNT(*) FROM user_progress s
         JOIN grammars g ON s.item_id = g.id AND s.item_type = 'grammar'
         WHERE s.reps > 0
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND g.is_delisted = 0
     """)
     fun getLearnedGrammarCount(): Flow<Int>
@@ -242,7 +242,7 @@ interface GrammarDao {
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.reps > 0
         AND UPPER(g.grammar_level) = UPPER(:level)
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -253,7 +253,7 @@ interface GrammarDao {
      */
     @Transaction
     @Query("SELECT * FROM grammars WHERE id IN (:ids)")
-    suspend fun getGrammarsByIdsWithUsages(ids: List<String>): List<GrammarWithUsages>
+    suspend fun getGrammarsByIdsWithUsages(ids: List<Long>): List<GrammarWithUsages>
 
     /**
      * 搜索语法（含用法和例句）
@@ -321,7 +321,7 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.reps > 0
-        AND s.state != -1
+        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -365,6 +365,18 @@ interface GrammarDao {
     @Query("""
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
+        WHERE (s.state = 0 OR s.next_review <= :currentDate)
+        AND (:level = 'ALL' OR UPPER(g.grammar_level) = UPPER(:level))
+        AND s.state IN (0, 1, 2, 3)
+        AND s.buried_until <= :currentEpochDay
+        AND g.is_delisted = 0
+        ORDER BY s.state ASC, s.next_review ASC
+    """)
+    fun getDueGrammarsByLevel(currentDate: String, level: String, currentEpochDay: Long): Flow<List<GrammarEntity>>
+
+    @Query("""
+        SELECT g.* FROM grammars g
+        JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.next_review <= :currentDate
         AND s.reps > 0
         AND s.state != -1
@@ -390,7 +402,7 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.created_at >= :todayISO
-        AND g.is_delisted = 0
+        AND s.state IN (2, -1)
         ORDER BY g.id DESC
     """)
     fun getTodayLearnedGrammars(todayISO: String): Flow<List<GrammarEntity>>
@@ -404,7 +416,7 @@ interface GrammarDao {
     fun getFavoriteGrammars(): Flow<List<GrammarEntity>>
 
     @Query("UPDATE user_progress SET is_favorite = :isFavorite, updated_at = :updatedAt WHERE item_id = :grammarId AND item_type = 'grammar'")
-    suspend fun updateFavoriteStatus(grammarId: String, isFavorite: Boolean, updatedAt: String)
+    suspend fun updateFavoriteStatus(grammarId: Long, isFavorite: Boolean, updatedAt: String)
 
     @Query("""
         SELECT g.* FROM grammars g
@@ -421,7 +433,7 @@ interface GrammarDao {
     fun getSkippedGrammarsCount(): Flow<Int>
 
     @Query("SELECT * FROM grammars WHERE id IN (:ids)")
-    suspend fun getGrammarsByIds(ids: List<String>): List<GrammarEntity>
+    suspend fun getGrammarsByIds(ids: List<Long>): List<GrammarEntity>
 
     /**
      * 搜索语法 (匹配标题)
@@ -513,13 +525,13 @@ interface GrammarDao {
      * 获取去重后的保留ID列表 (每个语法只保留ID最小的一个)
      */
     @Query("SELECT MIN(id) FROM grammars GROUP BY grammar, grammar_level")
-    suspend fun getDuplicateKeepIds(): List<String>
+    suspend fun getDuplicateKeepIds(): List<Long>
 
     /**
      * 将指定等级下，不在给定 ID 列表中的语法标记为已下架
      */
     @Query("UPDATE grammars SET is_delisted = 1 WHERE UPPER(grammar_level) = UPPER(:level) AND id NOT IN (:jsonIds)")
-    suspend fun markMissingAsDelistedById(level: String, jsonIds: List<String>): Int
+    suspend fun markMissingAsDelistedById(level: String, jsonIds: List<Long>): Int
 }
 
 data class GrammarReviewForecastTuple(

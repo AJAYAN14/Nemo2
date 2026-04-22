@@ -13,7 +13,7 @@ sealed class SessionLoadResult<T> {
     data class Restored<T>(
         val items: List<T>,
         val index: Int,
-        val steps: Map<String, Int>,
+        val steps: Map<Long, Int>,
         val dailyGoal: Int,
         val completedToday: Int,
         val waitingUntil: Long = 0L // 新增
@@ -43,10 +43,10 @@ sealed class SessionLoadResult<T> {
  * 已保存的会话数据
  */
 data class SavedSession(
-    val ids: List<String>,
+    val ids: List<Long>,
     val index: Int,
     val level: String,
-    val steps: Map<String, Int>,
+    val steps: Map<Long, Int>,
     val waitingUntil: Long = 0L // 新增：保存等待状态
 )
 
@@ -80,28 +80,40 @@ class SessionLoader @Inject constructor(
      * @param getItemId 获取项目 ID
      * @param filterByLevel 按等级过滤
      */
+    /**
+     * 加载学习会话
+     *
+     * @param T 项目类型 (Word 或 Grammar)
+     * @param level 当前学习等级
+     * @param dailyGoal 每日目标
+     * @param completedToday 今日已完成数量
+     * @param savedSession 已保存的会话（如果有）
+     * @param getItemsByIds 根据 ID 列表获取项目
+     * @param getDueItems 获取所有待学项目 (包含新词和到期复习项)
+     * @param getItemId 获取项目 ID
+     * @param isLearned 判断项目是否已学习 (reps > 0)
+     * @param seedNewItems 播种今日新词回调
+     */
     suspend fun <T> loadSession(
         level: String,
         dailyGoal: Int,
         completedToday: Int,
         savedSession: SavedSession?,
-        getItemsByIds: suspend (List<String>) -> List<T>,
+        getItemsByIds: suspend (List<Long>) -> List<T>,
         getDueItems: suspend () -> List<T>,
-        getNewItems: suspend () -> List<T>,
-        getItemId: (T) -> String,
-        filterByLevel: (T) -> Boolean
+        getItemId: (T) -> Long,
+        isLearned: (T) -> Boolean,
+        seedNewItems: suspend () -> Unit
     ): SessionLoadResult<T> {
 
-        // 1. 尝试恢复会话
+        // 1. 尝试恢复会话 (保持优先级最高，避免重复播种导致队列变动)
         if (savedSession != null && savedSession.level == level) {
             val (ids, index, _, steps) = savedSession
             val allItems = getItemsByIds(ids)
 
-            // 按照 ID 列表的顺序重建 Session 列表 (保持原有的穿插顺序)
             val itemMap = allItems.associateBy { getItemId(it) }
             val restoredItems = ids.mapNotNull { itemMap[it] }
 
-            // 确保恢复后的列表不为空，且索引有效
             if (restoredItems.isNotEmpty() && index < restoredItems.size) {
                 println("✅ 恢复上次学习会话: Index $index / ${restoredItems.size}")
                 return SessionLoadResult.Restored(
@@ -110,38 +122,47 @@ class SessionLoader @Inject constructor(
                     steps = steps,
                     dailyGoal = dailyGoal,
                     completedToday = completedToday,
-                    waitingUntil = savedSession.waitingUntil // 传递恢复的等待状态
+                    waitingUntil = savedSession.waitingUntil
                 )
             }
         }
 
-        // 2. 获取到期复习项
-        val allDueItems = getDueItems()
-        val dueItems = allDueItems // 不再按等级过滤复习项，全量复习
-        val dueCount = dueItems.size
+        // 2. 播种今日新词 (如果恢复失败，则进行播种)
+        // 注意：seedNewItems 内部应包含 RPC 调用和后续的同步逻辑
+        seedNewItems()
 
-        // 3. 计算新项配额（当前策略：不减载）
+        // 3. 获取所有待学项目 (从 user_progress 表获取 state IN (0,1,2,3))
+        // 这里的 getDueItems 应当返回包含新播种的新词 (state=0) 和到期复习项 (state=2) 的集合
+        val allItems = getDueItems()
+        
+        // 4. 分离新词和到期项
+        // 新词：reps = 0 (state = 0)
+        // 到期项：reps > 0 (state = 1, 2, 3)
+        val newPool = allItems.filter { !isLearned(it) }
+        val duePool = allItems.filter { isLearned(it) }
+
+        val dueCount = duePool.size
+
+        // 5. 计算新项配额
         val rawRemainingQuota = (dailyGoal - completedToday).coerceAtLeast(0)
         val adjustedQuota = learningSessionPolicy.calculateAdjustedNewQuota(rawRemainingQuota, dueCount)
 
         // [Debug Log]
         println("📊 会话规划: 目标=$dailyGoal, 已学=$completedToday, 复习堆积=$dueCount")
-        println("   -> 新词配额=$adjustedQuota")
+        println("   -> 新词配额=$adjustedQuota (池中可用: ${newPool.size})")
 
-        // 4. 如果调整后配额为0且无复习项，则会话完成
-        if (adjustedQuota == 0 && dueItems.isEmpty()) {
+        // 6. 如果配额为 0 且无复习项，则会话完成
+        if (adjustedQuota <= 0 && duePool.isEmpty()) {
             return SessionLoadResult.Completed(
                 dailyGoal = dailyGoal,
                 completedToday = completedToday
             )
         }
 
-        // 5. 获取新项目
-        val newItems = getNewItems()
-
-        // 6. 组装会话列表: 智能混合 (Smart Interleaving)
-        val sessionNewItems = newItems.take(adjustedQuota)
-        val sessionItems = learningSessionPolicy.mixSessionItems(dueItems, sessionNewItems)
+        // 7. 组装会话列表: 智能混合 (Smart Interleaving)
+        // 仅取配额内的新词
+        val sessionNewItems = newPool.take(adjustedQuota)
+        val sessionItems = learningSessionPolicy.mixSessionItems(duePool, sessionNewItems)
 
         if (sessionItems.isEmpty()) {
             return SessionLoadResult.Completed(
@@ -150,12 +171,11 @@ class SessionLoader @Inject constructor(
             )
         }
 
-        println("✅ 学习会话启动成功: ${sessionItems.size} 个项目 (复习: ${dueItems.size}, 新: ${sessionNewItems.size})")
-        println("   -> 混合策略: 全量配额 $adjustedQuota + 穿插排序")
-
+        println("✅ 学习会话启动成功: ${sessionItems.size} 个项目 (复习: ${duePool.size}, 新词: ${sessionNewItems.size})")
+        
         return SessionLoadResult.NewSession(
             items = sessionItems,
-            dueCount = dueItems.size,
+            dueCount = duePool.size,
             newCount = sessionNewItems.size,
             dailyGoal = dailyGoal,
             completedToday = completedToday

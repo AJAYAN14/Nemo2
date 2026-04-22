@@ -55,6 +55,9 @@ data class WordDto(
 data class GrammarDto(
     @SerialName("id")
     val id: Long,
+
+    @SerialName("raw_id")
+    val rawId: String? = null,
     
     @SerialName("title")
     val title: String,

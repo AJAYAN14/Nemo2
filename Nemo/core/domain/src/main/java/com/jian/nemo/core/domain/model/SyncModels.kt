@@ -75,10 +75,10 @@ data class AppSettings(
  */
 @Serializable
 data class WordProgress(
-    val wordId: String,
+    val wordId: Long,
     val srsLevel: Int,
-    val stability: Float = 0f,
-    val difficulty: Float = 0f,
+    val stability: Double = 0.0,
+    val difficulty: Double = 0.0,
     val interval: Int,
     val nextReviewDate: Long,
     val isFavorite: Boolean,
@@ -100,10 +100,10 @@ data class WordProgress(
  */
 @Serializable
 data class GrammarProgress(
-    val grammarId: String,
+    val grammarId: Long,
     val srsLevel: Int,
-    val stability: Float = 0f,
-    val difficulty: Float = 0f,
+    val stability: Double = 0.0,
+    val difficulty: Double = 0.0,
     val interval: Int,
     val nextReviewDate: Long,
     val isFavorite: Boolean,
@@ -123,7 +123,7 @@ data class GrammarProgress(
  */
 @Serializable
 data class WrongAnswerItem(
-    val wordId: String,
+    val wordId: Long,
     val timestamp: Long,
     val testMode: String? = null,
     val userAnswer: String? = null,
@@ -136,7 +136,7 @@ data class WrongAnswerItem(
 
 @Serializable
 data class GrammarWrongAnswerItem(
-    val grammarId: String,
+    val grammarId: Long,
     val timestamp: Long,
     val testMode: String? = null,
     val userAnswer: String? = null,
@@ -194,7 +194,7 @@ data class WrongAnswersData(
 @Serializable
 data class FavoriteQuestionItem(
     val id: String,
-    val grammarId: String?,
+    val grammarId: Long?,
     val jsonId: String?,
     val questionType: String,
     val questionText: String,

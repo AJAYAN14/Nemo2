@@ -15,7 +15,7 @@ import com.jian.nemo.core.domain.model.GrammarQuestionType
  */
 
 fun WordDto.toEntity() = WordEntity(
-    id = this.id.toString(),
+    id = this.id,
     japanese = this.japanese,
     hiragana = this.hiragana,
     chinese = this.chinese,
@@ -31,7 +31,8 @@ fun WordDto.toEntity() = WordEntity(
 )
 
 fun GrammarDto.toGrammarEntity() = GrammarEntity(
-    id = this.id.toString(),
+    id = this.id,
+    rawId = this.rawId,
     grammar = this.title,
     grammarLevel = this.level.uppercase(),
     isDelisted = this.isDelisted
@@ -39,7 +40,7 @@ fun GrammarDto.toGrammarEntity() = GrammarEntity(
 
 fun GrammarDto.toUsageEntities() = this.content.mapIndexed { index, usage ->
     GrammarUsageEntity(
-        grammarId = this.id.toString(),
+        grammarId = this.id,
         subtype = usage.subtype,
         connection = usage.connection,
         explanation = usage.explanation,

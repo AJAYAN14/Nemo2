@@ -727,7 +727,7 @@ fun NemoNavHost(
         // 单词详情
         composable(
             route = NavDestination.WORD_DETAIL,
-            arguments = listOf(navArgument("wordId") { type = NavType.IntType })
+            arguments = listOf(navArgument("wordId") { type = NavType.LongType })
         ) {
             com.jian.nemo.feature.library.presentation.detail.WordDetailScreen(
                 onNavigateBack = { navController.navigateUp() }
@@ -737,7 +737,7 @@ fun NemoNavHost(
         // 语法详情
         composable(
             route = NavDestination.GRAMMAR_DETAIL,
-            arguments = listOf(navArgument("grammarId") { type = NavType.IntType })
+            arguments = listOf(navArgument("grammarId") { type = NavType.LongType })
         ) {
             com.jian.nemo.feature.library.presentation.detail.GrammarDetailScreen(
                 onNavigateBack = { navController.navigateUp() }

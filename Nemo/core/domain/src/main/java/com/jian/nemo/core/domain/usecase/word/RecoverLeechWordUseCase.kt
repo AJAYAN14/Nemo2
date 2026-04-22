@@ -17,7 +17,7 @@ class RecoverLeechWordUseCase @Inject constructor(
     private val wordRepository: WordRepository,
     private val settingsRepository: SettingsRepository
 ) {
-    suspend operator fun invoke(wordId: String): Result<Unit> {
+    suspend operator fun invoke(wordId: Long): Result<Unit> {
         return try {
             val word = wordRepository.getWordById(wordId).firstOrNull()
                 ?: return Result.Error(Exception("单词不存在: $wordId"))

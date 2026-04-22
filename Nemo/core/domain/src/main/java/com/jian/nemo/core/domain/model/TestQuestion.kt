@@ -6,7 +6,7 @@ package com.jian.nemo.core.domain.model
  * 参考: 旧项目 TestQuestion (sealed class)
  */
 sealed class TestQuestion {
-    abstract val id: String
+    abstract val id: Long
     abstract val word: Word?
     open val grammar: Grammar? = null
     abstract val isAnswered: Boolean
@@ -17,7 +17,7 @@ sealed class TestQuestion {
      * 选择题
      */
     data class MultipleChoice(
-        override val id: String,
+        override val id: Long,
         override val word: Word? = null,
         override val grammar: Grammar? = null,
         val mode: TestMode,
@@ -57,7 +57,7 @@ sealed class TestQuestion {
      *   6: 题目=汉字, 答案=释义
      */
     data class Typing(
-        override val id: String,
+        override val id: Long,
         override val word: Word,
         val questionText: String,
         override val correctAnswer: String,
@@ -75,7 +75,7 @@ sealed class TestQuestion {
      * @param pairs 5个单词对象的列表
      */
     data class CardMatching(
-        override val id: String,
+        override val id: Long,
         val pairs: List<Word>,
         override val isAnswered: Boolean = false,
         override val isCorrect: Boolean = false
@@ -96,7 +96,7 @@ sealed class TestQuestion {
      * @param userAnswer 用户选择的答案（字符列表）
      */
     data class Sorting(
-        override val id: String,
+        override val id: Long,
         override val word: Word,
         override val grammar: Grammar? = null,
         val options: List<SortableChar>,

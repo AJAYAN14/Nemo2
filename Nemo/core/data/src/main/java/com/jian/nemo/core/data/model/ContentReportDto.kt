@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ContentReportDto(
     @SerialName("item_id")
-    val itemId: String,
+    val itemId: Long,
     @SerialName("item_type")
     val itemType: String,
     @SerialName("user_id")

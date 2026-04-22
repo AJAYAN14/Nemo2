@@ -78,7 +78,7 @@ fun NavController.navigateToWrongGrammars(navOptions: NavOptions? = null) {
 fun NavGraphBuilder.favoritesScreen(
     onNavigateToWordFavorites: () -> Unit,
     onNavigateToGrammarFavorites: () -> Unit,
-    onWordClick: (String) -> Unit,
+    onWordClick: (Long) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     composable(route = FAVORITES_ROUTE) {
@@ -95,7 +95,7 @@ fun NavGraphBuilder.favoritesScreen(
  * 添加收藏单词列表到导航图
  */
 fun NavGraphBuilder.favoriteWordsScreen(
-    onWordClick: (String) -> Unit,
+    onWordClick: (Long) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     composable(route = FAVORITE_WORDS_ROUTE) {
@@ -110,7 +110,7 @@ fun NavGraphBuilder.favoriteWordsScreen(
  * 添加收藏语法列表到导航图
  */
 fun NavGraphBuilder.favoriteGrammarsScreen(
-    onGrammarClick: (String) -> Unit,
+    onGrammarClick: (Long) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     composable(route = FAVORITE_GRAMMARS_ROUTE) {
@@ -155,7 +155,7 @@ fun NavGraphBuilder.mistakesScreen(
  * 添加错误单词列表到导航图
  */
 fun NavGraphBuilder.wrongWordsScreen(
-    onWordClick: (String) -> Unit,
+    onWordClick: (Long) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     composable(route = WRONG_WORDS_ROUTE) {
@@ -170,7 +170,7 @@ fun NavGraphBuilder.wrongWordsScreen(
  * 添加错误语法列表到导航图
  */
 fun NavGraphBuilder.wrongGrammarsScreen(
-    onGrammarClick: (String) -> Unit,
+    onGrammarClick: (Long) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     composable(route = WRONG_GRAMMARS_ROUTE) {

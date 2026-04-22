@@ -53,7 +53,7 @@ class GenerateAdaptiveTestUseCase @Inject constructor(
         var questionType: QuestionType = QuestionType.MULTIPLE_CHOICE,
         var isRepeat: Boolean = false
     ) {
-        val id: String get() = word?.id ?: grammar?.id ?: ""
+        val id: Long get() = word?.id ?: grammar?.id ?: 0L
         val level: String get() = word?.level ?: grammar?.grammarLevel ?: "N5"
     }
 

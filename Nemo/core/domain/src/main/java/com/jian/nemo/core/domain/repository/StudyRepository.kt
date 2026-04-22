@@ -65,4 +65,26 @@ interface StudyRepository {
      * 清空所有收藏
      */
     suspend fun clearAllFavorites(itemType: String)
+    /**
+     * 播种今日新词 (调用 Supabase RPC fn_seed_daily_new_items)
+     * 保证 Android 与 Web 端拉取的新词集合完全一致
+     */
+    suspend fun seedDailyNewItems(
+        itemType: String,
+        limit: Int,
+        level: String,
+        isRandom: Boolean,
+        epochDay: Int
+    )
+
+    /**
+     * 根据类型和等级获取到期的复习项目
+     */
+    fun getDueItemsByTypeAndLevelFlow(itemType: String, level: String): Flow<List<UserProgress>>
+
+    /**
+     * 执行强制全量同步 (拉取字典和所有用户进度)
+     */
+    suspend fun performFullSync()
 }
+

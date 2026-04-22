@@ -12,6 +12,7 @@ import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.realtime.Realtime
+import io.ktor.client.engine.okhttp.OkHttp
 import javax.inject.Singleton
 
 @Module
@@ -24,6 +25,7 @@ object SupabaseModule {
         supabaseUrl = BuildConfig.SUPABASE_URL,
         supabaseKey = BuildConfig.SUPABASE_ANON_KEY
     ) {
+        httpEngine = OkHttp.create()
         install(Auth)
         install(Storage)
         install(Postgrest)

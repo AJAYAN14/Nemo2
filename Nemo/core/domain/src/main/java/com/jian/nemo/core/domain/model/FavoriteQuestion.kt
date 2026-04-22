@@ -5,7 +5,7 @@ package com.jian.nemo.core.domain.model
  */
 data class FavoriteQuestion(
     val id: String,
-    val grammarId: String? = null,
+    val grammarId: Long? = null,
     val jsonId: String? = null,
     val questionType: String,
     val questionText: String,

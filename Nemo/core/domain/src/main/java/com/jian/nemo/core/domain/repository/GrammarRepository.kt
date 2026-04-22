@@ -20,7 +20,7 @@ interface GrammarRepository {
     /**
      * 根据ID获取语法
      */
-    fun getGrammarById(id: String): Flow<Grammar?>
+    fun getGrammarById(id: Long): Flow<Grammar?>
 
     /**
      * 获取所有语法
@@ -45,10 +45,11 @@ interface GrammarRepository {
     fun getSkippedGrammars(limit: Int): Flow<List<Grammar>>
 
     /**
-     * 获取到期复习的语法
+     * 获取到期复习的语法 (对齐 Web 端逻辑，包含等级过滤)
      * @param today 今天的Epoch Day
+     * @param level JLPT等级
      */
-    fun getDueGrammars(today: Long): Flow<List<Grammar>>
+    fun getDueGrammars(today: Long, level: String): Flow<List<Grammar>>
 
     /**
      * 获取今日首次学习的语法
@@ -95,7 +96,7 @@ interface GrammarRepository {
     /**
      * 根据ID列表批量获取语法
      */
-    suspend fun getGrammarsByIds(ids: List<String>): List<Grammar>
+    suspend fun getGrammarsByIds(ids: List<Long>): List<Grammar>
 
     /**
      * 搜索语法
@@ -125,17 +126,17 @@ interface GrammarRepository {
     /**
      * 更新收藏状态
      */
-    suspend fun updateFavoriteStatus(grammarId: String, isFavorite: Boolean): Result<Unit>
+    suspend fun updateFavoriteStatus(grammarId: Long, isFavorite: Boolean): Result<Unit>
 
     /**
      * 标记为跳过
      */
-    suspend fun markAsSkipped(grammarId: String): Result<Unit>
+    suspend fun markAsSkipped(grammarId: Long): Result<Unit>
 
     /**
      * 取消跳过
      */
-    suspend fun unmarkAsSkipped(grammarId: String): Result<Unit>
+    suspend fun unmarkAsSkipped(grammarId: Long): Result<Unit>
 
     // ========== 批量操作 ==========
 

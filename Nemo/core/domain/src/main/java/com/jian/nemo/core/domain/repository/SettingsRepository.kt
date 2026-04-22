@@ -213,14 +213,14 @@ interface SettingsRepository {
 
     // ========== 今日复习记录 (临时统计) ==========
 
-    suspend fun addTodayTestedWordId(id: String)
-    suspend fun addTodayWrongWordId(id: String)
-    suspend fun addTodayTestedGrammarId(id: String)
-    suspend fun addTodayWrongGrammarId(id: String)
+    suspend fun addTodayTestedWordId(id: Long)
+    suspend fun addTodayWrongWordId(id: Long)
+    suspend fun addTodayTestedGrammarId(id: Long)
+    suspend fun addTodayWrongGrammarId(id: Long)
 
     // P3修复: 获取今日测试的单词或语法ID
-    suspend fun getTodayTestedWordIds(): Set<String>
-    suspend fun getTodayTestedGrammarIds(): Set<String>
+    suspend fun getTodayTestedWordIds(): Set<Long>
+    suspend fun getTodayTestedGrammarIds(): Set<Long>
     suspend fun clearTodayTestedIds()
 
     // ========== 测试配置 ==========
@@ -373,7 +373,7 @@ interface SettingsRepository {
      * @param steps 学习步长状态 (WordId -> Step)
      * @param waitingUntil 等待结束时间 (Epoch Millis)
      */
-    suspend fun saveWordSession(ids: List<String>, currentIndex: Int, level: String, steps: Map<String, Int>, waitingUntil: Long = 0L)
+    suspend fun saveWordSession(ids: List<Long>, currentIndex: Int, level: String, steps: Map<Long, Int>, waitingUntil: Long = 0L)
 
     /**
      * 获取单词学习会话
@@ -404,7 +404,7 @@ interface SettingsRepository {
      * @param steps 学习步长状态 (GrammarId -> Step)
      * @param waitingUntil 等待结束时间 (Epoch Millis)
      */
-    suspend fun saveGrammarSession(ids: List<String>, currentIndex: Int, level: String, steps: Map<String, Int>, waitingUntil: Long = 0L)
+    suspend fun saveGrammarSession(ids: List<Long>, currentIndex: Int, level: String, steps: Map<Long, Int>, waitingUntil: Long = 0L)
 
     /**
      * 获取语法学习会话
@@ -417,14 +417,14 @@ interface SettingsRepository {
     suspend fun clearGrammarSession()
 
     /** 记忆算法参数 (Lapse) */
-    val wordLapsesFlow: Flow<Map<String, Int>>
-    val grammarLapsesFlow: Flow<Map<String, Int>>
+    val wordLapsesFlow: Flow<Map<Long, Int>>
+    val grammarLapsesFlow: Flow<Map<Long, Int>>
 
-    suspend fun incrementWordLapse(wordId: String)
-    suspend fun incrementGrammarLapse(grammarId: String)
+    suspend fun incrementWordLapse(wordId: Long)
+    suspend fun incrementGrammarLapse(grammarId: Long)
 
-    suspend fun resetWordLapse(wordId: String)
-    suspend fun resetGrammarLapse(grammarId: String)
+    suspend fun resetWordLapse(wordId: Long)
+    suspend fun resetGrammarLapse(grammarId: Long)
 
     // ========== 恢复状态管理 ==========
 
@@ -616,9 +616,9 @@ interface SettingsRepository {
  * 学习会话数据封装
  */
 data class SessionData(
-    val ids: List<String>,
+    val ids: List<Long>,
     val currentIndex: Int,
     val level: String,
-    val steps: Map<String, Int>, // ID -> Step Index
+    val steps: Map<Long, Int>, // ID -> Step Index
     val waitingUntil: Long = 0L // 新增
 )

@@ -75,7 +75,8 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.functions)
     implementation(libs.supabase.realtime)
-    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.websockets)
 
     // Data Storage
     implementation(libs.datastore.preferences)

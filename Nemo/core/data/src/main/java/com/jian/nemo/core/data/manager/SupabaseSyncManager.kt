@@ -74,6 +74,14 @@ class SupabaseSyncManager @Inject constructor(
             // 1. 字典内容同步 (全局同步，不依赖登录)
             performDictionarySyncInternal()
 
+            // 2. [重要] 清理可能存在的旧版错误 ID 数据 (itemId 为 0 或格式错误的记录)
+            // 由于迁移了 ID 类型，旧数据可能会导致关联失败
+            if (force) {
+                database.withTransaction {
+                    userProgressDao.deleteAll()
+                }
+            }
+
             // 3. 时间校验 (RPC)
             try {
                 val serverTime = supabaseClient.postgrest.rpc("get_server_time").decodeAs<Long>()
@@ -86,18 +94,19 @@ class SupabaseSyncManager @Inject constructor(
             
             // 4. 拉取所有进度并更新本地 (Native Mirror 核心逻辑)
             // 严格遵循 rules.md: 3.A/3.B，本地只作为一个视图，服务端是权威
-            val lastSyncTime = settingsRepository.getLastSyncTime()
+            val lastSyncTime = if (force) 0L else settingsRepository.getLastSyncTime()
             val remoteProgress = mutableListOf<UserProgressEntity>()
             var offset = 0
             val pageSize = 1000
             
             while (true) {
-                val batch = if (!force && lastSyncTime > 0L) {
+                val batch = if (lastSyncTime > 0L) {
                     // [Incremental Sync] 仅拉取上次同步后变更的数据
                     val safeTime = lastSyncTime - 60 * 1000L // 1分钟冗余
                     val lastSyncIso = kotlinx.datetime.Instant.fromEpochMilliseconds(safeTime).toString()
+                    Log.d(TAG, "fetchRemoteProgress: [Incremental] since $lastSyncIso (safeTime=$safeTime)")
                     supabaseClient.postgrest[TABLE_USER_PROGRESS]
-                        .select(columns = Columns.ALL) {
+                        .select(columns = io.github.jan.supabase.postgrest.query.Columns.ALL) {
                             filter {
                                 eq("user_id", userId)
                                 gte("updated_at", lastSyncIso)
@@ -107,14 +116,16 @@ class SupabaseSyncManager @Inject constructor(
                 } else {
                     // [Full Sync] 全量拉取
                     supabaseClient.postgrest[TABLE_USER_PROGRESS]
-                        .select(columns = Columns.ALL) {
-                            filter { eq("user_id", userId) }
+                        .select(columns = io.github.jan.supabase.postgrest.query.Columns.ALL) {
+                            filter {
+                                eq("user_id", userId)
+                            }
                             range(offset.toLong(), (offset + pageSize - 1).toLong())
                         }.decodeList<UserProgressEntity>()
                 }
                 
                 remoteProgress.addAll(batch)
-                Log.d(TAG, "fetchRemoteProgress: fetched ${batch.size} items (total: ${remoteProgress.size})")
+                Log.d(TAG, "fetchRemoteProgress: User=$userId, BatchSize=${batch.size}, TotalSize=${remoteProgress.size}")
                 
                 if (batch.size < pageSize) break
                 offset += pageSize
@@ -122,9 +133,12 @@ class SupabaseSyncManager @Inject constructor(
             
             database.withTransaction {
                 // 这里使用 insertAll (OnConflictStrategy.REPLACE) 确保本地状态与服务器一致
-                userProgressDao.insertAll(remoteProgress)
-                
-                // [Native Mirror] 增量拉取不处理软删除逻辑（假定数据主要由本地软清理或服务端极少硬删除）
+                if (remoteProgress.isNotEmpty()) {
+                    userProgressDao.insertAll(remoteProgress)
+                    Log.d(TAG, "fetchRemoteProgress: Inserted/Updated ${remoteProgress.size} items into local DB")
+                } else {
+                    Log.d(TAG, "fetchRemoteProgress: No new items to insert")
+                }
             }
 
             settingsRepository.setLastSyncTime(DateTimeUtils.getCurrentCompensatedMillis())
@@ -135,6 +149,7 @@ class SupabaseSyncManager @Inject constructor(
             emit(SyncProgress.Completed(SyncReport(timestamp = System.currentTimeMillis())))
             
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "同步失败", e)
             emit(SyncProgress.Failed(e.message ?: "Unknown error"))
         }
@@ -218,8 +233,9 @@ class SupabaseSyncManager @Inject constructor(
     }
 
     private suspend fun performDictionarySyncInternal() {
+        Log.d(TAG, "开始检查字典同步...")
         try {
-            val levels = listOf("N1", "N2", "N3", "N4", "N5")
+            val levels = listOf("n1", "n2", "n3", "n4", "n5") // 统一使用小写
             val remoteVersion = contentRepository.getRemoteContentVersion()
             val lastVersion = settingsRepository.getLastContentVersion()
             
@@ -228,18 +244,24 @@ class SupabaseSyncManager @Inject constructor(
             val grammarCount = database.grammarDao().getCount()
             val isDatabaseEmpty = wordCount == 0 || grammarCount == 0
             
+            Log.d(TAG, "本地词库状态: 单词=$wordCount, 语法=$grammarCount, Empty=$isDatabaseEmpty, RemoteV=$remoteVersion, LocalV=$lastVersion")
+
             if (!isDatabaseEmpty && remoteVersion != null && remoteVersion <= lastVersion) {
+                Log.d(TAG, "词库已是最新，跳过同步")
                 return
             }
 
             levels.forEach { level ->
+                Log.d(TAG, "正在拉取 $level 的词库...")
                 val remoteWords = contentRepository.fetchRemoteWords(level)
                 if (remoteWords.isNotEmpty()) {
+                    Log.d(TAG, "拉取到 $level 单词: ${remoteWords.size} 条")
                     contentUpdateApplier.applyWords(level, remoteWords)
                 }
 
                 val remoteGrammars = contentRepository.fetchRemoteGrammars(level)
                 if (remoteGrammars.isNotEmpty()) {
+                    Log.d(TAG, "拉取到 $level 语法: ${remoteGrammars.size} 条")
                     contentUpdateApplier.applyGrammars(level, remoteGrammars)
                 }
 
@@ -252,6 +274,8 @@ class SupabaseSyncManager @Inject constructor(
             if (remoteVersion != null) {
                 settingsRepository.setLastContentVersion(remoteVersion)
             }
+            Log.i(TAG, "词库同步完成")
+
         } catch (e: Exception) {
             Log.e(TAG, "词库同步失败", e)
         }

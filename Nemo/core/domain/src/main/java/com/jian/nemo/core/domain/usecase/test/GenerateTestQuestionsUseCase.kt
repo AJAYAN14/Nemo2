@@ -189,7 +189,7 @@ class GenerateTestQuestionsUseCase @Inject constructor(
 
                 // 🎯 筛选：如果 source 不是 all，我们只保留匹配 target pool (grammars) 的题目
                 val filteredQuestions = if (source != "all" && grammars.isNotEmpty()) {
-                    val targetIds = grammars.map { it.id }.toSet()
+                    val targetIds = grammars.map { it.rawId }.toSet()
                     allLoadedQuestions.filter { q ->
                         targetIds.contains(q.targetGrammarId)
                     }
@@ -211,9 +211,9 @@ class GenerateTestQuestionsUseCase @Inject constructor(
         val grammarEntityMap = if (isGrammarMc) {
              // 我们从 Distractor Pool 中构建 Map，以便所有题目都能找到对应的实体（即使题目不在 Target Pool 中）
              if (allGrammarsForDistractors.isNotEmpty()) {
-                 allGrammarsForDistractors.associateBy { it.id }
-             } else emptyMap<String, Grammar>()
-        } else emptyMap<String, Grammar>()
+                 allGrammarsForDistractors.associateBy { it.rawId }
+             } else emptyMap<String?, Grammar>()
+        } else emptyMap<String?, Grammar>()
 
         println("NemoTestDebug: Fetched data: TargetWords=${words.size}, DistractorWords=${allWordsForDistractors.size}, TargetGrammars=${grammars.size}, DistractorGrammars=${allGrammarsForDistractors.size}, RemoteQuestions=${remoteGrammarQuestions.size}")
 
@@ -254,7 +254,8 @@ class GenerateTestQuestionsUseCase @Inject constructor(
                          // ... logic ...
                          val sortedRemote = if (prioritizeNew || prioritizeWrong) {
                              remoteGrammarQuestions.sortedBy { q ->
-                                 val g = grammarEntityMap[q.targetGrammarId]
+                                 val gId = q.targetGrammarId
+                                 val g = grammarEntityMap[gId]
                                  if (g != null) {
                                      if (prioritizeNew) g.repetitionCount.toDouble()
                                      else g.difficulty.toDouble()
@@ -417,9 +418,10 @@ class GenerateTestQuestionsUseCase @Inject constructor(
                 if (remoteGrammarQuestions.isNotEmpty()) {
                      // For remote questions, we don't have easy metrics for priority unless we link to entities.
                      // We did create grammarEntityMap.
-                     val sortedRemote = if (prioritizeNew || prioritizeWrong) {
+                      val sortedRemote = if (prioritizeNew || prioritizeWrong) {
                           remoteGrammarQuestions.sortedBy { q ->
-                              val g = grammarEntityMap[q.targetGrammarId]
+                              val gId = q.targetGrammarId
+                              val g = grammarEntityMap[gId]
                               if (g != null) {
                                   if (prioritizeNew) g.repetitionCount.toDouble()
                                   else g.difficulty.toDouble()

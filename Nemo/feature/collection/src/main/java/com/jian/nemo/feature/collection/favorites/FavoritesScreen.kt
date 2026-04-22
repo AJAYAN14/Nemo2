@@ -50,7 +50,7 @@ fun FavoritesScreen(
     viewModel: FavoritesViewModel = hiltViewModel(),
     onNavigateToWordFavorites: () -> Unit = {},
     onNavigateToGrammarFavorites: () -> Unit = {},
-    onWordClick: (String) -> Unit = {},
+    onWordClick: (Long) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
