@@ -32,6 +32,26 @@ class SyncServiceImpl @Inject constructor(
 ) : SyncService {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var lastUserId: String? = null
+
+    init {
+        scope.launch {
+            authRepository.getUserFlow().collect { user ->
+                if (user != null && user.id != lastUserId) {
+                    Log.d(TAG, "检测到用户登录/切换: ${user.id}，触发即时同步")
+                    lastUserId = user.id
+                    try {
+                        // 登录后立即执行一次强制同步，确保数据即时展现
+                        supabaseSyncManager.performSync(user.id, force = true).collect { }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "登录后即时同步失败", e)
+                    }
+                } else if (user == null) {
+                    lastUserId = null
+                }
+            }
+        }
+    }
 
     companion object {
         private const val TAG = "SyncServiceImpl"
@@ -47,12 +67,19 @@ class SyncServiceImpl @Inject constructor(
     }
 
     override fun onAppForeground() {
-        Log.d(TAG, "应用进入前台，触发增量同步拉取最新进度")
+        Log.d(TAG, "应用进入前台，触发字典同步检查与增量进度同步")
 
         scope.launch {
+            // 1. 全局字典同步 (Best Practice: 启动即检查，不依赖登录)
+            try {
+                supabaseSyncManager.performDictionarySync()
+            } catch (e: Exception) {
+                Log.e(TAG, "启动字典同步失败", e)
+            }
+
+            // 2. 用户进度同步 (仅已登录用户)
             val user = authRepository.getCurrentUser()
             if (user != null) {
-                // 冷启动/切前台时触发增量同步 (降低服务器压力，加快启动速度)
                 try {
                     supabaseSyncManager.performSync(user.id, force = false).collect { }
                 } catch (e: Exception) {

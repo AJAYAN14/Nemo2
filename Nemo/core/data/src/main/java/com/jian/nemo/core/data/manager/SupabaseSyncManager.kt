@@ -71,8 +71,8 @@ class SupabaseSyncManager @Inject constructor(
         emit(SyncProgress.Running("正在准备同步...", 0, 0))
         
         try {
-            // 1. 字典内容同步 (增量)
-            syncDictionary()
+            // 1. 字典内容同步 (全局同步，不依赖登录)
+            performDictionarySyncInternal()
 
             // 3. 时间校验 (RPC)
             try {
@@ -210,7 +210,14 @@ class SupabaseSyncManager @Inject constructor(
         }
     }
 
-    private suspend fun syncDictionary() {
+    /**
+     * 公开触发字典同步逻辑 (用于启动屏或预加载)
+     */
+    suspend fun performDictionarySync() {
+        performDictionarySyncInternal()
+    }
+
+    private suspend fun performDictionarySyncInternal() {
         try {
             val levels = listOf("N1", "N2", "N3", "N4", "N5")
             val remoteVersion = contentRepository.getRemoteContentVersion()
