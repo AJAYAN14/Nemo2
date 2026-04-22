@@ -87,23 +87,37 @@ class SupabaseSyncManager @Inject constructor(
             // 4. 拉取所有进度并更新本地 (Native Mirror 核心逻辑)
             // 严格遵循 rules.md: 3.A/3.B，本地只作为一个视图，服务端是权威
             val lastSyncTime = settingsRepository.getLastSyncTime()
-            val remoteProgress = if (!force && lastSyncTime > 0L) {
-                // [Incremental Sync] 仅拉取上次同步后变更的数据，降低前台全量拉取压力
-                val safeTime = lastSyncTime - 60 * 1000L // 1分钟冗余
-                val lastSyncIso = kotlinx.datetime.Instant.fromEpochMilliseconds(safeTime).toString()
-                supabaseClient.postgrest[TABLE_USER_PROGRESS]
-                    .select(columns = Columns.ALL) {
-                        filter {
-                            eq("user_id", userId)
-                            gte("updated_at", lastSyncIso)
-                        }
-                    }.decodeList<UserProgressEntity>()
-            } else {
-                // [Full Sync] 全量拉取
-                supabaseClient.postgrest[TABLE_USER_PROGRESS]
-                    .select(columns = Columns.ALL) {
-                        filter { eq("user_id", userId) }
-                    }.decodeList<UserProgressEntity>()
+            val remoteProgress = mutableListOf<UserProgressEntity>()
+            var offset = 0
+            val pageSize = 1000
+            
+            while (true) {
+                val batch = if (!force && lastSyncTime > 0L) {
+                    // [Incremental Sync] 仅拉取上次同步后变更的数据
+                    val safeTime = lastSyncTime - 60 * 1000L // 1分钟冗余
+                    val lastSyncIso = kotlinx.datetime.Instant.fromEpochMilliseconds(safeTime).toString()
+                    supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                        .select(columns = Columns.ALL) {
+                            filter {
+                                eq("user_id", userId)
+                                gte("updated_at", lastSyncIso)
+                            }
+                            range(offset.toLong(), (offset + pageSize - 1).toLong())
+                        }.decodeList<UserProgressEntity>()
+                } else {
+                    // [Full Sync] 全量拉取
+                    supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                        .select(columns = Columns.ALL) {
+                            filter { eq("user_id", userId) }
+                            range(offset.toLong(), (offset + pageSize - 1).toLong())
+                        }.decodeList<UserProgressEntity>()
+                }
+                
+                remoteProgress.addAll(batch)
+                Log.d(TAG, "fetchRemoteProgress: fetched ${batch.size} items (total: ${remoteProgress.size})")
+                
+                if (batch.size < pageSize) break
+                offset += pageSize
             }
             
             database.withTransaction {
@@ -202,7 +216,12 @@ class SupabaseSyncManager @Inject constructor(
             val remoteVersion = contentRepository.getRemoteContentVersion()
             val lastVersion = settingsRepository.getLastContentVersion()
             
-            if (remoteVersion != null && remoteVersion <= lastVersion) {
+            // 自我修复逻辑：如果本地数据库为空，强制同步，忽略版本号对比
+            val wordCount = database.wordDao().getCount()
+            val grammarCount = database.grammarDao().getCount()
+            val isDatabaseEmpty = wordCount == 0 || grammarCount == 0
+            
+            if (!isDatabaseEmpty && remoteVersion != null && remoteVersion <= lastVersion) {
                 return
             }
 

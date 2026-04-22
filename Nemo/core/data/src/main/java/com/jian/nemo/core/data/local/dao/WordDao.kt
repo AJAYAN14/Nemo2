@@ -23,6 +23,12 @@ interface WordDao {
     suspend fun insertAll(words: List<WordEntity>)
 
     /**
+     * 获取单词总数
+     */
+    @Query("SELECT COUNT(*) FROM words")
+    suspend fun getCount(): Int
+
+    /**
      * 插入单条单词
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -20,6 +20,12 @@ interface GrammarDao {
     suspend fun insertAll(grammars: List<GrammarEntity>)
 
     /**
+     * 获取语法总数
+     */
+    @Query("SELECT COUNT(*) FROM grammars")
+    suspend fun getCount(): Int
+
+    /**
      * 插入单条语法
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

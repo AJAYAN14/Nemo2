@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class WordDto(
     @SerialName("id")
-    val id: String,
+    val id: Long,
 
     @SerialName("japanese")
     val japanese: String,
@@ -54,7 +54,7 @@ data class WordDto(
 @Serializable
 data class GrammarDto(
     @SerialName("id")
-    val id: String,
+    val id: Long,
     
     @SerialName("title")
     val title: String,

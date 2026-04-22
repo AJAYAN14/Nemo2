@@ -34,46 +34,84 @@ class ContentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun fetchRemoteWords(level: String): List<WordDto> = withContext(Dispatchers.IO) {
+        val allItems = mutableListOf<WordDto>()
+        var offset = 0
+        val pageSize = 1000
         try {
-            supabase.postgrest["dictionary_words"]
-                .select(columns = Columns.ALL) {
-                    filter {
-                        eq("level", level.uppercase())
-                    }
-                }.decodeList<WordDto>()
+            while (true) {
+                val batch = supabase.postgrest["dictionary_words"]
+                    .select(columns = Columns.ALL) {
+                        filter {
+                            eq("level", level.uppercase())
+                        }
+                        range(offset.toLong(), (offset + pageSize - 1).toLong())
+                    }.decodeList<WordDto>()
+                
+                allItems.addAll(batch)
+                Log.d(TAG, "fetchRemoteWords($level): fetched ${batch.size} items (total: ${allItems.size})")
+                
+                if (batch.size < pageSize) break
+                offset += pageSize
+            }
+            allItems
         } catch (e: Exception) {
             Log.e(TAG, "fetchRemoteWords($level) failed", e)
-            emptyList<WordDto>()
+            allItems
         }
     }
 
     override suspend fun fetchRemoteGrammars(level: String): List<GrammarDto> = withContext(Dispatchers.IO) {
+        val allItems = mutableListOf<GrammarDto>()
+        var offset = 0
+        val pageSize = 1000
         try {
-            supabase.postgrest["dictionary_grammars"]
-                .select(columns = Columns.ALL) {
-                    filter {
-                        eq("level", level.uppercase())
-                    }
-                }.decodeList<GrammarDto>()
+            while (true) {
+                val batch = supabase.postgrest["dictionary_grammars"]
+                    .select(columns = Columns.ALL) {
+                        filter {
+                            eq("level", level.uppercase())
+                        }
+                        range(offset.toLong(), (offset + pageSize - 1).toLong())
+                    }.decodeList<GrammarDto>()
+                
+                allItems.addAll(batch)
+                Log.d(TAG, "fetchRemoteGrammars($level): fetched ${batch.size} items (total: ${allItems.size})")
+                
+                if (batch.size < pageSize) break
+                offset += pageSize
+            }
+            allItems
         } catch (e: Exception) {
             Log.e(TAG, "fetchRemoteGrammars($level) failed", e)
-            emptyList<GrammarDto>()
+            allItems
         }
     }
 
     override suspend fun fetchRemoteGrammarQuestions(level: String): List<GrammarTestQuestionDto> = withContext(Dispatchers.IO) {
+        val allItems = mutableListOf<GrammarTestQuestionDto>()
+        var offset = 0
+        val pageSize = 1000
         try {
-            // 语法题 ID 格式通常为 GT_N1_xxx_xx，我们可以通过前缀过滤
             val prefix = "GT_${level.uppercase()}_"
-            supabase.postgrest["grammar_questions"]
-                .select(columns = Columns.ALL) {
-                    filter {
-                        ilike("id", "$prefix%")
-                    }
-                }.decodeList<GrammarTestQuestionDto>()
+            while (true) {
+                val batch = supabase.postgrest["grammar_questions"]
+                    .select(columns = Columns.ALL) {
+                        filter {
+                            ilike("id", "$prefix%")
+                        }
+                        range(offset.toLong(), (offset + pageSize - 1).toLong())
+                    }.decodeList<GrammarTestQuestionDto>()
+                
+                allItems.addAll(batch)
+                Log.d(TAG, "fetchRemoteGrammarQuestions($level): fetched ${batch.size} items (total: ${allItems.size})")
+                
+                if (batch.size < pageSize) break
+                offset += pageSize
+            }
+            allItems
         } catch (e: Exception) {
             Log.e(TAG, "fetchRemoteGrammarQuestions($level) failed", e)
-            emptyList<GrammarTestQuestionDto>()
+            allItems
         }
     }
 
