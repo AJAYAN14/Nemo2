@@ -38,16 +38,22 @@ class SyncServiceImpl @Inject constructor(
         scope.launch {
             authRepository.getUserFlow().collect { user ->
                 if (user != null && user.id != lastUserId) {
-                    Log.d(TAG, "检测到用户登录/切换: ${user.id}，触发即时同步")
+                    Log.d(TAG, "检测到用户登录/切换: ${user.id}，触发即时同步并启动 Realtime")
                     lastUserId = user.id
                     try {
                         // 登录后立即执行一次强制同步，确保数据即时展现
                         supabaseSyncManager.performSync(user.id, force = true).collect { }
+                        // performSync 内部已经调用了 startRealtimeSync，但这里可以再次确保
+                        supabaseSyncManager.startRealtimeSync(user.id)
                     } catch (e: Exception) {
                         Log.e(TAG, "登录后即时同步失败", e)
+                        // 即使同步失败，也应该尝试启动 Realtime
+                        supabaseSyncManager.startRealtimeSync(user.id)
                     }
                 } else if (user == null) {
+                    Log.d(TAG, "用户登出，停止 Realtime 同步")
                     lastUserId = null
+                    supabaseSyncManager.stopRealtimeSync()
                 }
             }
         }

@@ -38,7 +38,6 @@ import com.jian.nemo.core.domain.repository.AudioRepository
 import com.jian.nemo.core.domain.repository.TtsEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +45,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import javax.inject.Inject
@@ -189,6 +189,7 @@ class LearningViewModel @Inject constructor(
     private var ratingJob: Job? = null
     private var navigationJob: Job? = null
     private var loadingJob: Job? = null
+    private var sessionObserverJob: Job? = null
 
     init {
         // 0. 监听显示模式设置 (深色/浅色)
@@ -197,6 +198,7 @@ class LearningViewModel @Inject constructor(
                 _uiState.update { it.copy(isDarkMode = isDark) }
             }
         }
+
 
         // 1. 监听 TTS 事件以更新播放状态 (必须在 _uiState 初始化后)
         viewModelScope.launch {
@@ -310,7 +312,6 @@ class LearningViewModel @Inject constructor(
                 }
             }
         }
-        studyRepository.startRealtimeSync()
     }
 
     /**
@@ -554,8 +555,15 @@ class LearningViewModel @Inject constructor(
             savedSession = savedSession,
             getItemsByIds = { ids -> wordRepository.getWordsByIds(ids) },
             getDueItems = {
-                val r = getDueWordsUseCase(level).first { it !is Result.Loading }
-                if (r is Result.Success) r.data else emptyList()
+                val progressList = studyRepository.getDueItemsByTypeAndLevel("word", level)
+                val ids = progressList.map { it.itemId }
+                val wordList = wordRepository.getWordsByIds(ids)
+                val result = mutableListOf<Word>()
+                for (id in ids) {
+                    val word = wordList.find { it.id == id }
+                    if (word != null) result.add(word)
+                }
+                result
             },
             getItemId = { it.id },
             isLearned = { it.repetitionCount > 0 },
@@ -586,8 +594,15 @@ class LearningViewModel @Inject constructor(
             savedSession = savedSession,
             getItemsByIds = { ids -> grammarRepository.getGrammarsByIds(ids) },
             getDueItems = {
-                val r = getDueGrammarsUseCase(level).first { it !is Result.Loading }
-                if (r is Result.Success) r.data else emptyList()
+                val progressList = studyRepository.getDueItemsByTypeAndLevel("grammar", level)
+                val ids = progressList.map { it.itemId }
+                val grammarList = grammarRepository.getGrammarsByIds(ids)
+                val result = mutableListOf<Grammar>()
+                for (id in ids) {
+                    val grammar = grammarList.find { it.id == id }
+                    if (grammar != null) result.add(grammar)
+                }
+                result
             },
             getItemId = { it.id },
             isLearned = { it.repetitionCount > 0 },
@@ -646,7 +661,10 @@ class LearningViewModel @Inject constructor(
                 }
                 armShowAnswerDelay()
 
-            println("恢复学习会话: ${items.size} 个项目, 索引 ${result.index}")
+                println("恢复学习会话: ${items.size} 个项目, 索引 ${result.index}")
+                
+                // [Reactive Sync] 开启数据库级监听
+                startSessionPruningObserver(result.items.map { if (mode == LearningMode.Word) (it as Word).id else (it as Grammar).id })
             }
 
             is SessionLoadResult.NewSession -> {
@@ -683,7 +701,10 @@ class LearningViewModel @Inject constructor(
                 // 保存初始会话
                 saveSessionState(items.map { it.id }, 0, level)
 
-                println("新学习会话: ${items.size} 个项目 (复习: ${result.dueCount}, 新: ${result.newCount})")
+                println("新学习会话: ${items.size} 个项目 (复习: ${result.dueCount}, New: ${result.newCount})")
+                
+                // [Reactive Sync] 开启数据库级监听
+                startSessionPruningObserver(result.items.map { if (mode == LearningMode.Word) (it as Word).id else (it as Grammar).id })
             }
 
             is SessionLoadResult.Completed -> {
@@ -940,7 +961,7 @@ class LearningViewModel @Inject constructor(
                     quality == 5 -> {
                         println("熟词速通: ${currentItem.displayName}")
                         _learningSteps.remove(currentItem.id)
-                        studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", 5)
+                        studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", 4)
                         handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                     }
 
@@ -1109,7 +1130,8 @@ class LearningViewModel @Inject constructor(
                 if (!result.item.isNew && result.quality < 5) {
                     processRelearningGraduation(result.item)
                 } else {
-                    studyRepository.processReview(result.item.id, if (result.item is LearningItem.WordItem) "word" else "grammar", result.quality)
+                    val finalQuality = if (result.quality == 5) 4 else result.quality
+                    studyRepository.processReview(result.item.id, if (result.item is LearningItem.WordItem) "word" else "grammar", finalQuality)
                     handleSrsUpdateResult(Result.Success(Unit), result.item.isNew, isLapse = false)
                 }
             }
@@ -1749,9 +1771,117 @@ class LearningViewModel @Inject constructor(
         audioRepository.playTts(japanese, "ja-JP", id)
     }
 
+    private fun startSessionPruningObserver(ids: List<Long>) {
+        sessionObserverJob?.cancel()
+        val mode = _uiState.value.learningMode
+        val itemType = if (mode == LearningMode.Word) "word" else "grammar"
+        
+        sessionObserverJob = viewModelScope.launch {
+            studyRepository.observeProgressByItemIds(ids, itemType).collect { latestProgressList ->
+                val state = _uiState.value
+                if (state.status != LearningStatus.Learning) return@collect
+                
+                val currentItems = if (mode == LearningMode.Word) state.wordList else state.grammarList
+                if (currentItems.isEmpty()) return@collect
+                
+                val nowIso = DateTimeUtils.getCurrentCompensatedIso()
+                val progressMap = latestProgressList.associateBy { it.itemId }
+                val staleIds = mutableSetOf<Long>()
+                
+                for (item in currentItems) {
+                    val itemId = if (mode == LearningMode.Word) (item as Word).id else (item as Grammar).id
+                    val wasNew = if (mode == LearningMode.Word) (item as Word).repetitionCount == 0 else (item as Grammar).repetitionCount == 0
+                    
+                    val progress = progressMap[itemId]
+                    
+                    val shouldPrune = when {
+                        // 场景 A: 原本是新词，但现在数据库显示已经学过了 (reps > 0)
+                        wasNew && (progress?.reps ?: 0) > 0 -> true
+                        // 场景 B: 原本是复习词，但现在数据库显示不再到期了 (nextReview > now)
+                        !wasNew && progress != null && (progress.nextReview ?: "") > nowIso -> true
+                        // 场景 C: 被移出了进度表 (虽然罕见，但也视为失效)
+                        !wasNew && progress == null -> true
+                        else -> false
+                    }
+                    
+                    if (shouldPrune) {
+                        println("[Reactive Sync] 自动剔除失效项 (ID: $itemId, Type: $itemType)")
+                        staleIds.add(itemId)
+                    }
+                }
+                
+                if (staleIds.isNotEmpty()) {
+                    performPruning(staleIds, mode == LearningMode.Word)
+                }
+            }
+        }
+    }
+
+    private fun performPruning(staleIds: Set<Long>, isWord: Boolean) {
+        val state = _uiState.value
+        val currentIndex = if (isWord) state.currentIndex else state.currentGrammarIndex
+        val currentItem = getCurrentItem()
+        
+        val newList = if (isWord) {
+            state.wordList.filter { !staleIds.contains(it.id) }
+        } else {
+            state.grammarList.filter { !staleIds.contains(it.id) }
+        }
+        
+        if (newList.isEmpty()) {
+            completeSession()
+            return
+        }
+        
+        // 如果当前正在看的项被移除了，需要跳到下一项
+        val currentItemStillExists = currentItem?.let { 
+            val id = if (isWord) (it as? LearningItem.WordItem)?.word?.id else (it as? LearningItem.GrammarItem)?.grammar?.id
+            id != null && !staleIds.contains(id)
+        } ?: false
+        
+        if (!currentItemStillExists) {
+            println("[Reactive Sync] 当前项已失效，执行强力跳转...")
+            val now = System.currentTimeMillis()
+            if (isWord) {
+                val wordSelection = learningQueueManager.selectNextItem(
+                    items = newList as List<Word>,
+                    getDueTime = { _learningDueTimes[it.id] ?: 0L },
+                    now = now,
+                    learnAheadLimitMs = _learnAheadLimitMs,
+                    preferredIndex = currentIndex
+                )
+                handleSelectionResult(wordSelection, newList as List<Word>, state.selectedLevel, isWord = true)
+            } else {
+                val grammarSelection = learningQueueManager.selectNextItem(
+                    items = newList as List<Grammar>,
+                    getDueTime = { _learningDueTimes[it.id] ?: 0L },
+                    now = now,
+                    learnAheadLimitMs = _learnAheadLimitMs,
+                    preferredIndex = currentIndex
+                )
+                handleSelectionResult(grammarSelection, newList as List<Grammar>, state.selectedLevel, isWord = false)
+            }
+        } else {
+            // 当前项没变，只需静默更新列表
+            val newIndex = if (isWord) {
+                (newList as List<Word>).indexOfFirst { word: Word -> word.id == (currentItem as? LearningItem.WordItem)?.word?.id }
+            } else {
+                (newList as List<Grammar>).indexOfFirst { grammar: Grammar -> grammar.id == (currentItem as? LearningItem.GrammarItem)?.grammar?.id }
+            }
+            
+            _uiState.update {
+                if (isWord) {
+                    it.copy(wordList = newList as List<Word>, currentIndex = newIndex)
+                } else {
+                    it.copy(grammarList = newList as List<Grammar>, currentGrammarIndex = newIndex)
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         audioRepository.stop()
-        studyRepository.stopRealtimeSync()
+        sessionObserverJob?.cancel()
     }
 }

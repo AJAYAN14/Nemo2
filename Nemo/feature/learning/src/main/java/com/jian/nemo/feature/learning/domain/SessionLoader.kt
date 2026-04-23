@@ -112,7 +112,20 @@ class SessionLoader @Inject constructor(
             val allItems = getItemsByIds(ids)
 
             val itemMap = allItems.associateBy { getItemId(it) }
-            val restoredItems = ids.mapNotNull { itemMap[it] }
+            // [Duolingo-style] 恢复时进行有效性过滤：剔除已在其他设备复习过的项目
+            val restoredItems = ids.mapNotNull { id ->
+                val item = itemMap[id]
+                if (item != null) {
+                    // 如果项目已经学习过 (isLearned) 且不再处于待复习池 (allItems 不包含它)
+                    // 则认为它已经不再属于当前学习计划，应该剔除
+                    if (isLearned(item) && !allItems.contains(item)) {
+                        println("⚠️ 自动过滤已复习项: $id")
+                        null
+                    } else {
+                        item
+                    }
+                } else null
+            }
 
             if (restoredItems.isNotEmpty() && index < restoredItems.size) {
                 println("✅ 恢复上次学习会话: Index $index / ${restoredItems.size}")

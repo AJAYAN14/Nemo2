@@ -61,10 +61,10 @@ class GrammarRepositoryImpl @Inject constructor(
     }
 
     override fun getDueGrammars(today: Long, level: String): Flow<List<Grammar>> {
-        // Web 端对齐：使用 12 小时缓冲
-        val bufferMs = 12 * 60 * 60 * 1000L
+        // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
+        val bufferMs = 1 * 60 * 1000L
         val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
-        val currentEpochDay = System.currentTimeMillis() / 86400000
+        val currentEpochDay = today
 
         return grammarDao.getDueGrammarsByLevel(nowWithBuffer, level, currentEpochDay)
             .map { it.toDomainModels().filter { g -> !g.isDelisted } }

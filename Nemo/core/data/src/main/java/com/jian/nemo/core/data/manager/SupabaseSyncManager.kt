@@ -16,6 +16,7 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -38,6 +39,7 @@ import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.postgrest.query.filter.FilterOperation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import io.github.jan.supabase.realtime.RealtimeChannel
 
 @Singleton
 class SupabaseSyncManager @Inject constructor(
@@ -48,9 +50,20 @@ class SupabaseSyncManager @Inject constructor(
     private val syncMetadata: SyncMetadata,
     private val contentRepository: com.jian.nemo.core.domain.repository.ContentRepository,
     private val contentUpdateApplier: com.jian.nemo.core.domain.repository.ContentUpdateApplier,
+    private val syncOutboxDao: SyncOutboxDao,
     @ApplicationScope private val scope: CoroutineScope
 ) {
     private var realtimeChannel: io.github.jan.supabase.realtime.RealtimeChannel? = null
+    private var activeRealtimeUserId: String? = null
+    private var realtimeJob: kotlinx.coroutines.Job? = null
+
+    private val _dataUpdatedEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val dataUpdatedEvent: Flow<Unit> = _dataUpdatedEvent.asSharedFlow()
+
+    private val json = Json { 
+        ignoreUnknownKeys = true 
+        coerceInputValues = true
+    }
     companion object {
         private const val TAG = "SupabaseSyncManager"
         private const val TABLE_USER_PROGRESS = "user_progress"
@@ -71,6 +84,9 @@ class SupabaseSyncManager @Inject constructor(
         emit(SyncProgress.Running("正在准备同步...", 0, 0))
         
         try {
+            // 0. [Duolingo-style] 优先处理本地待上传任务 (Push before Pull)
+            processOutbox()
+
             // 1. 字典内容同步 (全局同步，不依赖登录)
             performDictionarySyncInternal()
 
@@ -159,18 +175,36 @@ class SupabaseSyncManager @Inject constructor(
      * 开启 Realtime 实时同步 (rules.md: 3.C)
      */
     fun startRealtimeSync(userId: String) {
-        if (realtimeChannel != null) return
+        val currentChannel = realtimeChannel
+        // 如果已经为当前用户启动过，且状态正常，则跳过
+        if (currentChannel != null && activeRealtimeUserId == userId) {
+            val status = currentChannel.status.value
+            if (status == RealtimeChannel.Status.SUBSCRIBED || 
+                status == RealtimeChannel.Status.SUBSCRIBING) {
+                Log.d(TAG, "Realtime 同步已为用户 $userId 启动 (Status: $status)，跳过")
+                return
+            } else {
+                Log.w(TAG, "Realtime 通道状态异常 ($status)，准备重新订阅")
+            }
+        }
+
+        // 如果用户变更或状态异常，先停止并清理旧的
+        if (realtimeChannel != null) {
+            Log.d(TAG, "重置旧的 Realtime 订阅")
+            stopRealtimeSync()
+        }
 
         Log.d(TAG, "启动 Realtime 同步: $userId")
+        activeRealtimeUserId = userId
         
-        realtimeChannel = supabaseClient.channel("user_progress_realtime")
+        realtimeChannel = supabaseClient.realtime.channel("user_progress_realtime")
         
         val changeFlow = realtimeChannel!!.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = TABLE_USER_PROGRESS
             filter(FilterOperation("user_id", FilterOperator.EQ, userId))
         }
 
-        scope.launch {
+        realtimeJob = scope.launch {
             changeFlow.collect { action ->
                 Log.d(TAG, "收到 Realtime 变更: $action")
                 handleRealtimeAction(action)
@@ -180,8 +214,9 @@ class SupabaseSyncManager @Inject constructor(
         scope.launch {
             try {
                 realtimeChannel!!.subscribe()
+                Log.i(TAG, "Realtime 订阅请求已发送: $userId")
             } catch (e: Exception) {
-                Log.e(TAG, "Realtime 订阅失败", e)
+                Log.e(TAG, "Realtime 订阅异常失败", e)
             }
         }
     }
@@ -190,13 +225,102 @@ class SupabaseSyncManager @Inject constructor(
      * 停止 Realtime 实时同步
      */
     fun stopRealtimeSync() {
+        Log.d(TAG, "停止 Realtime 同步...")
+        realtimeJob?.cancel()
+        realtimeJob = null
+        
+        val channel = realtimeChannel
+        realtimeChannel = null
+        activeRealtimeUserId = null
+        
         scope.launch {
             try {
-                realtimeChannel?.unsubscribe()
-                realtimeChannel = null
-                Log.d(TAG, "已停止 Realtime 同步")
+                channel?.unsubscribe()
+                Log.d(TAG, "已停止 Realtime 同步并注销通道")
             } catch (e: Exception) {
                 Log.e(TAG, "停止 Realtime 失败", e)
+            }
+        }
+    }
+
+    /**
+     * 处理待同步任务队列 (Duolingo-style Blood Transfusion)
+     */
+    suspend fun processOutbox() {
+        val userId = getCurrentUserId() ?: return
+        val pending = syncOutboxDao.getPendingTasks()
+        if (pending.isEmpty()) return
+
+        Log.d(TAG, "开始处理离线任务队列, 待同步数量: ${pending.size}")
+        val resetHour = settingsRepository.learningDayResetHourFlow.first()
+
+        for (task in pending) {
+            try {
+                syncOutboxDao.setSyncingStatus(task.id, true)
+                
+                val progress = userProgressDao.getByItem(task.itemType, task.itemId)
+                if (progress == null) {
+                    Log.w(TAG, "任务对应进度不存在, 跳过: ${task.itemId}")
+                    syncOutboxDao.deleteById(task.id)
+                    continue
+                }
+
+                // 计算学习日 (对齐 Web 逻辑)
+                val epochDay = DateTimeUtils.getLearningDay(resetHour).toInt()
+                
+                // 自动判断学习/复习字段
+                val studyField = if (progress.reps == 1) {
+                    if (task.itemType == "word") "learned_words" else "learned_grammars"
+                } else {
+                    if (task.itemType == "word") "reviewed_words" else "reviewed_grammars"
+                }
+
+                @Serializable
+                data class ReviewParams(
+                    val p_user_id: String,
+                    val p_progress_id: String,
+                    val p_rating: Int,
+                    val p_request_id: String,
+                    val p_epoch_day: Int,
+                    val p_study_field: String,
+                    val p_expected_last_review: String?
+                )
+
+                val params = ReviewParams(
+                    p_user_id = userId,
+                    p_progress_id = progress.id,
+                    p_rating = task.rating,
+                    p_request_id = "android-${task.id}-${System.currentTimeMillis()}", // 增加时间戳防止请求 ID 碰撞
+                    p_epoch_day = epochDay,
+                    p_study_field = studyField,
+                    p_expected_last_review = task.expectedLastReview
+                )
+
+                Log.d(TAG, "执行原子评分 RPC: ${task.itemId} (Rating=${task.rating})")
+                val result = supabaseClient.postgrest.rpc("fn_process_review_atomic_v3", params).decodeSingleOrNull<UserProgressEntity>()
+                
+                if (result != null) {
+                    userProgressDao.insert(result)
+                    Log.i(TAG, "评分上传成功: ${task.itemId}")
+                }
+                syncOutboxDao.deleteById(task.id)
+            } catch (e: Exception) {
+                val errorMsg = e.message ?: ""
+                if (errorMsg.contains("STALE_DATA_CONFLICT")) {
+                    Log.w(TAG, "检测到数据版本冲突 (STALE_DATA_CONFLICT), 放弃本地任务并拉取云端最新状态: ${task.itemId}")
+                    syncOutboxDao.deleteById(task.id)
+                    // 触发单条数据刷新
+                    try {
+                        val remote = supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                            .select { filter { eq("user_id", userId); eq("item_id", task.itemId); eq("item_type", task.itemType) } }
+                            .decodeSingleOrNull<UserProgressEntity>()
+                        if (remote != null) userProgressDao.insert(remote)
+                    } catch (f: Exception) { /* ignore */ }
+                } else {
+                    Log.e(TAG, "上传评分失败, 稍后重试: ${task.itemId}", e)
+                    syncOutboxDao.incrementAttempts(task.id)
+                    syncOutboxDao.setSyncingStatus(task.id, false)
+                }
             }
         }
     }
@@ -205,11 +329,11 @@ class SupabaseSyncManager @Inject constructor(
         try {
             when (action) {
                 is PostgresAction.Insert -> {
-                    val entity = Json.decodeFromJsonElement<UserProgressEntity>(action.record)
+                    val entity = json.decodeFromJsonElement<UserProgressEntity>(action.record)
                     userProgressDao.insert(entity)
                 }
                 is PostgresAction.Update -> {
-                    val entity = Json.decodeFromJsonElement<UserProgressEntity>(action.record)
+                    val entity = json.decodeFromJsonElement<UserProgressEntity>(action.record)
                     userProgressDao.insert(entity) // REPLACE 策略
                 }
                 is PostgresAction.Delete -> {
@@ -220,6 +344,7 @@ class SupabaseSyncManager @Inject constructor(
                 }
                 else -> {}
             }
+            _dataUpdatedEvent.emit(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "处理 Realtime 变更失败", e)
         }

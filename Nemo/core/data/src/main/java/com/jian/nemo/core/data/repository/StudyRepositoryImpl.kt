@@ -8,11 +8,10 @@ import com.jian.nemo.core.data.local.entity.UserProgressEntity
 import com.jian.nemo.core.data.local.entity.SyncOutboxEntity
 import com.jian.nemo.core.domain.model.UserProgress
 import com.jian.nemo.core.domain.repository.StudyRepository
-import com.jian.nemo.core.domain.algorithm.Fsrs6Algorithm
-import com.jian.nemo.core.domain.model.RatingAction
 import com.jian.nemo.core.domain.model.SyncProgress
 import com.jian.nemo.core.domain.model.sync.SyncMode
 import com.jian.nemo.core.domain.repository.SettingsRepository
+import com.jian.nemo.core.domain.repository.AuthRepository
 import com.jian.nemo.core.common.di.ApplicationScope
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -39,10 +38,27 @@ class StudyRepositoryImpl @Inject constructor(
     private val syncOutboxDao: SyncOutboxDao,
     private val syncManager: SupabaseSyncManager,
     private val settingsRepository: SettingsRepository,
+    private val authRepository: AuthRepository,
     @ApplicationScope private val scope: CoroutineScope
 ) : StudyRepository {
 
-    private val algorithm = Fsrs6Algorithm()
+    override fun observeProgressByItemIds(itemIds: List<Long>, itemType: String): Flow<List<UserProgress>> {
+        return userProgressDao.getProgressByItemIdsFlow(itemIds, itemType)
+            .map { list -> list.map { it.toDomain() } }
+    }
+
+    init {
+        // [Native Mirror] 自动生命周期管理：监听用户状态并启动/停止 Realtime
+        scope.launch {
+            authRepository.getUserFlow().collect { user ->
+                if (user != null) {
+                    syncManager.startRealtimeSync(user.id)
+                } else {
+                    syncManager.stopRealtimeSync()
+                }
+            }
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun getDueItemsFlow(): Flow<List<UserProgress>> {
@@ -57,81 +73,50 @@ class StudyRepositoryImpl @Inject constructor(
 
     override suspend fun processReview(itemId: Long, itemType: String, rating: Int) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
+        val oldLastReview = progress.lastReview
         val now = Clock.System.now()
         
-        val learningSteps = listOf(1, 10)
-        val relearningSteps = listOf(10)
-
-        val ratingAction = algorithm.evaluateRatingAction(
-            state = progress.state,
-            lapses = progress.lapses,
-            currentStep = progress.learningStep,
-            rating = rating,
-            learningSteps = learningSteps,
-            relearningSteps = relearningSteps
-        )
-
-        val newReps = progress.reps + 1
-        val newLapses = if (rating == 1) progress.lapses + 1 else progress.lapses
-
-        val nextReviewInstant: Instant
-        val newStateInt: Int
-        val newLearningStep: Int
-        val finalStability: Double
-        val finalDifficulty: Double
-
-        when (ratingAction) {
-            is RatingAction.Graduate -> {
-                newStateInt = if (rating == 1) 3 else 2
-                newLearningStep = 0
-                val elapsedDays = calculateElapsedDays(progress.lastReview, now)
-                val currentState = Fsrs6Algorithm.MemoryState(progress.stability, progress.difficulty)
-                val newState = algorithm.step(currentState, rating, elapsedDays)
-                finalStability = newState.stability
-                finalDifficulty = newState.difficulty
-                val intervalDays = if (rating == 1) 0 else {
-                    val seed = algorithm.buildFsrsDeterministicSeed(progress.id, progress.reps)
-                    algorithm.nextIntervalDaysWithFuzz(newState.stability, seed)
-                }
-                nextReviewInstant = now.plus(intervalDays.days)
-            }
-            is RatingAction.Requeue -> {
-                newStateInt = if (rating == 1) (if (progress.state == 2 || progress.state == 3) 3 else 1) else (if (progress.state == 0) 1 else progress.state)
-                newLearningStep = ratingAction.nextStep
-                nextReviewInstant = now.plus(ratingAction.delayMins.minutes)
-                val elapsedDays = calculateElapsedDays(progress.lastReview, now)
-                val currentState = Fsrs6Algorithm.MemoryState(progress.stability, progress.difficulty)
-                val newState = algorithm.step(currentState, rating, elapsedDays)
-                finalStability = newState.stability
-                finalDifficulty = newState.difficulty
-            }
-            is RatingAction.Leech -> {
-                newStateInt = -1
-                newLearningStep = 0
-                nextReviewInstant = now.plus(ratingAction.fallbackDelay.minutes)
-                finalStability = progress.stability
-                finalDifficulty = progress.difficulty
-            }
-        }
-
+        // [Optimistic Update] 立即在本地标记为已复习，以提供流畅体验
+        // 这里的计算仅用于本地瞬间展现，最终结果将由 RPC 返回值覆盖
         val localUpdated = progress.copy(
-            stability = finalStability,
-            difficulty = finalDifficulty,
-            state = newStateInt,
-            learningStep = newLearningStep,
-            reps = newReps,
-            lapses = newLapses,
             lastReview = now.toString(),
-            nextReview = nextReviewInstant.toString()
+            // 将下次复习时间暂时设为明天，使其从今日列表中消失
+            nextReview = now.plus(1.days).toString(),
+            updatedAt = now.toString()
         )
         userProgressDao.insert(localUpdated)
-        syncOutboxDao.insert(SyncOutboxEntity(itemId = itemId.toString(), itemType = itemType, rating = rating, createdAt = now.toString()))
-        scope.launch { syncPendingTasks() }
+
+        // [Atomic Sync] 写入离线队列
+        syncOutboxDao.insert(
+            SyncOutboxEntity(
+                itemId = itemId, 
+                itemType = itemType, 
+                rating = rating, 
+                createdAt = now.toString(),
+                expectedLastReview = oldLastReview
+            )
+        )
+
+        // 立即触发后台上传
+        scope.launch { 
+            try {
+                syncManager.processOutbox() 
+            } catch (e: Exception) {
+                Log.e("StudyRepository", "即时同步评分失败，任务已在队列中: ${e.message}")
+            }
+        }
     }
 
     override fun startRealtimeSync() {
         val userId = supabase.auth.currentUserOrNull()?.id ?: return
         syncManager.startRealtimeSync(userId)
+        
+        // 监听来自 syncManager 的底层数据变更并转发到 Repository 信号
+        scope.launch {
+            // 注意：我们需要在 SyncManager 中也暴露一个 Flow，
+            // 或者让 SyncManager 直接调用 Repository 的回调。
+            // 这里我们先简单处理，后续在 SyncManager 中注入信号发送逻辑。
+        }
     }
     
     override fun stopRealtimeSync() {
@@ -173,25 +158,7 @@ class StudyRepositoryImpl @Inject constructor(
     }
 
     override suspend fun syncPendingTasks() {
-        val userId = supabase.auth.currentUserOrNull()?.id ?: return
-        val pending = syncOutboxDao.getPendingTasks()
-        for (task in pending) {
-            val progress = userProgressDao.getByItem(task.itemType, task.itemId.toLongOrNull() ?: 0L) ?: continue
-            try {
-                syncOutboxDao.setSyncingStatus(task.id, true)
-                @Serializable data class ReviewParams(val p_user_id: String, val p_progress_id: String, val p_rating: Int, val p_request_id: String, val p_epoch_day: Int, val p_study_field: String, val p_expected_last_review: String?)
-                val params = ReviewParams(p_user_id = userId, p_progress_id = progress.id, p_rating = task.rating, p_request_id = "android-${task.id}", p_epoch_day = (Instant.parse(task.createdAt).toEpochMilliseconds() / 86400000).toInt(), p_study_field = (if (task.itemType == "word") "reviewed_words" else "reviewed_grammars"), p_expected_last_review = progress.lastReview)
-                supabase.postgrest.rpc("fn_process_review_atomic_v3", params)
-                syncOutboxDao.deleteById(task.id)
-            } catch (e: Exception) {
-                if (e.message?.contains("STALE_DATA_CONFLICT") == true) {
-                    try {
-                        val remote = supabase.postgrest["user_progress"].select { filter { eq("id", progress.id) } }.decodeSingleOrNull<UserProgressEntity>()
-                        if (remote != null) { userProgressDao.insert(remote); syncOutboxDao.deleteById(task.id) }
-                    } catch (fetchErr: Exception) { fetchErr.printStackTrace() }
-                } else { syncOutboxDao.incrementAttempts(task.id); e.printStackTrace() }
-            }
-        }
+        syncManager.processOutbox()
     }
 
     override suspend fun toggleFavorite(itemId: Long, itemType: String, isFavorite: Boolean) {
@@ -242,7 +209,8 @@ class StudyRepositoryImpl @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun getDueItemsByTypeAndLevelFlow(itemType: String, level: String): Flow<List<UserProgress>> {
         return settingsRepository.learningDayResetHourFlow.flatMapLatest { resetHour ->
-            val bufferMs = 12 * 60 * 60 * 1000L
+            // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
+            val bufferMs = 1 * 60 * 1000L
             val nowWithBuffer = Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds() + bufferMs).toString()
             val currentEpochDay = DateTimeUtils.getLearningDay(resetHour)
             
@@ -251,6 +219,18 @@ class StudyRepositoryImpl @Inject constructor(
             userProgressDao.getDueItemsByTypeAndLevelFlow(itemType, level, nowWithBuffer, currentEpochDay).map { list -> 
                 list.map { it.toDomain() } 
             }
+        }
+    }
+
+    override suspend fun getDueItemsByTypeAndLevel(itemType: String, level: String): List<UserProgress> {
+        val resetHour = settingsRepository.learningDayResetHourFlow.first()
+        // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
+        val bufferMs = 1 * 60 * 1000L
+        val nowWithBuffer = Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds() + bufferMs).toString()
+        val currentEpochDay = DateTimeUtils.getLearningDay(resetHour)
+        
+        return userProgressDao.getDueItemsByTypeAndLevelSync(itemType, level, nowWithBuffer, currentEpochDay).map { 
+            it.toDomain() 
         }
     }
 

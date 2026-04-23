@@ -14,6 +14,11 @@ interface StudyRepository {
     fun getDueItemsFlow(): Flow<List<UserProgress>>
 
     /**
+     * 数据更新信号 (当 Realtime 或同步导致本地数据变动时触发)
+     */
+    fun observeProgressByItemIds(itemIds: List<Long>, itemType: String): Flow<List<UserProgress>>
+
+    /**
      * 提交复习评分
      * @param itemId 单词或语法 ID
      * @param itemType 'word' | 'grammar'
@@ -83,8 +88,12 @@ interface StudyRepository {
     fun getDueItemsByTypeAndLevelFlow(itemType: String, level: String): Flow<List<UserProgress>>
 
     /**
+     * 同步获取当前到期的复习项目 (用于 Session 初始化，防止 Flow 缓存过期)
+     */
+    suspend fun getDueItemsByTypeAndLevel(itemType: String, level: String): List<UserProgress>
+
+    /**
      * 执行强制全量同步 (拉取字典和所有用户进度)
      */
     suspend fun performFullSync()
 }
-

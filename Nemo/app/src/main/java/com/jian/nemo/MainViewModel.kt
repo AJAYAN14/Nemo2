@@ -32,7 +32,8 @@ class MainViewModel @Inject constructor(
     private val configRepository: ConfigRepository,
     private val authRepository: AuthRepository,
     private val downloader: Downloader,
-    private val audioRepository: AudioRepository
+    private val audioRepository: AudioRepository,
+    private val studyRepository: com.jian.nemo.core.domain.repository.StudyRepository
 ) : ViewModel() {
 
     companion object {
@@ -46,6 +47,9 @@ class MainViewModel @Inject constructor(
     val updateCheckEvents = _updateCheckEvents.receiveAsFlow()
 
     init {
+        // 触发 StudyRepository 初始化以启动全局 Realtime 同步
+        Log.d(TAG, "Initializing MainViewModel and ensuring StudyRepository is active")
+        
         viewModelScope.launch {
             authRepository.getUserFlow().collect { user ->
                 _uiState.update { it.copy(currentUser = user) }

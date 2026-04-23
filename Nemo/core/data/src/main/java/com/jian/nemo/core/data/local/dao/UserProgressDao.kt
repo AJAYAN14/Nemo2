@@ -47,11 +47,25 @@ interface UserProgressDao {
     """)
     fun getDueItemsByTypeAndLevelFlow(itemType: String, level: String, nowWithBuffer: String, currentEpochDay: Long): Flow<List<UserProgressEntity>>
 
+    @Query("""
+        SELECT * FROM user_progress 
+        WHERE item_type = :itemType
+        AND (:level = 'ALL' OR UPPER(level) = UPPER(:level))
+        AND state IN (0, 1, 2, 3) 
+        AND (state = 0 OR next_review <= :nowWithBuffer)
+        AND buried_until <= :currentEpochDay
+        ORDER BY state ASC, next_review ASC, id ASC
+    """)
+    suspend fun getDueItemsByTypeAndLevelSync(itemType: String, level: String, nowWithBuffer: String, currentEpochDay: Long): List<UserProgressEntity>
+
     @Query("SELECT * FROM user_progress WHERE is_favorite = 1")
     fun getFavoriteItemsFlow(): Flow<List<UserProgressEntity>>
 
     @Query("SELECT * FROM user_progress WHERE state = -1")
     fun getLeechItemsFlow(): Flow<List<UserProgressEntity>>
+
+    @Query("SELECT * FROM user_progress WHERE item_type = :itemType AND item_id IN (:itemIds)")
+    fun getProgressByItemIdsFlow(itemIds: List<Long>, itemType: String): Flow<List<UserProgressEntity>>
 
     @Query("SELECT * FROM user_progress WHERE item_type = :itemType AND item_id IN (:itemIds)")
     suspend fun getProgressByItemIds(itemIds: List<Long>, itemType: String): List<UserProgressEntity>

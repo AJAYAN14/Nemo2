@@ -75,10 +75,10 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getDueWords(today: Long, level: String): Flow<List<Word>> {
-        // Web 端对齐：使用 12 小时缓冲
-        val bufferMs = 12 * 60 * 60 * 1000L
+        // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
+        val bufferMs = 1 * 60 * 1000L
         val nowWithBuffer = com.jian.nemo.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
-        val currentEpochDay = System.currentTimeMillis() / 86400000
+        val currentEpochDay = today
         
         return wordDao.getDueWordsByLevel(nowWithBuffer, level.lowercase(), currentEpochDay)
             .map { entities ->

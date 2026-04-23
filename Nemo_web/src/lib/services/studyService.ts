@@ -415,11 +415,13 @@ export const studyService = {
     const { item, rating } = result;
     const progress = item.progress;
 
-    // WEB EXCELLENCE: 保持 requestId 的唯一性以便幂等处理
     const requestId = requestIdOverride ?? (
       typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
-        : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          })
     );
 
     // 确定统计字段
@@ -433,14 +435,19 @@ export const studyService = {
       p_request_id: requestId,
       p_epoch_day: studyField ? epochDay : null,
       p_study_field: studyField ?? null,
-      p_expected_last_review: progress.last_review
+      p_expected_last_review: progress.last_review ?? null,
+      p_learning_steps: config.learningSteps ?? [1, 10],
+      p_relearning_steps: config.relearningSteps ?? [10]
     };
 
     console.log('[StudyService.processReview] Calling RPC fn_process_review_atomic_v3 with:', rpcParams);
 
     const rpcResult = await supabase.rpc('fn_process_review_atomic_v3', rpcParams);
 
-    if (rpcResult.error) throw rpcResult.error;
+    if (rpcResult.error) {
+      console.error('[StudyService.processReview] RPC Error details:', JSON.stringify(rpcResult.error, null, 2));
+      throw new Error(`RPC Error: ${rpcResult.error.message || JSON.stringify(rpcResult.error)}`);
+    }
 
     const updated = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
     if (!updated) {
