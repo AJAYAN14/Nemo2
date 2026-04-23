@@ -23,6 +23,8 @@ data class SettingsUiState(
     val learnAheadLimit: Int = 20, // 提前学习限制 (分钟)
     val leechThreshold: Int = 5, // Leech 判定阈值（累计失败次数）
     val leechAction: String = "skip", // Leech 行为: skip | bury_today
+    val fsrsTargetRetention: Double = 0.9, // FSRS 目标留存率
+
 
     // 弹窗状态
     val showDailyGoalDialog: Boolean = false,
@@ -103,7 +105,8 @@ sealed interface SettingsEvent {
         val relearningSteps: String,
         val learnAheadLimit: Int,
         val leechThreshold: Int,
-        val leechAction: String
+        val leechAction: String,
+        val fsrsTargetRetention: Double
     ) : SettingsEvent
 
     // TTS 设置
@@ -118,6 +121,9 @@ sealed interface SettingsEvent {
     data class ShowDailyGoalDialog(val show: Boolean) : SettingsEvent
     data class ShowGrammarDailyGoalDialog(val show: Boolean) : SettingsEvent
     data class ShowLearningDayResetHourDialog(val show: Boolean) : SettingsEvent
+
+    object ClearStatusMessage : SettingsEvent
+    object RestoreDefaultAdvancedLearningSettings : SettingsEvent
 
     // 重置进度
     data class ResetProgress(val includeCloud: Boolean) : SettingsEvent

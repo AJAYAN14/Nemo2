@@ -67,7 +67,8 @@ data class AppSettings(
 
     // 同步触发策略
     val isSyncOnLearningComplete: Boolean = true,
-    val isSyncOnTestComplete: Boolean = true
+    val isSyncOnTestComplete: Boolean = true,
+    val fsrsTargetRetention: Double = 0.9
 )
 
 /**

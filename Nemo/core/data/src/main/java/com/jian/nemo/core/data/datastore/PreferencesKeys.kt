@@ -1,6 +1,7 @@
 package com.jian.nemo.core.data.datastore
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -250,14 +251,15 @@ object PreferencesKeys {
 
     /** Leech 行为 默认: skip (skip | bury_today) */
     val LEECH_ACTION = stringPreferencesKey("leech_action")
+    val FSRS_TARGET_RETENTION = floatPreferencesKey("fsrs_target_retention")
 
     // ========== TTS 设置 ==========
 
     /** 朗读语速 默认: 1.0f */
-    val TTS_SPEECH_RATE = androidx.datastore.preferences.core.floatPreferencesKey("tts_speech_rate")
+    val TTS_SPEECH_RATE = floatPreferencesKey("tts_speech_rate")
 
     /** 朗读音调 默认: 1.0f */
-    val TTS_PITCH = androidx.datastore.preferences.core.floatPreferencesKey("tts_pitch")
+    val TTS_PITCH = floatPreferencesKey("tts_pitch")
 
     /** 朗读语音名称 (Locale + Name) 默认: null (system default) */
     val TTS_VOICE_NAME = stringPreferencesKey("tts_voice_name")

@@ -25,7 +25,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class SrsCalculatorImpl @Inject constructor(
-    private val reviewLogRepository: ReviewLogRepository
+    private val reviewLogRepository: ReviewLogRepository,
+    private val settingsRepository: com.jian.nemo.core.domain.repository.SettingsRepository
 ) : SrsCalculator {
 
     @Volatile
@@ -34,6 +35,13 @@ class SrsCalculatorImpl @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     init {
+        // 观察留存率变化并动态更新算法实例
+        scope.launch {
+            settingsRepository.fsrsTargetRetentionFlow.collect { retention ->
+                fsrs = Fsrs6Algorithm(targetRetention = retention)
+            }
+        }
+
         // 后台加载优化参数（如果可用）
         scope.launch {
             try {

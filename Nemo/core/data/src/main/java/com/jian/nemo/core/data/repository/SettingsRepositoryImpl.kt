@@ -1273,12 +1273,25 @@ class SettingsRepositoryImpl @Inject constructor(
         }
     }
 
+    override val fsrsTargetRetentionFlow: Flow<Double> = dataStore.data.map { preferences ->
+        (preferences[PreferencesKeys.FSRS_TARGET_RETENTION] ?: 0.9f).toDouble()
+    }
+
+    override suspend fun setFsrsTargetRetention(retention: Double) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FSRS_TARGET_RETENTION] = retention.toFloat()
+            preferences[PreferencesKeys.LAST_SETTINGS_MODIFIED_TIME] = System.currentTimeMillis()
+        }
+        Log.d(TAG, "FSRS目标留存率已更新: $retention")
+    }
+
     override suspend fun saveAdvancedLearningSettings(
         learningSteps: String,
         relearningSteps: String,
         learnAheadLimit: Int,
         leechThreshold: Int,
-        leechAction: String
+        leechAction: String,
+        fsrsTargetRetention: Double
     ) {
         // 使用 NonCancellable 确保在页面关闭/ViewModel 销毁时，写入操作不会被取消
         withContext(NonCancellable) {
@@ -1288,6 +1301,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 preferences[PreferencesKeys.LEARN_AHEAD_LIMIT] = learnAheadLimit
                 preferences[PreferencesKeys.LEECH_THRESHOLD] = leechThreshold.coerceAtLeast(1)
                 preferences[PreferencesKeys.LEECH_ACTION] = leechAction
+                preferences[PreferencesKeys.FSRS_TARGET_RETENTION] = fsrsTargetRetention.toFloat()
                 
                 // 更新修改时间戳，以便触发云端同步
                 preferences[PreferencesKeys.LAST_SETTINGS_MODIFIED_TIME] = System.currentTimeMillis()
@@ -1536,7 +1550,8 @@ class SettingsRepositoryImpl @Inject constructor(
             isRandomNewContentEnabled = prefs[PreferencesKeys.IS_RANDOM_NEW_CONTENT_ENABLED] ?: true,
 
             isSyncOnLearningComplete = prefs[PreferencesKeys.SYNC_ON_LEARNING_COMPLETE] ?: true,
-            isSyncOnTestComplete = prefs[PreferencesKeys.SYNC_ON_TEST_COMPLETE] ?: true
+            isSyncOnTestComplete = prefs[PreferencesKeys.SYNC_ON_TEST_COMPLETE] ?: true,
+            fsrsTargetRetention = (prefs[PreferencesKeys.FSRS_TARGET_RETENTION] ?: 0.9f).toDouble()
         )
     }
 
@@ -1593,6 +1608,7 @@ class SettingsRepositoryImpl @Inject constructor(
             prefs[PreferencesKeys.IS_RANDOM_NEW_CONTENT_ENABLED] = settings.isRandomNewContentEnabled
             prefs[PreferencesKeys.SYNC_ON_LEARNING_COMPLETE] = settings.isSyncOnLearningComplete
             prefs[PreferencesKeys.SYNC_ON_TEST_COMPLETE] = settings.isSyncOnTestComplete
+            prefs[PreferencesKeys.FSRS_TARGET_RETENTION] = settings.fsrsTargetRetention.toFloat()
 
             // Update timestamp
             prefs[PreferencesKeys.LAST_SETTINGS_MODIFIED_TIME] = System.currentTimeMillis()

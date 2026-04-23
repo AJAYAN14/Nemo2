@@ -54,6 +54,9 @@ class Fsrs6Algorithm(
     }
 
     private fun initStability(rating: Int): Double {
+        if (rating == 2) { // Hard: (Again + Good) / 2
+            return (initStability(1) + initStability(3)) / 2.0
+        }
         return max(S_MIN, min(S_MAX, w[rating - 1]))
     }
 
