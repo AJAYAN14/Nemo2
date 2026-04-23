@@ -80,9 +80,11 @@ class SrsIntervalPreview @Inject constructor(
                         // 新卡毕业 -> Fall through to calculator
                     }
                 } else if (q == 3) {
-                     // Hard (3) Logic: Repeat current step (原地踏步)
-                     val currentStepMin = config.getOrElse(stepIndex) { 1 }
-                     intervals[q] = "${currentStepMin}m"
+                     // Hard (3) Logic: Anki algorithm (average of first and second step if on first step)
+                     val delay = calculateHardDelayMin(stepIndex, config)
+                     val isWhole = (delay % 1.0) == 0.0
+                     val formatted = if (isWhole) delay.toInt().toString() else delay.toString()
+                     intervals[q] = "${formatted}m"
                      continue
                  } else if (q == 5) {
                      // Easy (5): Instant Graduate
@@ -101,5 +103,27 @@ class SrsIntervalPreview @Inject constructor(
              intervals[q] = text
         }
         return intervals
+    }
+
+    private fun calculateHardDelayMin(stepIndex: Int, config: List<Int>): Double {
+        val currentStepMin = config.getOrElse(stepIndex) { 1 }
+        if (stepIndex == 0) {
+            val nextStepMin = config.getOrNull(1)
+            return if (nextStepMin != null && nextStepMin > 0) {
+                maybeRoundInDaysMinutes((currentStepMin + nextStepMin) / 2.0)
+            } else {
+                val increased = minOf(currentStepMin * 1.5, currentStepMin + 1440.0)
+                maybeRoundInDaysMinutes(increased)
+            }
+        }
+        return currentStepMin.toDouble()
+    }
+
+    private fun maybeRoundInDaysMinutes(delayMins: Double): Double {
+        val dayMinutes = 1440.0
+        if (delayMins > dayMinutes) {
+            return maxOf(dayMinutes, Math.round(delayMins / dayMinutes) * dayMinutes)
+        }
+        return delayMins
     }
 }

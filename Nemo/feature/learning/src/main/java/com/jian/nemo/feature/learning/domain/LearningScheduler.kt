@@ -96,11 +96,10 @@ class LearningScheduler @Inject constructor() {
         currentStep: Int,
         stepConfig: List<Int>
     ): ScheduleResult {
-        // Hard (3): 保持当前 Step，使用当前 Step 的时间（原地踏步）
+        // Hard (3): 保持当前 Step，如果是第一步则取前两步的均值，否则使用当前 Step 的时间
         if (quality == 3) {
-            // 获取当前 Step 对应的分钟数，若越界则默认 1 分钟
-            val currentStepMin = stepConfig.getOrElse(currentStep) { 1 }
-            val dueTime = System.currentTimeMillis() + currentStepMin * 60 * 1000L
+            val delayMins = calculateHardDelayMin(currentStep, stepConfig)
+            val dueTime = System.currentTimeMillis() + (delayMins * 60 * 1000.0).toLong()
 
             val updatedItem = when (item) {
                 is LearningItem.WordItem -> item.copy(step = currentStep, dueTime = dueTime)
@@ -138,5 +137,27 @@ class LearningScheduler @Inject constructor() {
         // 1. 评分是 Easy (5)
         // 2. 评分是 Good (4) 且已经是最后一个台阶
         return ScheduleResult.Graduate(item, quality)
+    }
+
+    private fun calculateHardDelayMin(stepIndex: Int, config: List<Int>): Double {
+        val currentStepMin = config.getOrElse(stepIndex) { 1 }
+        if (stepIndex == 0) {
+            val nextStepMin = config.getOrNull(1)
+            return if (nextStepMin != null && nextStepMin > 0) {
+                maybeRoundInDaysMinutes((currentStepMin + nextStepMin) / 2.0)
+            } else {
+                val increased = minOf(currentStepMin * 1.5, currentStepMin + 1440.0)
+                maybeRoundInDaysMinutes(increased)
+            }
+        }
+        return currentStepMin.toDouble()
+    }
+
+    private fun maybeRoundInDaysMinutes(delayMins: Double): Double {
+        val dayMinutes = 1440.0
+        if (delayMins > dayMinutes) {
+            return maxOf(dayMinutes, Math.round(delayMins / dayMinutes) * dayMinutes)
+        }
+        return delayMins
     }
 }
