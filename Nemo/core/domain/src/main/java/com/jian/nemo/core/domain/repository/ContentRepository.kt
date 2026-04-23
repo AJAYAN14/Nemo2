@@ -33,4 +33,21 @@ interface ContentRepository {
      * @param level N1～N5
      */
     suspend fun fetchRemoteGrammarQuestions(level: String): List<GrammarTestQuestionDto>
+
+    // ========== 全量拉取 (性能优化：减少网络往返) ==========
+
+    /**
+     * 一次性拉取所有等级的单词
+     */
+    suspend fun fetchAllRemoteWords(): List<WordDto>
+
+    /**
+     * 一次性拉取所有等级的语法
+     */
+    suspend fun fetchAllRemoteGrammars(): List<GrammarDto>
+
+    /**
+     * 一次性拉取所有语法测试题
+     */
+    suspend fun fetchAllRemoteGrammarQuestions(): List<GrammarTestQuestionDto>
 }

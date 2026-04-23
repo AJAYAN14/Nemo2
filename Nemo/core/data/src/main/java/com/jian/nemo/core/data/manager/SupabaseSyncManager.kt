@@ -38,6 +38,8 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.postgrest.query.filter.FilterOperation
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import io.github.jan.supabase.realtime.RealtimeChannel
 
@@ -360,7 +362,6 @@ class SupabaseSyncManager @Inject constructor(
     private suspend fun performDictionarySyncInternal() {
         Log.d(TAG, "开始检查字典同步...")
         try {
-            val levels = listOf("n1", "n2", "n3", "n4", "n5") // 统一使用小写
             val remoteVersion = contentRepository.getRemoteContentVersion()
             val lastVersion = settingsRepository.getLastContentVersion()
             
@@ -376,33 +377,52 @@ class SupabaseSyncManager @Inject constructor(
                 return
             }
 
-            levels.forEach { level ->
-                Log.d(TAG, "正在拉取 $level 的词库...")
-                val remoteWords = contentRepository.fetchRemoteWords(level)
-                if (remoteWords.isNotEmpty()) {
-                    Log.d(TAG, "拉取到 $level 单词: ${remoteWords.size} 条")
-                    contentUpdateApplier.applyWords(level, remoteWords)
-                }
+            val startTime = System.currentTimeMillis()
 
-                val remoteGrammars = contentRepository.fetchRemoteGrammars(level)
-                if (remoteGrammars.isNotEmpty()) {
-                    Log.d(TAG, "拉取到 $level 语法: ${remoteGrammars.size} 条")
-                    contentUpdateApplier.applyGrammars(level, remoteGrammars)
-                }
+            // [性能优化] 并发拉取所有数据类型 (3 个并发请求替代 15 个串行请求)
+            lateinit var allWords: List<com.jian.nemo.core.domain.model.dto.WordDto>
+            lateinit var allGrammars: List<com.jian.nemo.core.domain.model.dto.GrammarDto>
+            lateinit var allQuestions: List<com.jian.nemo.core.domain.model.dto.GrammarTestQuestionDto>
 
-                val remoteQuestions = contentRepository.fetchRemoteGrammarQuestions(level)
-                if (remoteQuestions.isNotEmpty()) {
-                    contentUpdateApplier.applyGrammarQuestions(level, remoteQuestions)
-                }
+            coroutineScope {
+                val wordsDeferred = async { contentRepository.fetchAllRemoteWords() }
+                val grammarsDeferred = async { contentRepository.fetchAllRemoteGrammars() }
+                val questionsDeferred = async { contentRepository.fetchAllRemoteGrammarQuestions() }
+
+                allWords = wordsDeferred.await()
+                allGrammars = grammarsDeferred.await()
+                allQuestions = questionsDeferred.await()
             }
+
+            val fetchTime = System.currentTimeMillis() - startTime
+            Log.d(TAG, "并发拉取完成: 单词=${allWords.size}, 语法=${allGrammars.size}, 题目=${allQuestions.size} (耗时 ${fetchTime}ms)")
+
+            // [性能优化] 批量写入本地数据库 (使用事务优化的方法)
+            val writeStartTime = System.currentTimeMillis()
+
+            if (allWords.isNotEmpty()) {
+                contentUpdateApplier.applyAllWords(allWords)
+            }
+
+            if (allGrammars.isNotEmpty()) {
+                contentUpdateApplier.applyAllGrammars(allGrammars)
+            }
+
+            if (allQuestions.isNotEmpty()) {
+                contentUpdateApplier.applyAllGrammarQuestions(allQuestions)
+            }
+
+            val writeTime = System.currentTimeMillis() - writeStartTime
+            val totalTime = System.currentTimeMillis() - startTime
+            Log.i(TAG, "词库同步完成: 拉取=${fetchTime}ms, 写入=${writeTime}ms, 总计=${totalTime}ms")
 
             if (remoteVersion != null) {
                 settingsRepository.setLastContentVersion(remoteVersion)
             }
-            Log.i(TAG, "词库同步完成")
 
         } catch (e: Exception) {
             Log.e(TAG, "词库同步失败", e)
         }
     }
 }
+

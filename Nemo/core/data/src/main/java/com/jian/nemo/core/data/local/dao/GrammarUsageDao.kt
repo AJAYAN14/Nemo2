@@ -32,6 +32,12 @@ interface GrammarUsageDao {
     suspend fun deleteByGrammarId(grammarId: Long)
 
     /**
+     * 批量删除指定语法ID列表的所有用法 (性能优化)
+     */
+    @Query("DELETE FROM grammar_usages WHERE grammar_id IN (:grammarIds)")
+    suspend fun deleteByGrammarIds(grammarIds: List<Long>)
+
+    /**
      * 清空所有用法
      */
     @Query("DELETE FROM grammar_usages")

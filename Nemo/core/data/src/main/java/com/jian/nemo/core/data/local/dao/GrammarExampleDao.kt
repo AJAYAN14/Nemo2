@@ -32,6 +32,12 @@ interface GrammarExampleDao {
     suspend fun deleteByUsageId(usageId: Int)
 
     /**
+     * 批量删除指定用法ID列表的所有例句 (性能优化)
+     */
+    @Query("DELETE FROM grammar_examples WHERE usage_id IN (:usageIds)")
+    suspend fun deleteByUsageIds(usageIds: List<Int>)
+
+    /**
      * 清空所有例句
      */
     @Query("DELETE FROM grammar_examples")

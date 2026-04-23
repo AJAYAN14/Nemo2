@@ -115,6 +115,80 @@ class ContentRepositoryImpl @Inject constructor(
         }
     }
 
+    // ========== 全量拉取实现 (性能优化) ==========
+
+    override suspend fun fetchAllRemoteWords(): List<WordDto> = withContext(Dispatchers.IO) {
+        val allItems = mutableListOf<WordDto>()
+        var offset = 0
+        val pageSize = 1000
+        try {
+            while (true) {
+                val batch = supabase.postgrest["dictionary_words"]
+                    .select(columns = Columns.ALL) {
+                        range(offset.toLong(), (offset + pageSize - 1).toLong())
+                    }.decodeList<WordDto>()
+
+                allItems.addAll(batch)
+                Log.d(TAG, "fetchAllRemoteWords: fetched ${batch.size} items (total: ${allItems.size})")
+
+                if (batch.size < pageSize) break
+                offset += pageSize
+            }
+            allItems
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchAllRemoteWords failed", e)
+            allItems
+        }
+    }
+
+    override suspend fun fetchAllRemoteGrammars(): List<GrammarDto> = withContext(Dispatchers.IO) {
+        val allItems = mutableListOf<GrammarDto>()
+        var offset = 0
+        val pageSize = 1000
+        try {
+            while (true) {
+                val batch = supabase.postgrest["dictionary_grammars"]
+                    .select(columns = Columns.ALL) {
+                        range(offset.toLong(), (offset + pageSize - 1).toLong())
+                    }.decodeList<GrammarDto>()
+
+                allItems.addAll(batch)
+                Log.d(TAG, "fetchAllRemoteGrammars: fetched ${batch.size} items (total: ${allItems.size})")
+
+                if (batch.size < pageSize) break
+                offset += pageSize
+            }
+            allItems
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchAllRemoteGrammars failed", e)
+            allItems
+        }
+    }
+
+    override suspend fun fetchAllRemoteGrammarQuestions(): List<GrammarTestQuestionDto> = withContext(Dispatchers.IO) {
+        val allItems = mutableListOf<GrammarTestQuestionDto>()
+        var offset = 0
+        val pageSize = 1000
+        try {
+            while (true) {
+                val batch = supabase.postgrest["grammar_questions"]
+                    .select(columns = Columns.ALL) {
+                        range(offset.toLong(), (offset + pageSize - 1).toLong())
+                    }.decodeList<GrammarTestQuestionDto>()
+
+                allItems.addAll(batch)
+                Log.d(TAG, "fetchAllRemoteGrammarQuestions: fetched ${batch.size} items (total: ${allItems.size})")
+
+                if (batch.size < pageSize) break
+                offset += pageSize
+            }
+            allItems
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchAllRemoteGrammarQuestions failed", e)
+            allItems
+        }
+    }
+
     companion object {
         private const val TAG = "ContentRepository"
     }
@@ -124,3 +198,4 @@ class ContentRepositoryImpl @Inject constructor(
 private data class ContentMetaDto(
     @SerialName("content_version") val contentVersion: Int
 )
+

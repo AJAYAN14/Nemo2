@@ -30,4 +30,27 @@ interface ContentUpdateApplier {
      * @return 本等级更新/插入的条数，失败返回 null
      */
     suspend fun applyGrammarQuestions(level: String, questions: List<GrammarTestQuestionDto>): Int?
+
+    // ========== 全量批量写入 (性能优化) ==========
+
+    /**
+     * 一次性将所有单词数据合并到本地 (批量事务写入)
+     * 自动按 level 分组处理下架逻辑
+     * @return 更新/插入的总条数，失败返回 null
+     */
+    suspend fun applyAllWords(words: List<WordDto>): Int?
+
+    /**
+     * 一次性将所有语法数据合并到本地 (批量事务写入)
+     * 优化：先收集所有子表数据，再一次性批量插入
+     * @return 更新/插入的总条数，失败返回 null
+     */
+    suspend fun applyAllGrammars(grammars: List<GrammarDto>): Int?
+
+    /**
+     * 一次性将所有语法测试题合并到本地 (批量事务写入)
+     * @return 更新/插入的总条数，失败返回 null
+     */
+    suspend fun applyAllGrammarQuestions(questions: List<GrammarTestQuestionDto>): Int?
 }
+
