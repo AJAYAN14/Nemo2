@@ -110,7 +110,15 @@ class SupabaseSyncManager @Inject constructor(
 
             emit(SyncProgress.Running("正在拉取用户进度...", 0, 0))
             
-            // 4. 拉取所有进度并更新本地 (Native Mirror 核心逻辑)
+            // 4. [NEW] 应用设置同步 (PULL/PUSH)
+            // 保证学习参数(步进,保留率)在多端同步
+            try {
+                syncSettings(userId)
+            } catch (e: Exception) {
+                Log.e(TAG, "设置同步失败, 但继续同步进度", e)
+            }
+
+            // 5. 拉取所有进度并更新本地 (Native Mirror 核心逻辑)
             // 严格遵循 rules.md: 3.A/3.B，本地只作为一个视图，服务端是权威
             val lastSyncTime = if (force) 0L else settingsRepository.getLastSyncTime()
             val remoteProgress = mutableListOf<UserProgressEntity>()
@@ -161,7 +169,7 @@ class SupabaseSyncManager @Inject constructor(
 
             settingsRepository.setLastSyncTime(DateTimeUtils.getCurrentCompensatedMillis())
             
-            // 5. 自动启动 Realtime 监听 (如果未启动)
+            // 6. 自动启动 Realtime 监听 (如果未启动)
             startRealtimeSync(userId)
             
             emit(SyncProgress.Completed(SyncReport(timestamp = System.currentTimeMillis())))
@@ -201,15 +209,29 @@ class SupabaseSyncManager @Inject constructor(
         
         realtimeChannel = supabaseClient.realtime.channel("user_progress_realtime")
         
-        val changeFlow = realtimeChannel!!.postgresChangeFlow<PostgresAction>(schema = "public") {
+        val progressChangeFlow = realtimeChannel!!.postgresChangeFlow<PostgresAction>(schema = "public") {
             table = TABLE_USER_PROGRESS
             filter(FilterOperation("user_id", FilterOperator.EQ, userId))
         }
 
+        val settingsChangeFlow = realtimeChannel!!.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "user_settings"
+            filter(FilterOperation("user_id", FilterOperator.EQ, userId))
+        }
+
         realtimeJob = scope.launch {
-            changeFlow.collect { action ->
-                Log.d(TAG, "收到 Realtime 变更: $action")
-                handleRealtimeAction(action)
+            launch {
+                progressChangeFlow.collect { action ->
+                    Log.d(TAG, "收到 UserProgress Realtime 变更: $action")
+                    handleRealtimeAction(action)
+                }
+            }
+            launch {
+                settingsChangeFlow.collect { action ->
+                    Log.d(TAG, "收到 UserSettings Realtime 变更: $action")
+                    // 设置变更时直接触发设置同步逻辑
+                    syncSettings(userId)
+                }
             }
         }
 
@@ -349,6 +371,78 @@ class SupabaseSyncManager @Inject constructor(
             _dataUpdatedEvent.emit(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "处理 Realtime 变更失败", e)
+        }
+    }
+
+    /**
+     * 同步应用设置 (Bi-directional)
+     */
+    private suspend fun syncSettings(userId: String) {
+        Log.d(TAG, "开始同步应用设置: $userId")
+        
+        // 1. 获取本地快照
+        val localSettings = settingsRepository.getAppSettingsSnapshot()
+        
+        var isDecodingError = false
+        val remoteData: SyncAppSettingsDto? = try {
+            supabaseClient.postgrest["user_settings"]
+                .select {
+                    filter {
+                        eq("user_id", userId)
+                    }
+                }
+                .decodeSingleOrNull<SyncAppSettingsDto>()
+        } catch (e: Exception) {
+            Log.e(TAG, "解析云端设置 JSON 失败，同步已中止以保护云端数据", e)
+            isDecodingError = true
+            null
+        }
+
+        if (isDecodingError) {
+            // 解析失败时，绝对不能执行 push，否则会用本地旧数据覆盖云端
+            return
+        }
+
+        if (remoteData == null) {
+            // 只有在明确知道云端没有数据（返回为 null 且无异常）时，才推送本地初始值
+            Log.d(TAG, "云端无设置记录，执行首次推送")
+            pushSettingsToCloud(userId, localSettings)
+            return
+        }
+
+        // 3. 冲突解决 (基于修改时间戳)
+        // 远程使用 ISO8601 字符串 (由 Supabase 默认生成或 Web 端传 ISO 串)
+        // 为了兼容性，我们主要看本地的 lastSettingsModifiedTime 是否大于远程的记录
+        
+        val remoteSettings = remoteData.settings
+        val remoteModTime = remoteSettings.lastSettingsModifiedTime
+        
+        Log.d(TAG, "设置同步对比: Local=${localSettings.lastSettingsModifiedTime}, Remote=$remoteModTime")
+
+        if (localSettings.lastSettingsModifiedTime > remoteModTime) {
+            // 本地较新，推送
+            Log.i(TAG, "本地设置较新 (${localSettings.lastSettingsModifiedTime} > $remoteModTime)，推送到云端")
+            pushSettingsToCloud(userId, localSettings)
+        } else if (remoteModTime > localSettings.lastSettingsModifiedTime) {
+            // 远程较新，拉取
+            Log.i(TAG, "远程设置较新 ($remoteModTime > ${localSettings.lastSettingsModifiedTime})，应用到本地")
+            settingsRepository.applyAppSettingsSnapshot(remoteSettings)
+        } else {
+            Log.d(TAG, "设置已是最新 ($localSettings.lastSettingsModifiedTime)，无需操作")
+        }
+    }
+
+    private suspend fun pushSettingsToCloud(userId: String, settings: com.jian.nemo.core.domain.model.AppSettings) {
+        try {
+            val dto = SyncAppSettingsDto(
+                userId = userId,
+                settings = settings,
+                updatedAt = com.jian.nemo.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis())
+            )
+            supabaseClient.postgrest["user_settings"].upsert(dto)
+            Log.i(TAG, "设置推送云端成功")
+        } catch (e: Exception) {
+            Log.e(TAG, "推送设置失败", e)
         }
     }
 

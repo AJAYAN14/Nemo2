@@ -101,6 +101,26 @@ export const settingsService = {
     if (typeof window === 'undefined') return DEFAULT_CONFIG;
 
     const scopedKey = await resolveSettingsStorageKey();
+    
+    // [NEW] Sync from remote if user is logged in
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('settings')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data?.settings) {
+          const remoteConfig = normalizeStudyConfig(data.settings as Record<string, unknown>);
+          localStorage.setItem(scopedKey, JSON.stringify(remoteConfig));
+          return remoteConfig;
+        }
+      } catch (e) {
+        console.error('[settingsService] Remote pull failed:', e);
+      }
+    }
 
     const scopedConfig = parseStoredConfig(localStorage.getItem(scopedKey));
     if (scopedConfig) {
@@ -125,7 +145,25 @@ export const settingsService = {
     const storageKey = await resolveSettingsStorageKey();
     const current = await this.getStudyConfig();
     const updated = { ...current, ...config };
+    
+    // Local save
     localStorage.setItem(storageKey, JSON.stringify(updated));
+
+    // Remote sync
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      try {
+        const now = Date.now();
+        const settingsWithTime = { ...updated, lastSettingsModifiedTime: now };
+        await supabase.from('user_settings').upsert({ 
+          user_id: user.id, 
+          settings: settingsWithTime,
+          updated_at: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error('[settingsService] Remote push failed:', e);
+      }
+    }
   },
 
   formatResetHour(hour: number): string {

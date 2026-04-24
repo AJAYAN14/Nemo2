@@ -15,13 +15,13 @@ data class SettingsUiState(
 
     // 学习设置
     val dailyGoal: Int = 20,
-    val grammarDailyGoal: Int = 10,
+    val grammarDailyGoal: Int = 5,
     val learningDayResetHour: Int = 4, // 学习日重置时间 (0-23)
     val isRandomNewContentEnabled: Boolean = true, // 默认开启随机抽取
     val learningSteps: String = "1 10", // 学习步进
-    val relearningSteps: String = "1 10", // 重学步进
+    val relearningSteps: String = "10", // 重学步进
     val learnAheadLimit: Int = 20, // 提前学习限制 (分钟)
-    val leechThreshold: Int = 5, // Leech 判定阈值（累计失败次数）
+    val leechThreshold: Int = 8, // Leech 判定阈值（累计失败次数）
     val leechAction: String = "skip", // Leech 行为: skip | bury_today
     val fsrsTargetRetention: Double = 0.9, // FSRS 目标留存率
 

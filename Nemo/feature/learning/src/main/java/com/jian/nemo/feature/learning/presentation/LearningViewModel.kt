@@ -141,7 +141,7 @@ class LearningViewModel @Inject constructor(
 ) : ViewModel() {
     companion object {
         /** 钉子户阈值：连续失败次数达到此值时暂停学习 */
-        private const val LEECH_THRESHOLD = 5
+        private const val LEECH_THRESHOLD = 8
 
         /** 导航防抖延迟 (ms) */
         private const val NAVIGATION_DEBOUNCE_MS = 400L
@@ -178,7 +178,7 @@ class LearningViewModel @Inject constructor(
     private var _learningStepsConfig: List<Int> = listOf(1, 10)
 
     /** 重学步进配置 (分钟列表) */
-    private var _relearningStepsConfig: List<Int> = listOf(1, 10)
+    private var _relearningStepsConfig: List<Int> = listOf(10)
 
     /** 提前学习限制 (毫秒) */
     private var _learnAheadLimitMs: Long = 20 * 60 * 1000L
@@ -1749,7 +1749,7 @@ class LearningViewModel @Inject constructor(
             stepsStr.trim().split(Regex("\\s+")).map { it.toInt() }
         } catch (e: Exception) {
             println("解析学习步进失败: $stepsStr, 使用默认值")
-            listOf(1, 10)
+            listOf(10)
         }
     }
 

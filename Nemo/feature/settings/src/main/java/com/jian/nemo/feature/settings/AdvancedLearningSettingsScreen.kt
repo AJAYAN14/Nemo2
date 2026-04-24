@@ -218,7 +218,7 @@ fun AdvancedLearningSettingsScreen(
                                 )
                             )
                             Text(
-                                text = "默认 '1 10'，表示1分钟后和10分钟后分别进行初次复习。",
+                                text = "新词的学习步骤，完成后进入长期记忆。默认 '1 10'。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(top = 4.dp)
@@ -228,7 +228,7 @@ fun AdvancedLearningSettingsScreen(
                         // Relearning Steps
                         Column {
                             Text(
-                                text = "错误重学阶段 (分钟)",
+                                text = "重学阶段步进 (分钟)",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -246,7 +246,7 @@ fun AdvancedLearningSettingsScreen(
                                 )
                             )
                             Text(
-                                text = "默认 '1 10'，表示忘记已学会卡片后进行的重学步进。",
+                                text = "复习遗忘后的重新激活步骤。默认 '10'。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(top = 4.dp)
@@ -255,8 +255,8 @@ fun AdvancedLearningSettingsScreen(
                     }
                 }
 
-                // 3. 算法高级策略
-                com.jian.nemo.feature.settings.components.SettingsSectionTitle(text = "高级复习策略")
+                // 3. 算法策略
+                com.jian.nemo.feature.settings.components.SettingsSectionTitle(text = "算法策略 (FSRS)")
                 PremiumCard {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                         // Learn Ahead Limit
@@ -298,7 +298,7 @@ fun AdvancedLearningSettingsScreen(
                         // FSRS Target Retention
                         Column {
                             Text(
-                                text = "FSRS 目标留存率 (%)",
+                                text = "FSRS 目标保留率 (70% - 99%)",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(bottom = 8.dp)
@@ -323,7 +323,7 @@ fun AdvancedLearningSettingsScreen(
                                 )
                             )
                             Text(
-                                text = "默认 90%。FSRS 算法将根据此值调整复习间隔。较高的值意味着更频繁的复习。",
+                                text = "数值越高复习越频繁（默认 90%），有助于更牢固地掌握。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(top = 4.dp)
@@ -338,7 +338,7 @@ fun AdvancedLearningSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Leech 阈值 (累计错误)",
+                                    text = "Leech 惩罚阈值 (错误次数)",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -368,7 +368,7 @@ fun AdvancedLearningSettingsScreen(
                         // Leech Action
                         Column {
                             Text(
-                                text = "Leech 处理行为",
+                                text = "Leech 处理策略",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -386,8 +386,8 @@ fun AdvancedLearningSettingsScreen(
                                     RadioButton(selected = leechActionInput == "skip", onClick = { leechActionInput = "skip" })
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
-                                        Text("冻结卡片 (Skip)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                        Text("命中后不再进入常规复习，移至复学清单管理", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("自动停载 (推荐)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                        Text("单词错误次数达到阈值后，自动移出复习队列。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
@@ -406,8 +406,8 @@ fun AdvancedLearningSettingsScreen(
                                     RadioButton(selected = leechActionInput == "bury_today", onClick = { leechActionInput = "bury_today" })
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
-                                        Text("仅埋藏今日 (Bury)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                                        Text("今日复习中不再出现，明日自动回归队列", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("今日暂缓", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                        Text("今日复习中不再出现，明日自动回归队列。", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }

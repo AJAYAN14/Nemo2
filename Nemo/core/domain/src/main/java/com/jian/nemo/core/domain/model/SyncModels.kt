@@ -1,5 +1,6 @@
 package com.jian.nemo.core.domain.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -24,17 +25,16 @@ data class UserProfile(
 )
 
 /**
- * 应用设置 (可选，不再同步)
  */
 @Serializable
 data class AppSettings(
-    val theme: String,
-    val dailyGoal: Int,
-    val grammarDailyGoal: Int,
-    val isUnmasteredOnlyMode: Boolean,
+    val theme: String = "system",
+    val dailyGoal: Int = 20,
+    val grammarDailyGoal: Int = 5,
+    val isUnmasteredOnlyMode: Boolean = false,
 
-    val isDynamicColorEnabled: Boolean = false,
-    val learningDayResetHour: Int = 4,
+    @SerialName("isDynamicColorEnabled") val isDynamicColorEnabled: Boolean = true,
+    @SerialName("resetHour") val learningDayResetHour: Int = 4,
 
     val testQuestionCount: Int = 10,
     val testTimeLimitMinutes: Int = 10,
@@ -57,18 +57,22 @@ data class AppSettings(
     val ttsSpeechRate: Float = 1.0f,
     val ttsPitch: Float = 1.0f,
     val ttsVoiceName: String? = null,
-    val isAutoPlayAudioEnabled: Boolean = false,
+    @SerialName("isAutoAudioEnabled") val isAutoPlayAudioEnabled: Boolean = true,
+    @SerialName("isShowAnswerDelayEnabled") val isShowAnswerDelayEnabled: Boolean = false,
 
     // 高级学习策略
-    val learningSteps: String = "1 10",
-    val learnAheadLimit: Int = 20,
-    val relearningSteps: String = "1 10",
-    val isRandomNewContentEnabled: Boolean = true,
+    @SerialName("learningSteps") val learningSteps: List<Int> = listOf(1, 10),
+    @SerialName("learnAheadLimit") val learnAheadLimit: Int = 20,
+    @SerialName("relearningSteps") val relearningSteps: List<Int> = listOf(10),
+    @SerialName("isRandom") val isRandomNewContentEnabled: Boolean = true,
 
     // 同步触发策略
     val isSyncOnLearningComplete: Boolean = true,
     val isSyncOnTestComplete: Boolean = true,
-    val fsrsTargetRetention: Double = 0.9
+    val fsrsTargetRetention: Double = 0.9,
+    val leechThreshold: Int = 8,
+    val leechAction: String = "skip",
+    val lastSettingsModifiedTime: Long = 0L
 )
 
 /**

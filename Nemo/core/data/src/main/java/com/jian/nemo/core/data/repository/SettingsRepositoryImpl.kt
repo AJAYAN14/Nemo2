@@ -87,7 +87,7 @@ class SettingsRepositoryImpl @Inject constructor(
 
     /** 每日语法学习目标 Flow */
     override val grammarDailyGoalFlow: Flow<Int> = dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.GRAMMAR_DAILY_GOAL] ?: 10
+        preferences[PreferencesKeys.GRAMMAR_DAILY_GOAL] ?: 5
     }
 
     /**
@@ -1237,7 +1237,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override val leechThresholdFlow: Flow<Int> = dataStore.data.map { preferences ->
-        (preferences[PreferencesKeys.LEECH_THRESHOLD] ?: 5).coerceAtLeast(1)
+        (preferences[PreferencesKeys.LEECH_THRESHOLD] ?: 8).coerceAtLeast(1)
     }
 
     override suspend fun setLeechThreshold(threshold: Int) {
@@ -1263,7 +1263,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override val relearningStepsFlow: Flow<String> = dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.RELEARNING_STEPS] ?: "1 10"
+        preferences[PreferencesKeys.RELEARNING_STEPS] ?: "10"
     }
 
     override suspend fun setRelearningSteps(steps: String) {
@@ -1515,7 +1515,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 if (prefs[PreferencesKeys.IS_DARK_MODE] == true) "dark" else "light"
             } else "system",
             dailyGoal = prefs[PreferencesKeys.DAILY_GOAL] ?: 20,
-            grammarDailyGoal = prefs[PreferencesKeys.GRAMMAR_DAILY_GOAL] ?: 10,
+            grammarDailyGoal = prefs[PreferencesKeys.GRAMMAR_DAILY_GOAL] ?: 5,
             isUnmasteredOnlyMode = false,
 
             isDynamicColorEnabled = prefs[PreferencesKeys.IS_DYNAMIC_COLOR_ENABLED] ?: true,
@@ -1544,14 +1544,24 @@ class SettingsRepositoryImpl @Inject constructor(
             ttsVoiceName = prefs[PreferencesKeys.TTS_VOICE_NAME],
             isAutoPlayAudioEnabled = prefs[PreferencesKeys.IS_AUTO_PLAY_AUDIO_ENABLED] ?: true,
 
-            learningSteps = prefs[PreferencesKeys.LEARNING_STEPS] ?: "1 10",
+            learningSteps = (prefs[PreferencesKeys.LEARNING_STEPS] ?: "1 10")
+                .split(" ")
+                .filter { it.isNotBlank() }
+                .mapNotNull { it.toIntOrNull() },
             learnAheadLimit = prefs[PreferencesKeys.LEARN_AHEAD_LIMIT] ?: 20,
-            relearningSteps = prefs[PreferencesKeys.RELEARNING_STEPS] ?: "1 10",
+            relearningSteps = (prefs[PreferencesKeys.RELEARNING_STEPS] ?: "10")
+                .split(" ")
+                .filter { it.isNotBlank() }
+                .mapNotNull { it.toIntOrNull() },
             isRandomNewContentEnabled = prefs[PreferencesKeys.IS_RANDOM_NEW_CONTENT_ENABLED] ?: true,
 
             isSyncOnLearningComplete = prefs[PreferencesKeys.SYNC_ON_LEARNING_COMPLETE] ?: true,
             isSyncOnTestComplete = prefs[PreferencesKeys.SYNC_ON_TEST_COMPLETE] ?: true,
-            fsrsTargetRetention = (prefs[PreferencesKeys.FSRS_TARGET_RETENTION] ?: 0.9f).toDouble()
+            fsrsTargetRetention = (prefs[PreferencesKeys.FSRS_TARGET_RETENTION] ?: 0.9f).toDouble(),
+            leechThreshold = prefs[PreferencesKeys.LEECH_THRESHOLD] ?: 8,
+            leechAction = prefs[PreferencesKeys.LEECH_ACTION] ?: "skip",
+            isShowAnswerDelayEnabled = prefs[PreferencesKeys.IS_SHOW_ANSWER_DELAY_ENABLED] ?: false,
+            lastSettingsModifiedTime = prefs[PreferencesKeys.LAST_SETTINGS_MODIFIED_TIME] ?: 0L
         )
     }
 
@@ -1602,16 +1612,19 @@ class SettingsRepositoryImpl @Inject constructor(
 
             prefs[PreferencesKeys.IS_AUTO_PLAY_AUDIO_ENABLED] = settings.isAutoPlayAudioEnabled
 
-            prefs[PreferencesKeys.LEARNING_STEPS] = settings.learningSteps
+            prefs[PreferencesKeys.LEARNING_STEPS] = settings.learningSteps.joinToString(" ")
             prefs[PreferencesKeys.LEARN_AHEAD_LIMIT] = settings.learnAheadLimit
-            prefs[PreferencesKeys.RELEARNING_STEPS] = settings.relearningSteps
+            prefs[PreferencesKeys.RELEARNING_STEPS] = settings.relearningSteps.joinToString(" ")
             prefs[PreferencesKeys.IS_RANDOM_NEW_CONTENT_ENABLED] = settings.isRandomNewContentEnabled
             prefs[PreferencesKeys.SYNC_ON_LEARNING_COMPLETE] = settings.isSyncOnLearningComplete
             prefs[PreferencesKeys.SYNC_ON_TEST_COMPLETE] = settings.isSyncOnTestComplete
             prefs[PreferencesKeys.FSRS_TARGET_RETENTION] = settings.fsrsTargetRetention.toFloat()
+            prefs[PreferencesKeys.LEECH_THRESHOLD] = settings.leechThreshold.coerceAtLeast(1)
+            prefs[PreferencesKeys.LEECH_ACTION] = settings.leechAction
+            prefs[PreferencesKeys.IS_SHOW_ANSWER_DELAY_ENABLED] = settings.isShowAnswerDelayEnabled
 
             // Update timestamp
-            prefs[PreferencesKeys.LAST_SETTINGS_MODIFIED_TIME] = System.currentTimeMillis()
+            prefs[PreferencesKeys.LAST_SETTINGS_MODIFIED_TIME] = settings.lastSettingsModifiedTime
         }
         Log.d(TAG, "已应用云端设置快照 (不含主题)")
     }

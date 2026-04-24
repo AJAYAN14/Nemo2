@@ -123,7 +123,7 @@ data class SyncFavoriteQuestionDto(
 data class SyncAppSettingsDto(
     @SerialName("user_id") val userId: String,
     @SerialName("settings") val settings: AppSettings,
-    @SerialName("updated_at") val updatedAt: Long = System.currentTimeMillis()
+    @SerialName("updated_at") val updatedAt: String = ""
 )
 
 // ===================================

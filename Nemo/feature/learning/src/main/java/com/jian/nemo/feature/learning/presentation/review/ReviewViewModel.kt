@@ -88,13 +88,13 @@ class ReviewViewModel @Inject constructor(
     private val _relearningDueTimes = mutableMapOf<Long, Long>()
 
     /** 重学步进配置 (分钟列表) */
-    private var _relearningStepsConfig: List<Int> = listOf(1, 10)
+    private var _relearningStepsConfig: List<Int> = listOf(10)
 
     /** 会话锁定的学习日 */
     private var _sessionLockedDay: Long? = null
     private var _resetHour: Int = 4
     private var _learnAheadLimitMinutes: Int = 20
-    private var _leechThreshold: Int = 5
+    private var _leechThreshold: Int = 8
     private var _leechAction: String = LEECH_ACTION_SKIP
 
     init {
@@ -640,7 +640,7 @@ class ReviewViewModel @Inject constructor(
     private fun parseSteps(stepsStr: String): List<Int> {
         return stepsStr.split(" ", ",")
             .mapNotNull { it.trim().toIntOrNull() }
-            .ifEmpty { listOf(1, 10) }
+            .ifEmpty { listOf(10) }
     }
 }
 

@@ -54,7 +54,7 @@ export default function SettingsPage() {
   const setSrsTempStates = useCallback((c: SrsConfigFields) => {
     setLearningStepsStr(c.learningSteps.join(' '));
     setRelearningStepsStr(c.relearningSteps.join(' '));
-    setTargetRetentionStr(String(c.fsrsTargetRetention ?? 0.9));
+    setTargetRetentionStr(Math.round((c.fsrsTargetRetention ?? 0.9) * 100).toString());
     setLeechThresholdStr(c.leechThreshold.toString());
     setLeechAction(c.leechAction || 'skip');
   }, []);
@@ -351,7 +351,7 @@ export default function SettingsPage() {
             <div className={styles.scrollArea}>
               <div className={styles.formGrid}>
                 <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>学习阶段步进 (分钟)</label>
+                  <label className={styles.inputLabel}>新卡片学习阶段 (分钟)</label>
                   <input 
                     type="text" 
                     className={styles.textInput}
@@ -359,11 +359,11 @@ export default function SettingsPage() {
                     onChange={(e) => setLearningStepsStr(e.target.value)}
                     placeholder="例如: 1 10"
                   />
-                  <p className={styles.inputDescription}>新词的学习步骤，完成后进入长期记忆阶段。</p>
+                  <p className={styles.inputDescription}>新词的学习步骤，完成后进入长期记忆。默认 '1 10'。</p>
                 </div>
 
                 <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>复学阶段步进 (分钟)</label>
+                  <label className={styles.inputLabel}>重学阶段步进 (分钟)</label>
                   <input 
                     type="text" 
                     className={styles.textInput}
@@ -371,42 +371,43 @@ export default function SettingsPage() {
                     onChange={(e) => setRelearningStepsStr(e.target.value)}
                     placeholder="例如: 10"
                   />
-                  <p className={styles.inputDescription}>复习时遗忘后的重新激活步骤。</p>
+                  <p className={styles.inputDescription}>复习遗忘后的重新激活步骤。默认 '10'。</p>
                 </div>
 
                 <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>FSRS 目标保留率 (0.7 - 0.99)</label>
+                  <label className={styles.inputLabel}>FSRS 目标保留率 (70% - 99%)</label>
                   <input
                     type="number"
                     className={styles.textInput}
                     value={targetRetentionStr}
                     onChange={(e) => setTargetRetentionStr(e.target.value)}
-                    step="0.01"
-                    min="0.7"
-                    max="0.99"
-                    placeholder="例如: 0.90"
+                    step="1"
+                    min="70"
+                    max="99"
+                    placeholder="例如: 90"
                   />
-                  <p className={styles.inputDescription}>数值越高，复习越频繁；越低，间隔更长。</p>
+                  <p className={styles.inputDescription}>数值越高复习越频繁（默认 90%），有助于更牢固地掌握。</p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '20px' }}>
                   <div className={styles.inputGroup} style={{ flex: 1 }}>
-                    <label className={styles.inputLabel}>Leech 阈值 (次)</label>
+                    <label className={styles.inputLabel}>Leech 惩罚阈值 (错误次数)</label>
                     <input 
                       type="number" 
                       className={styles.textInput}
                       value={leechThresholdStr}
                       onChange={(e) => setLeechThresholdStr(e.target.value)}
                     />
+                    <p className={styles.inputDescription}>达到该值后执行惩罚策略（默认 8 次）。</p>
                   </div>
                   <div className={styles.inputGroup} style={{ flex: 1 }}>
-                    <label className={styles.inputLabel}>Leech 处理动作</label>
+                    <label className={styles.inputLabel}>Leech 处理策略</label>
                     <select 
                       className={styles.selectInput}
                       value={leechAction}
                       onChange={(e) => setLeechAction(e.target.value as StudyConfig['leechAction'])}
                     >
-                      <option value="skip">自动停载</option>
+                      <option value="skip">自动停载 (推荐)</option>
                       <option value="bury_today">今日暂缓</option>
                     </select>
                   </div>
@@ -429,9 +430,9 @@ export default function SettingsPage() {
                 className={clsx(styles.footerBtn, styles.primaryBtn)}
                 onClick={() => {
                   const parseSteps = (str: string) => str.split(/\s+/).map(s => parseInt(s)).filter(n => !isNaN(n));
-                  const parsedRetention = Number(targetRetentionStr);
-                  const safeRetention = Number.isFinite(parsedRetention)
-                    ? Math.min(0.99, Math.max(0.7, parsedRetention))
+                  const parsedRetentionInt = parseInt(targetRetentionStr);
+                  const safeRetention = !isNaN(parsedRetentionInt)
+                    ? Math.min(0.99, Math.max(0.7, parsedRetentionInt / 100))
                     : 0.9;
 
                   saveConfig({

@@ -22,6 +22,7 @@ class SettingsViewModel @Inject constructor(
     private val resetProgressUseCase: com.jian.nemo.core.domain.usecase.settings.ResetProgressUseCase,
     private val playTtsUseCase: com.jian.nemo.core.domain.usecase.audio.PlayTtsUseCase,
     private val audioRepository: com.jian.nemo.core.domain.repository.AudioRepository,
+    private val syncManager: com.jian.nemo.core.domain.service.SyncManager,
     private val application: android.app.Application
 ) : ViewModel() {
 
@@ -441,15 +442,18 @@ class SettingsViewModel @Inject constructor(
             )
             // 保存成功后给出一个提示
             updateStatusMessage("高级学习设置已保存", 3000)
+            
+            // 立即触发同步
+            syncManager.startSync()
         }
     }
     
     private fun restoreDefaultAdvancedLearningSettings() {
         saveAdvancedLearningSettings(
             learningSteps = "1 10",
-            relearningSteps = "1 10",
+            relearningSteps = "10",
             learnAheadLimit = 20,
-            leechThreshold = 5,
+            leechThreshold = 8,
             leechAction = "skip",
             fsrsTargetRetention = 0.9
         )
