@@ -22,6 +22,7 @@ class SettingsViewModel @Inject constructor(
     private val resetProgressUseCase: com.jian.nemo.core.domain.usecase.settings.ResetProgressUseCase,
     private val playTtsUseCase: com.jian.nemo.core.domain.usecase.audio.PlayTtsUseCase,
     private val audioRepository: com.jian.nemo.core.domain.repository.AudioRepository,
+    private val studyRepository: com.jian.nemo.core.domain.repository.StudyRepository,
     private val syncManager: com.jian.nemo.core.domain.service.SyncManager,
     private val application: android.app.Application
 ) : ViewModel() {
@@ -302,9 +303,22 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.setDailyGoal(goal)
             _uiState.update { it.copy(showDailyGoalDialog = false) }
 
-            // 🎯 动态提示次日生效时间
-            val resetHour = _uiState.value.learningDayResetHour
-            updateStatusMessage("目标设置成功，将于明天凌晨${resetHour}:00后生效", 5000)
+            // 立即播种差额，与 Web 对齐：修改目标立即生效
+            try {
+                val isRandom = settingsRepository.isRandomNewContentEnabledFlow.first()
+                val epochDay = (System.currentTimeMillis() / 86400000).toInt()
+                studyRepository.seedDailyNewItems(
+                    itemType = "word",
+                    limit = goal,
+                    level = "ALL",
+                    isRandom = isRandom,
+                    epochDay = epochDay
+                )
+            } catch (e: Exception) {
+                Log.w("SettingsVM", "播种新词失败(不影响目标保存): ${e.message}")
+            }
+
+            updateStatusMessage("✅ 每日单词目标已更新为 ${goal} 个", 3000)
         }
     }
 
@@ -316,9 +330,22 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.setGrammarDailyGoal(goal)
             _uiState.update { it.copy(showGrammarDailyGoalDialog = false) }
 
-            // 🎯 动态提示次日生效时间
-            val resetHour = _uiState.value.learningDayResetHour
-            updateStatusMessage("目标设置成功，将于明天凌晨${resetHour}:00后生效", 5000)
+            // 立即播种差额，与 Web 对齐：修改目标立即生效
+            try {
+                val isRandom = settingsRepository.isRandomNewContentEnabledFlow.first()
+                val epochDay = (System.currentTimeMillis() / 86400000).toInt()
+                studyRepository.seedDailyNewItems(
+                    itemType = "grammar",
+                    limit = goal,
+                    level = "ALL",
+                    isRandom = isRandom,
+                    epochDay = epochDay
+                )
+            } catch (e: Exception) {
+                Log.w("SettingsVM", "播种语法失败(不影响目标保存): ${e.message}")
+            }
+
+            updateStatusMessage("✅ 每日语法目标已更新为 ${goal} 条", 3000)
         }
     }
 
@@ -382,10 +409,11 @@ class SettingsViewModel @Inject constructor(
     private fun setRandomNewContentEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setRandomNewContentEnabled(enabled)
+            val resetHour = _uiState.value.learningDayResetHour
             val message = if (enabled) {
-                "下次开始学习时，新单词将随机出现"
+                "随机模式已开启，将于明天凌晨${resetHour}:00后播种时生效"
             } else {
-                "下次开始学习时，新单词将按顺序出现"
+                "顺序模式已开启，将于明天凌晨${resetHour}:00后播种时生效"
             }
             updateStatusMessage(message, 5000)
         }
