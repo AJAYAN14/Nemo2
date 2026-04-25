@@ -18,7 +18,11 @@ export function getQueueStateCounters(items: StudyItem[]): QueueStateCounters {
     if (state === 0) {
       counters.newCount += 1;
     } else if (state === 2) {
-      counters.reviewCount += 1;
+      // Only count as 'Review' if it's actually due now or in the past.
+      // This prevents 'Easy' clicks from flashing a Review count before the card is removed.
+      if (item.dueTime <= Date.now()) {
+        counters.reviewCount += 1;
+      }
     } else if (state === 1 || state === 3) {
       counters.relearnCount += 1;
     }
