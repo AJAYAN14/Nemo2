@@ -121,6 +121,20 @@ fun Modifier.scaleOnPress(
         }
 }
 
+@Composable
+private fun CountBadge(
+    count: Int,
+    color: Color
+) {
+    Text(
+        text = count.toString(),
+        style = MaterialTheme.typography.labelLarge,
+        color = color,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 2.dp)
+    )
+}
+
 // 学习界面头部组件 (SRS 样式)
 // 学习界面头部组件 - 遵循 Material Design 3 TopAppBar 规范
 @Composable
@@ -130,6 +144,9 @@ fun LearnHeader(
     dailyGoal: Int,
     currentIndex: Int,
     totalCount: Int,
+    newCount: Int = 0,
+    relearnCount: Int = 0,
+    reviewCount: Int = 0,
     isNavigating: Boolean = false,
     isAnswerShown: Boolean = false,
     onClose: () -> Unit,
@@ -196,11 +213,11 @@ fun LearnHeader(
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp, vertical = 8.dp) // MD3: leading 4dp, trailing 24dp (内部调整)
         ) {
-            // Top Row - MD3: 标准 64dp 高度的主要内容行
+            // Top Row - MD3: Title, Navigation Bubble, and Menu
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp), // MD3: TopAppBar 内容高度 56dp
+                    .height(56.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -209,7 +226,6 @@ fun LearnHeader(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // MD3: 使用 IconButton，标准触摸目标 48dp × 48dp
                     IconButton(
                         onClick = onClose,
                         modifier = Modifier.size(48.dp)
@@ -221,25 +237,22 @@ fun LearnHeader(
                         )
                     }
 
-                    // MD3: 标题使用 titleLarge (22sp)
                     Text(
                         text = if(learningMode == LearningMode.Word) "单词学习" else "语法学习",
                         style = MaterialTheme.typography.titleLarge,
                         color = contentColor,
-                        modifier = Modifier.padding(start = 8.dp) // MD3: navigation 和 title 之间间距
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
 
-                // Right: Navigation Group & Menu
+                // Right Group: Navigation Bubble & Menu
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val remainingCount = totalCount
-
-                    if (remainingCount > 0) {
+                    // Navigation Bubble (Prev, Remaining, Next)
+                    if (totalCount > 0) {
                         androidx.compose.material3.Surface(
-                            modifier = Modifier, // Removed padding(end) to accommodate menu
                             color = navGroupBg,
                             shape = RoundedCornerShape(12.dp),
                             tonalElevation = 0.dp
@@ -267,13 +280,13 @@ fun LearnHeader(
                                     )
                                 }
 
-                                // Count Text
+                                // Remaining Text inside bubble
                                 Text(
-                                    text = "剩余 $remainingCount",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = contentColor.copy(alpha = 0.6f),
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(horizontal = 10.dp)
+                                    text = "剩余 $totalCount",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = contentColor.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
                                 )
 
                                 // Next Button
@@ -298,212 +311,196 @@ fun LearnHeader(
                     }
 
                     // More Menu
-                    val canShowMenu = remainingCount > 0 || onUndo != null
-                    if (canShowMenu) {
-                        if (menu != null) {
-                            menu()
-                        } else {
-                            Box {
-                                var expanded by remember { mutableStateOf(false) }
+                    Box {
+                        var expanded by remember { mutableStateOf(false) }
+                        IconButton(
+                            onClick = { expanded = true },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    navGroupBg,
+                                    androidx.compose.foundation.shape.CircleShape
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = "更多选项",
+                                tint = contentColor
+                            )
+                        }
 
-                                IconButton(
-                                    onClick = { expanded = true },
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(
-                                            navGroupBg,
-                                            androidx.compose.foundation.shape.CircleShape
-                                        )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.MoreVert,
-                                        contentDescription = "更多选项",
-                                        tint = contentColor
-                                    )
-                                }
+                        NemoDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            if (onUndo != null && canUndo) {
+                                NemoMenuItem(
+                                    text = "撤销上一次评分",
+                                    onClick = {
+                                        expanded = false
+                                        onUndo()
+                                    },
+                                    leadingIcon = Icons.AutoMirrored.Rounded.Undo
+                                )
+                                androidx.compose.material3.HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
 
-                                NemoDropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false }
-                                ) {
-                                    if (onUndo != null && canUndo) {
-                                        NemoMenuItem(
-                                            text = "撤销上一次评分",
-                                            onClick = {
-                                                expanded = false
-                                                onUndo()
-                                            },
-                                            leadingIcon = Icons.AutoMirrored.Rounded.Undo
-                                        )
+                            if (onShowRatingGuide != null) {
+                                NemoMenuItem(
+                                    text = "评分说明（新学/复习）",
+                                    onClick = {
+                                        expanded = false
+                                        onShowRatingGuide()
+                                    },
+                                    leadingIcon = Icons.Rounded.CheckCircle
+                                )
+                                androidx.compose.material3.HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
 
-                                        androidx.compose.material3.HorizontalDivider(
-                                            modifier = Modifier.padding(vertical = 4.dp)
-                                        )
-                                    }
+                            NemoMenuItem(
+                                text = "暂停此卡片 (Suspend)",
+                                onClick = {
+                                    expanded = false
+                                    onSuspend()
+                                },
+                                leadingIcon = Icons.Rounded.Pause
+                            )
+                            NemoMenuItem(
+                                text = "今日暂缓此项 (Bury)",
+                                onClick = {
+                                    expanded = false
+                                    onBury()
+                                },
+                                leadingIcon = Icons.Rounded.AccessTime
+                            )
 
-                                    if (onShowRatingGuide != null) {
-                                        NemoMenuItem(
-                                            text = "评分说明（新学/复习）",
-                                            onClick = {
-                                                expanded = false
-                                                onShowRatingGuide()
-                                            },
-                                            leadingIcon = Icons.Rounded.CheckCircle
-                                        )
+                            NemoMenuItem(
+                                text = "报告条目错误",
+                                onClick = {
+                                    expanded = false
+                                    onReportError()
+                                },
+                                leadingIcon = Icons.Rounded.Report
+                            )
 
-                                        androidx.compose.material3.HorizontalDivider(
-                                            modifier = Modifier.padding(vertical = 4.dp)
-                                        )
-                                    }
+                            androidx.compose.material3.HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
 
-                                    NemoMenuItem(
-                                        text = "暂停此卡片 (Suspend)",
-                                        onClick = {
-                                            expanded = false
-                                            onSuspend()
-                                        },
-                                        leadingIcon = Icons.Rounded.Pause
-                                    )
-                                    NemoMenuItem(
-                                        text = "今日暂缓此项 (Bury)",
-                                        onClick = {
-                                            expanded = false
-                                            onBury()
-                                        },
-                                        leadingIcon = Icons.Rounded.AccessTime
-                                    )
-
-                                    NemoMenuItem(
-                                        text = "报告条目错误",
-                                        onClick = {
-                                            expanded = false
-                                            onReportError()
-                                        },
-                                        leadingIcon = Icons.Rounded.Report
-                                    )
-
-                                    // 分隔线
-                                    androidx.compose.material3.HorizontalDivider(
-                                        modifier = Modifier.padding(
-                                            vertical = 4.dp
-                                        )
-                                    )
-
-                                    // 自动朗读开关
-                                    if (onToggleAutoAudio != null) {
-                                        androidx.compose.material3.DropdownMenuItem(
-                                            text = {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text(
-                                                        "翻面自动朗读",
-                                                        style = MaterialTheme.typography.bodyLarge
-                                                    )
-                                                    NemoGooeyToggle(
-                                                        checked = isAutoAudioEnabled,
-                                                        onCheckedChange = {
-                                                            onToggleAutoAudio(it)
-                                                        },
-                                                        activeColor = MaterialTheme.colorScheme.primary,
-                                                        inactiveColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                                    )
-                                                }
-                                            },
-                                            onClick = {
-                                                // 点击整个条目也切换
-                                                onToggleAutoAudio(!isAutoAudioEnabled)
-                                            }
-                                        )
-                                    }
-
-                                    if (onToggleShowAnswerDelay != null) {
-                                        androidx.compose.material3.DropdownMenuItem(
-                                            text = {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text(
-                                                        "显示答案等待",
-                                                        style = MaterialTheme.typography.bodyLarge
-                                                    )
-                                                    NemoGooeyToggle(
-                                                        checked = isShowAnswerDelayEnabled,
-                                                        onCheckedChange = {
-                                                            onToggleShowAnswerDelay(it)
-                                                        },
-                                                        activeColor = MaterialTheme.colorScheme.primary,
-                                                        inactiveColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                                    )
-                                                }
-                                            },
-                                            onClick = {
-                                                onToggleShowAnswerDelay(!isShowAnswerDelayEnabled)
-                                            }
-                                        )
-
-                                        if (onCycleShowAnswerDelayDuration != null) {
-                                            NemoMenuItem(
-                                                text = "等待时长: $showAnswerDelayDurationLabel",
-                                                onClick = {
-                                                    onCycleShowAnswerDelayDuration()
-                                                },
-                                                leadingIcon = Icons.Rounded.Timer
+                            if (onToggleAutoAudio != null) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("翻面自动朗读", style = MaterialTheme.typography.bodyLarge)
+                                            NemoGooeyToggle(
+                                                checked = isAutoAudioEnabled,
+                                                onCheckedChange = { onToggleAutoAudio(it) },
+                                                activeColor = MaterialTheme.colorScheme.primary,
+                                                inactiveColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                             )
                                         }
-                                    }
+                                    },
+                                    onClick = { onToggleAutoAudio(!isAutoAudioEnabled) }
+                                )
+                            }
 
-                                    // 主题切换项 (循环模式)
-                                    val themeLabel = when (isDarkMode) {
-                                        null -> "跟随系统"
-                                        true -> "深色模式"
-                                        false -> "浅色模式"
-                                    }
-                                    val themeIcon = when (isDarkMode) {
-                                        null -> Icons.Rounded.SettingsBrightness
-                                        true -> Icons.Rounded.DarkMode
-                                        false -> Icons.Rounded.LightMode
-                                    }
+                            if (onToggleShowAnswerDelay != null) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("显示答案等待", style = MaterialTheme.typography.bodyLarge)
+                                            NemoGooeyToggle(
+                                                checked = isShowAnswerDelayEnabled,
+                                                onCheckedChange = { onToggleShowAnswerDelay(it) },
+                                                activeColor = MaterialTheme.colorScheme.primary,
+                                                inactiveColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                            )
+                                        }
+                                    },
+                                    onClick = { onToggleShowAnswerDelay(!isShowAnswerDelayEnabled) }
+                                )
 
-                                    androidx.compose.material3.HorizontalDivider(
-                                        modifier = Modifier.padding(vertical = 4.dp)
-                                    )
-
+                                if (onCycleShowAnswerDelayDuration != null) {
                                     NemoMenuItem(
-                                        text = "显示模式: $themeLabel",
-                                        onClick = {
-                                            onCycleDarkMode()
-                                        },
-                                        leadingIcon = themeIcon
+                                        text = "等待时长: $showAnswerDelayDurationLabel",
+                                        onClick = { onCycleShowAnswerDelayDuration() },
+                                        leadingIcon = Icons.Rounded.Timer
                                     )
                                 }
                             }
+
+                            val themeLabel = when (isDarkMode) {
+                                null -> "跟随系统"
+                                true -> "深色模式"
+                                false -> "浅色模式"
+                            }
+                            val themeIcon = when (isDarkMode) {
+                                null -> Icons.Rounded.SettingsBrightness
+                                true -> Icons.Rounded.DarkMode
+                                false -> Icons.Rounded.LightMode
+                            }
+
+                            androidx.compose.material3.HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+
+                            NemoMenuItem(
+                                text = "显示模式: $themeLabel",
+                                onClick = { onCycleDarkMode() },
+                                leadingIcon = themeIcon
+                            )
                         }
                     }
                 }
             }
 
-            // Progress Bar - MD3: 使用 LinearProgressIndicator 风格
-            Box(
+            // Progress Bar & Stats Row
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .height(4.dp) // MD3: 推荐的进度条高度 4dp
-                    .background(progressBackground, RoundedCornerShape(2.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Progress Bar
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(progress.coerceIn(0f, 1f))
-                        .fillMaxSize()
-                        .background(
-                            color = MaterialTheme.colorScheme.primary, // MD3: 使用 primary 色
-                            shape = RoundedCornerShape(2.dp)
-                        )
-                )
+                        .weight(1f)
+                        .height(4.dp)
+                        .background(progressBackground, RoundedCornerShape(2.dp))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .fillMaxSize()
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(2.dp)
+                            )
+                    )
+                }
+
+                // Three-Color Counts aligned with progress bar
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CountBadge(count = reviewCount, color = Color(0xFF4ADE80)) // Review (Green)
+                    CountBadge(count = relearnCount, color = Color(0xFFF87171)) // Relearn (Red)
+                    CountBadge(count = newCount, color = Color(0xFF60A5FA)) // New (Blue)
+                }
             }
         }
     }

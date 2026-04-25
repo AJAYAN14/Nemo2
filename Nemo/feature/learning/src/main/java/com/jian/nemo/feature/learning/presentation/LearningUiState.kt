@@ -66,6 +66,11 @@ data class LearningUiState(
     // [Fix]: Session Stats for Learning Mode
     val sessionCorrectCount: Int = 0, // 本次会话正确数
 
+    // [Fix]: Queue counts for categorized display (New, Relearn, Review)
+    val newCount: Int = 0,
+    val relearnCount: Int = 0,
+    val reviewCount: Int = 0,
+
     // [Fix]: Track processed items (Pass + Fail) for accurate Remaining Count
     val sessionProcessedCount: Int = 0,
 

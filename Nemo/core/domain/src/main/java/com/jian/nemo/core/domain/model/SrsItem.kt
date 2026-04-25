@@ -57,6 +57,11 @@ interface SrsItem {
     val lastReviewedDate: Long?
 
     /**
+     * 学习状态: 0:New, 1:Learning, 2:Review, 3:Relearning
+     */
+    val state: Int
+
+    /**
      * 首次学习日期（Epoch Day）
      */
     val firstLearnedDate: Long?

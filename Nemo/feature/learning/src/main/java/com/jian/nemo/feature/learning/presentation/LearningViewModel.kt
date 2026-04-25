@@ -639,7 +639,7 @@ class LearningViewModel @Inject constructor(
                 val currentItem = items.getOrNull(result.index)
 
                 _uiState.update {
-                    it.copy(
+                    val base = it.copy(
                         wordList = if (mode == LearningMode.Word) result.items.filterIsInstance<Word>() else emptyList(),
                         grammarList = if (mode == LearningMode.Grammar) result.items.filterIsInstance<Grammar>() else emptyList(),
                         currentIndex = result.index,
@@ -658,6 +658,8 @@ class LearningViewModel @Inject constructor(
                         status = if (result.waitingUntil > System.currentTimeMillis()) LearningStatus.Waiting else LearningStatus.Learning,
                         waitingUntil = result.waitingUntil
                     )
+                    val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word)
+                    base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                 }
                 armShowAnswerDelay()
 
@@ -676,7 +678,7 @@ class LearningViewModel @Inject constructor(
                 val firstItem = items.firstOrNull()
 
                 _uiState.update {
-                    it.copy(
+                    val base = it.copy(
                         status = LearningStatus.Learning,
                         wordList = if (mode == LearningMode.Word) result.items.filterIsInstance<Word>() else emptyList(),
                         grammarList = if (mode == LearningMode.Grammar) result.items.filterIsInstance<Grammar>() else emptyList(),
@@ -695,6 +697,8 @@ class LearningViewModel @Inject constructor(
                         sessionProcessedCount = 0,
                         waitingUntil = 0L
                     )
+                    val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word)
+                    base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                 }
                 armShowAnswerDelay()
 
@@ -992,7 +996,7 @@ class LearningViewModel @Inject constructor(
                             val result = learningScheduler.schedulePass(
                                 currentItem,
                                 quality,
-                                currentStep ?: 0,
+                                if (isNew && currentStep == null) -1 else (currentStep ?: 0),
                                 config
                             )
                             handleScheduleResult(result)
@@ -1233,7 +1237,9 @@ class LearningViewModel @Inject constructor(
                         add(item.word)
                     }
                     _uiState.update {
-                        it.copy(wordList = newList)
+                        val base = it.copy(wordList = newList)
+                        val (newC, relearnC, reviewC) = calculateCounts(newList, true)
+                        base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                     }
                 }
             }
@@ -1243,7 +1249,9 @@ class LearningViewModel @Inject constructor(
                         add(item.grammar)
                     }
                     _uiState.update {
-                        it.copy(grammarList = newList)
+                        val base = it.copy(grammarList = newList)
+                        val (newC, relearnC, reviewC) = calculateCounts(newList, false)
+                        base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                     }
                 }
             }
@@ -1358,21 +1366,22 @@ class LearningViewModel @Inject constructor(
             is QueueSelectionResult.Wait -> {
                 println("等待中: Waiting until ${result.waitingUntil}")
                 _uiState.update {
-                    if (isWord) {
-                        @Suppress("UNCHECKED_CAST")
+                    val base = if (isWord) {
                         it.copy(
                             status = LearningStatus.Waiting,
                             wordList = newList as List<Word>,
                             waitingUntil = result.waitingUntil
                         )
                     } else {
-                        @Suppress("UNCHECKED_CAST")
                         it.copy(
                             status = LearningStatus.Waiting,
                             grammarList = newList as List<Grammar>,
                             waitingUntil = result.waitingUntil
                         )
                     }
+                    // Calculate categorized counts
+                    val (newC, relearnC, reviewC) = calculateCounts(newList, isWord)
+                    base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                 }
                 // 保存当前进度位置，而非硬编码为 0
                 // 恢复会话时会从此位置开始寻找下一个可用的卡片
@@ -1400,8 +1409,7 @@ class LearningViewModel @Inject constructor(
                     )
 
                     _uiState.update {
-                        @Suppress("UNCHECKED_CAST")
-                        it.copy(
+                        val base = it.copy(
                             status = LearningStatus.Learning,
                             wordList = newList as List<Word>,
                             currentIndex = nextIndex,
@@ -1411,6 +1419,9 @@ class LearningViewModel @Inject constructor(
                             ratingIntervals = calculateRatingIntervals(nextItem),
                             slideDirection = SlideDirection.FORWARD
                         )
+                        // Calculate categorized counts
+                        val (newC, relearnC, reviewC) = calculateCounts(newList, isWord)
+                        base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                     }
                     armShowAnswerDelay()
                     @Suppress("UNCHECKED_CAST")
@@ -1604,7 +1615,15 @@ class LearningViewModel @Inject constructor(
      * 获取卡片状态标记
      */
     fun getCardBadge(item: LearningItem): CardBadge {
+        // 核心逻辑：优先信任服务器同步回来的 state
+        val state = when (item) {
+            is LearningItem.WordItem -> item.word.state
+            is LearningItem.GrammarItem -> item.grammar.state
+        }
+
         return when {
+            // state 1: Learning, state 3: Relearning
+            state == 1 || state == 3 -> CardBadge.RELEARN
             _requeuedItems.contains(item.id) -> CardBadge.RELEARN
             item.isNew -> CardBadge.NEW
             else -> CardBadge.REVIEW
@@ -1795,11 +1814,22 @@ class LearningViewModel @Inject constructor(
                     val progress = progressMap[itemId]
                     
                     val shouldPrune = when {
-                        // 场景 A: 原本是新词，但现在数据库显示已经学过了 (reps > 0)
-                        wasNew && (progress?.reps ?: 0) > 0 -> true
-                        // 场景 B: 原本是复习词，但现在数据库显示不再到期了 (nextReview > now)
-                        !wasNew && progress != null && (progress.nextReview ?: "") > nowIso -> true
-                        // 场景 C: 被移出了进度表 (虽然罕见，但也视为失效)
+                        // 如果卡片在数据库中被设为 暂停/钉子户 (state -1) 或 隐藏，直接剔除
+                        progress?.state == -1 -> true
+                        
+                        // 场景 A: 如果数据库显示卡片正处于 学习中 (1) 或 重学中 (3)，
+                        // 说明它还在今天的学习循环内，绝对不能剔除。
+                        progress != null && (progress.state == 1 || progress.state == 3) -> false
+
+                        // 场景 B: 原本是新词，但现在数据库显示已经学过了 (reps > 0) 
+                        // 且不在学习步长中 (state != 1)，说明它已经“毕业”了，剔除。
+                        wasNew && (progress?.reps ?: 0) > 0 && progress?.state != 1 -> true
+
+                        // 场景 C: 原本是复习词，但现在数据库显示已经完成了复习且到期时间在未来
+                        // 且不在重学步长中 (state != 3)，剔除。
+                        !wasNew && progress != null && (progress.nextReview ?: "") > nowIso && progress.state != 3 -> true
+
+                        // 场景 D: 被移出了进度表
                         !wasNew && progress == null -> true
                         else -> false
                     }
@@ -1810,8 +1840,102 @@ class LearningViewModel @Inject constructor(
                     }
                 }
                 
-                if (staleIds.isNotEmpty()) {
-                    performPruning(staleIds, mode == LearningMode.Word)
+                val updatedWordList = state.wordList.toMutableList()
+                val updatedGrammarList = state.grammarList.toMutableList()
+                val moveToEndIds = mutableSetOf<Long>()
+                var hasContentChange = false
+
+                if (mode == LearningMode.Word) {
+                    state.wordList.forEachIndexed { index, word ->
+                        if (!staleIds.contains(word.id)) {
+                            val p = progressMap[word.id]
+                            if (p != null && (p.reps != word.repetitionCount || p.state != word.state)) {
+                                val oldState = word.state
+                                val newState = p.state
+                                val updatedWord = word.copy(repetitionCount = p.reps, state = p.state)
+                                updatedWordList[index] = updatedWord
+                                hasContentChange = true
+                                
+                                // 如果状态变成了 1 (Learning) 或 3 (Relearning)，且之前不是这个状态
+                                // 说明发生了评分重置，需要移到末尾
+                                if ((newState == 1 || newState == 3) && (oldState != 1 && oldState != 3)) {
+                                    moveToEndIds.add(word.id)
+                                }
+                            }
+                        }
+                    }
+                    // 执行移到末尾的操作
+                    if (moveToEndIds.isNotEmpty()) {
+                        val itemsToMove = updatedWordList.filter { moveToEndIds.contains(it.id) }
+                        updatedWordList.removeAll { moveToEndIds.contains(it.id) }
+                        updatedWordList.addAll(itemsToMove)
+                    }
+                } else {
+                    state.grammarList.forEachIndexed { index, grammar ->
+                        if (!staleIds.contains(grammar.id)) {
+                            val p = progressMap[grammar.id]
+                            if (p != null && (p.reps != grammar.repetitionCount || p.state != grammar.state)) {
+                                val oldState = grammar.state
+                                val newState = p.state
+                                val updatedGrammar = grammar.copy(repetitionCount = p.reps, state = p.state)
+                                updatedGrammarList[index] = updatedGrammar
+                                hasContentChange = true
+                                
+                                if ((newState == 1 || newState == 3) && (oldState != 1 && oldState != 3)) {
+                                    moveToEndIds.add(grammar.id)
+                                }
+                            }
+                        }
+                    }
+                    if (moveToEndIds.isNotEmpty()) {
+                        val itemsToMove = updatedGrammarList.filter { moveToEndIds.contains(it.id) }
+                        updatedGrammarList.removeAll { moveToEndIds.contains(it.id) }
+                        updatedGrammarList.addAll(itemsToMove)
+                    }
+                }
+
+                if (staleIds.isNotEmpty() || hasContentChange) {
+                    val finalWordList = if (mode == LearningMode.Word) updatedWordList else state.wordList
+                    val finalGrammarList = if (mode == LearningMode.Word) state.grammarList else updatedGrammarList
+                    
+                    val (newC, relearnC, reviewC) = calculateCounts(
+                        if (mode == LearningMode.Word) finalWordList else finalGrammarList,
+                        mode == LearningMode.Word
+                    )
+
+                    _uiState.update { current ->
+                        // 1. 记录当前正在看的卡片 ID
+                        val currentCardId = if (mode == LearningMode.Word) {
+                            current.wordList.getOrNull(current.currentIndex)?.id
+                        } else {
+                            current.grammarList.getOrNull(current.currentGrammarIndex)?.id
+                        }
+
+                        // 2. 在新列表中找到它的新位置
+                        val newIndex = if (mode == LearningMode.Word) {
+                            val idx = finalWordList.indexOfFirst { it.id == currentCardId }
+                            if (idx == -1) current.currentIndex.coerceAtMost(finalWordList.size - 1).coerceAtLeast(0)
+                            else idx
+                        } else {
+                            val idx = finalGrammarList.indexOfFirst { it.id == currentCardId }
+                            if (idx == -1) current.currentGrammarIndex.coerceAtMost(finalGrammarList.size - 1).coerceAtLeast(0)
+                            else idx
+                        }
+
+                        current.copy(
+                            wordList = finalWordList,
+                            grammarList = finalGrammarList,
+                            currentIndex = if (mode == LearningMode.Word) newIndex else current.currentIndex,
+                            currentGrammarIndex = if (mode == LearningMode.Grammar) newIndex else current.currentGrammarIndex,
+                            newCount = newC,
+                            relearnCount = relearnC,
+                            reviewCount = reviewC
+                        )
+                    }
+                    
+                    if (staleIds.isNotEmpty()) {
+                        performPruning(staleIds, mode == LearningMode.Word)
+                    }
                 }
             }
         }
@@ -1877,6 +2001,29 @@ class LearningViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun <T> calculateCounts(list: List<T>, isWord: Boolean): Triple<Int, Int, Int> {
+        var newC = 0
+        var relearnC = 0
+        var reviewC = 0
+        
+        list.forEach { item ->
+            val id = if (isWord) (item as Word).id else (item as Grammar).id
+            // 优先检查服务器返回的 state (1: Learning, 3: Relearning)
+            val serverState = if (isWord) (item as Word).state else (item as Grammar).state
+            
+            val isLearning = serverState == 1 || serverState == 3 || _learningSteps.containsKey(id)
+            val isNew = serverState == 0 || (if (isWord) (item as Word).repetitionCount == 0 else (item as Grammar).repetitionCount == 0)
+
+            when {
+                isLearning -> relearnC++
+                // 注意：如果已经是 Learning 状态了，就不再计入 New，即使 repetitionCount 是 0
+                isNew && !isLearning -> newC++
+                else -> reviewC++
+            }
+        }
+        return Triple(newC, relearnC, reviewC)
     }
 
     override fun onCleared() {

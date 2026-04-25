@@ -147,6 +147,9 @@ fun LearningScreen(
                         uiState.wordList.size
                     else
                         uiState.grammarList.size,
+                    newCount = uiState.newCount,
+                    relearnCount = uiState.relearnCount,
+                    reviewCount = uiState.reviewCount,
                     isNavigating = uiState.isNavigating,
                     isAnswerShown = uiState.isAnswerShown,
                     onClose = onNavigateBack,

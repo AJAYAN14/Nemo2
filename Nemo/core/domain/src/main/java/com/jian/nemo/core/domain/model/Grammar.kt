@@ -52,6 +52,11 @@ data class Grammar(
     val isSkipped: Boolean = false,
     val buriedUntilDay: Long = 0,
 
+    /**
+     * 学习状态: 0:New, 1:Learning, 2:Review, 3:Relearning
+     */
+    override val state: Int = 0,
+
     // ========== 元数据 ==========
     val lastModifiedTime: Long = System.currentTimeMillis()
 ) : SrsItem {

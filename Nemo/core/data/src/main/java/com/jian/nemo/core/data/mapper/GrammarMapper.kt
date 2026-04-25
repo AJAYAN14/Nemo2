@@ -55,6 +55,7 @@ object GrammarMapper {
             isFavorite = state?.isFavorite ?: false,
             isSkipped = state?.state == -1,
             buriedUntilDay = state?.buriedUntil ?: 0L,
+            state = state?.state ?: 0,
             lastModifiedTime = state?.updatedAt?.let { DateTimeUtils.isoToMillis(it) } ?: 0L
         )
     }
@@ -117,8 +118,8 @@ object GrammarMapper {
             difficulty = difficulty,
             elapsedDays = 0,
             scheduledDays = interval,
-            lapses = 0,
-            state = if (isSkipped) -1 else 0,
+            lapses = lapses,
+            state = if (isSkipped) -1 else state,
             learningStep = 0,
             nextReview = DateTimeUtils.epochDayToIso(nextReviewDate),
             lastReview = lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },

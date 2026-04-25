@@ -114,23 +114,32 @@ class LearningScheduler @Inject constructor() {
             )
         }
 
-        // 如果是 Good (4)，判断是否还有下一步
-        if (quality == 4 && currentStep < stepConfig.size - 1) {
+        // 如果是 Good (4)，判断是否还有下一步或是否尚未完成第一步
+        // currentStep 0 对应第一步，所以如果 currentStep < stepConfig.size，说明当前这一步还没走完（如果是第一次见）
+        // 在 Anki 中，点击 Good 会移动到下一个 Step。
+        // 如果是从外部传入的 currentStep，我们需要准确判断。
+        
+        // 我们引入一个逻辑：如果当前处于 step N，且 N < stepConfig.size，
+        // 则点击 Good 应该尝试进入 step N + 1。
+        // 如果 N + 1 >= stepConfig.size，则毕业。
+        if (quality == 4) {
             val nextStep = currentStep + 1
-            val nextStepMin = stepConfig.getOrElse(nextStep) { 10 }
-            val dueTime = System.currentTimeMillis() + nextStepMin * 60 * 1000L
+            if (nextStep < stepConfig.size) {
+                val nextStepMin = stepConfig.getOrElse(nextStep) { 10 }
+                val dueTime = System.currentTimeMillis() + nextStepMin * 60 * 1000L
 
-            val updatedItem = when (item) {
-                is LearningItem.WordItem -> item.copy(step = nextStep, dueTime = dueTime)
-                is LearningItem.GrammarItem -> item.copy(step = nextStep, dueTime = dueTime)
+                val updatedItem = when (item) {
+                    is LearningItem.WordItem -> item.copy(step = nextStep, dueTime = dueTime)
+                    is LearningItem.GrammarItem -> item.copy(step = nextStep, dueTime = dueTime)
+                }
+
+                return ScheduleResult.Requeue(
+                    updatedItem = updatedItem,
+                    nextStepIndex = nextStep,
+                    dueTime = dueTime,
+                    isLapse = false
+                )
             }
-
-            return ScheduleResult.Requeue(
-                updatedItem = updatedItem,
-                nextStepIndex = nextStep,
-                dueTime = dueTime,
-                isLapse = false
-            )
         }
 
         // 毕业 (Graduate):

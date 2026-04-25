@@ -40,6 +40,7 @@ object WordMapper {
             isFavorite = state?.isFavorite ?: false,
             isSkipped = state?.state == -1,
             buriedUntilDay = state?.buriedUntil ?: 0L,
+            state = state?.state ?: 0,
             lastModifiedTime = state?.updatedAt?.let { DateTimeUtils.isoToMillis(it) } ?: 0L
         )
     }
@@ -84,9 +85,9 @@ object WordMapper {
             difficulty = difficulty,
             elapsedDays = 0, // Need to handle this
             scheduledDays = interval,
-            lapses = 0, // Need to handle this
-            state = if (isSkipped) -1 else 0,
-            learningStep = 0, // Need to handle this
+            lapses = lapses,
+            state = if (isSkipped) -1 else state,
+            learningStep = 0, // Need to handle this if needed
             nextReview = DateTimeUtils.epochDayToIso(nextReviewDate),
             lastReview = lastReviewedDate?.let { DateTimeUtils.epochDayToIso(it) },
             isFavorite = isFavorite,

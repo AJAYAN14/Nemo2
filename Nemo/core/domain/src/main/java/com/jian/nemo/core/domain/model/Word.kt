@@ -107,6 +107,11 @@ data class Word(
      */
     val buriedUntilDay: Long = 0,
 
+    /**
+     * 学习状态: 0:New, 1:Learning, 2:Review, 3:Relearning
+     */
+    override val state: Int = 0,
+
     // ========== 元数据 ==========
     /**
      * 最后修改时间戳 (毫秒)
