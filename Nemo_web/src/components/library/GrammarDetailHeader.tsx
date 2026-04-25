@@ -1,5 +1,5 @@
 import React from "react";
-import { Volume2 } from "lucide-react";
+import { Volume2, Flag } from "lucide-react";
 import styles from "./GrammarDetailHeader.module.css";
 import { FuriganaText } from "@/components/common/FuriganaText";
 
@@ -7,9 +7,10 @@ interface GrammarDetailHeaderProps {
   id: number;
   title: string;
   level: string;
+  onReport?: () => void;
 }
 
-export function GrammarDetailHeader({ id, title, level }: GrammarDetailHeaderProps) {
+export function GrammarDetailHeader({ id, title, level, onReport }: GrammarDetailHeaderProps) {
   return (
     <div className={styles.container}>
       <div className={styles.mainInfo}>
@@ -28,6 +29,14 @@ export function GrammarDetailHeader({ id, title, level }: GrammarDetailHeaderPro
           title="播放读音"
         >
           <Volume2 size={24} />
+        </button>
+
+        <button 
+          className={styles.reportBtn} 
+          title="内容报错"
+          onClick={onReport}
+        >
+          <Flag size={20} />
         </button>
       </div>
     </div>

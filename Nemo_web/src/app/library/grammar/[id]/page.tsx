@@ -8,6 +8,9 @@ import { dictionaryService } from "@/lib/services/dictionaryService";
 import { supabase } from "@/lib/supabase";
 import { GrammarDetailHeader } from "@/components/library/GrammarDetailHeader";
 import { UsageSection } from "@/components/library/UsageSection";
+import { ContentReportDialog } from "@/components/learn/ContentReportDialog";
+import { studyService } from "@/lib/services/studyService";
+import { AnimatePresence } from "framer-motion";
 import StickyHeader from "@/components/common/StickyHeader";
 import styles from "./GrammarDetail.module.css";
 
@@ -18,6 +21,13 @@ interface GrammarDetailPageProps {
 export default function GrammarDetailPage({ params }: GrammarDetailPageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const [isReportDialogOpen, setIsReportDialogOpen] = React.useState(false);
+
+  const handleReportError = async (type: string, desc: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await studyService.reportContentError(user.id, 'grammar', parseInt(id), type, desc);
+  };
 
   const { data: grammar, isLoading, error } = useQuery({
     queryKey: ["grammar", id],
@@ -75,6 +85,7 @@ export default function GrammarDetailPage({ params }: GrammarDetailPageProps) {
           id={grammar.id}
           title={grammar.title} 
           level={grammar.level}
+          onReport={() => setIsReportDialogOpen(true)}
         />
 
         <div className={styles.content}>
@@ -90,6 +101,16 @@ export default function GrammarDetailPage({ params }: GrammarDetailPageProps) {
           </section>
         </div>
       </main>
+
+      <AnimatePresence>
+        {isReportDialogOpen && (
+          <ContentReportDialog 
+            contentType="grammar"
+            onDismiss={() => setIsReportDialogOpen(false)}
+            onConfirm={handleReportError}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

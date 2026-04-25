@@ -49,6 +49,7 @@ interface StudySessionContextType {
   undoError: string | null;
   setSyncConflictItem: (name: string | null) => void;
   clearUndoError: () => void;
+  reportContentError: (errorType: string, description: string) => Promise<void>;
 }
 
 const StudySessionContext = createContext<StudySessionContextType | null>(null);
@@ -425,7 +426,17 @@ export function StudySessionProvider({ userId, initialItems, config, mode, sessi
     showUndoHint,
     undoError,
     setSyncConflictItem: (name: string | null) => dispatch({ type: 'SET_SYNC_CONFLICT', itemName: name }),
-    clearUndoError: () => setUndoError(null)
+    clearUndoError: () => setUndoError(null),
+    reportContentError: async (errorType: string, description: string) => {
+      if (!currentItem) return;
+      await studyService.reportContentError(
+        userId,
+        currentItem.type,
+        Number(currentItem.content.id),
+        errorType,
+        description
+      );
+    }
   };
 
   return <StudySessionContext.Provider value={value}>{children}</StudySessionContext.Provider>;

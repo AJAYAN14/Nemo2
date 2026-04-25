@@ -667,5 +667,29 @@ export const studyService = {
     return Object.fromEntries(
       (data || []).map(item => [item.id, item.last_review])
     );
+  },
+
+  /**
+   * Report an error in the content (word or grammar)
+   */
+  async reportContentError(
+    userId: string,
+    itemType: ItemType,
+    itemId: number,
+    errorType: string,
+    description: string
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('content_reports')
+      .insert({
+        user_id: userId,
+        item_type: itemType,
+        item_id: itemId,
+        error_type: errorType,
+        description: description,
+        status: 'pending'
+      });
+
+    if (error) throw error;
   }
 };

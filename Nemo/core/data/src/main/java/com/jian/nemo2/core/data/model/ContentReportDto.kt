@@ -14,6 +14,10 @@ data class ContentReportDto(
     val itemType: String,
     @SerialName("user_id")
     val userId: String? = null,
+    @SerialName("error_type")
+    val errorType: String,
+    @SerialName("description")
+    val description: String? = null,
     @SerialName("status")
     val status: String = "pending"
 )

@@ -4,11 +4,14 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Tag } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import styles from "./WordDetail.module.css";
 import { dictionaryService } from "@/lib/services/dictionaryService";
 import { supabase } from "@/lib/supabase";
 import { WordDetailHeader } from "@/components/library/WordDetailHeader";
 import { ExampleSentence } from "@/components/library/ExampleSentence";
+import { ContentReportDialog } from "@/components/learn/ContentReportDialog";
+import { studyService } from "@/lib/services/studyService";
 
 interface WordDetailClientProps {
   id: string;
@@ -17,6 +20,13 @@ interface WordDetailClientProps {
 export default function WordDetailClient({ id }: WordDetailClientProps) {
   const router = useRouter();
   const wordId = parseInt(id, 10);
+  const [isReportDialogOpen, setIsReportDialogOpen] = React.useState(false);
+
+  const handleReportError = async (type: string, desc: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await studyService.reportContentError(user.id, 'word', wordId, type, desc);
+  };
 
   const { data: word, isLoading, error } = useQuery({
     queryKey: ["word", wordId],
@@ -63,6 +73,7 @@ export default function WordDetailClient({ id }: WordDetailClientProps) {
         japanese={word.japanese} 
         hiragana={word.hiragana} 
         isStudying={!!progress}
+        onReport={() => setIsReportDialogOpen(true)}
       />
 
       <section className={styles.section}>
@@ -103,6 +114,15 @@ export default function WordDetailClient({ id }: WordDetailClientProps) {
           暂无例句数据
         </div>
       )}
+      <AnimatePresence>
+        {isReportDialogOpen && (
+          <ContentReportDialog 
+            contentType="word"
+            onDismiss={() => setIsReportDialogOpen(false)}
+            onConfirm={handleReportError}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

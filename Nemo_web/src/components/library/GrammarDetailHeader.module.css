@@ -86,6 +86,27 @@
   background-color: #e5e7eb;
 }
 
+.reportBtn {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.reportBtn:hover {
+  background: #fff1f2;
+  color: #e11d48;
+  border-color: #fda4af;
+  transform: scale(1.05);
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }

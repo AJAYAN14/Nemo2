@@ -82,6 +82,27 @@
   opacity: 0.9;
 }
 
+.reportBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: white;
+  color: var(--muted);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.reportBtn:hover {
+  background: #fff1f2;
+  color: #e11d48;
+  border-color: #fda4af;
+  transform: scale(1.05);
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }

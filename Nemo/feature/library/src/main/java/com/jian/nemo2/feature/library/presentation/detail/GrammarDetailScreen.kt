@@ -157,7 +157,9 @@ fun GrammarDetailScreen(
             ContentReportDialog(
                 learningMode = LearningMode.Grammar,
                 onDismiss = { viewModel.cancelReportDialog() },
-                onConfirm = { currentGrammarId?.let { viewModel.reportContentError(it) } }
+                onConfirm = { type, desc ->
+                    currentGrammarId?.let { viewModel.reportContentError(it, type, desc) }
+                }
             )
         }
     }

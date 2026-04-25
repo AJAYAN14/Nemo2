@@ -10,6 +10,7 @@ import { SRSActionArea } from "@/components/learn/SRSActionArea";
 import { LearningFinishedContent } from "@/components/learn/LearningFinishedContent";
 import { WaitingContent } from "@/components/learn/WaitingContent";
 import { RatingGuideModal } from "@/components/learn/RatingGuideModal";
+import { ContentReportDialog } from "@/components/learn/ContentReportDialog";
 import { NemoSnackbar, NemoSnackbarType } from "@/components/ui/NemoSnackbar";
 import { Undo2 } from "lucide-react";
 import styles from "./LearnSession.module.css";
@@ -47,12 +48,14 @@ function LearnSessionUI({ todayStats }: { todayStats: LearningStats | undefined 
     ratingIntervals,
     initialTotalCount,
     completedThisSession,
-    setSyncConflictItem
+    setSyncConflictItem,
+    reportContentError
   } = useStudySession();
 
   const { wordList, currentIndex, status, isAnswerShown, isCardFlipped, slideDirection, syncConflictItem, waitingUntil } = state;
 
   const [isRatingGuideOpen, setIsRatingGuideOpen] = React.useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = React.useState(false);
   const [showAnswerAvailableAt, setShowAnswerAvailableAt] = React.useState(0);
 
   // Sync answer gate
@@ -142,6 +145,7 @@ function LearnSessionUI({ todayStats }: { todayStats: LearningStats | undefined 
     <div className={styles.container}>
       <LearnHeader
         onShowRatingGuide={() => setIsRatingGuideOpen(true)}
+        onReportError={() => setIsReportDialogOpen(true)}
         progressPercent={progressPercent}
       />
 
@@ -210,6 +214,13 @@ function LearnSessionUI({ todayStats }: { todayStats: LearningStats | undefined 
       <AnimatePresence>
         {isRatingGuideOpen && (
           <RatingGuideModal onDismiss={() => setIsRatingGuideOpen(false)} />
+        )}
+        {isReportDialogOpen && (
+          <ContentReportDialog 
+            contentType={mode === 'Word' ? 'word' : 'grammar'}
+            onDismiss={() => setIsReportDialogOpen(false)}
+            onConfirm={reportContentError}
+          />
         )}
       </AnimatePresence>
     </div>

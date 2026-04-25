@@ -20,12 +20,14 @@ import { getQueueStateCounters } from '@/lib/services/studyCounters';
 
 interface LearnHeaderProps {
   onShowRatingGuide: () => void;
+  onReportError: () => void;
   onClose?: () => void;
   progressPercent: number;
 }
 
 export function LearnHeader({
   onShowRatingGuide,
+  onReportError,
   progressPercent
 }: LearnHeaderProps) {
   const {
@@ -161,6 +163,13 @@ export function LearnHeader({
                     <span>等待时长: {showAnswerDelayDuration}s</span>
                   </DropdownMenu.Item>
                 )}
+
+                <DropdownMenu.Separator className={styles.menuSeparator} />
+
+                <DropdownMenu.Item className={styles.menuItem} onSelect={onReportError}>
+                  <MoreVertical size={18} className={styles.menuIcon} />
+                  <span>内容有误？报错</span>
+                </DropdownMenu.Item>
 
                 <DropdownMenu.Arrow className={styles.menuArrow} />
               </DropdownMenu.Content>

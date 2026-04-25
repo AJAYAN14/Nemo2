@@ -2,7 +2,7 @@ import React from "react";
 import { Volume2 } from "lucide-react";
 import styles from "./WordDetailHeader.module.css";
 import { FuriganaText } from "@/components/common/FuriganaText";
-import { Plus, Check, Loader2 } from "lucide-react";
+import { Plus, Check, Loader2, Flag } from "lucide-react";
 import { studyService } from "@/lib/services/studyService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -11,9 +11,10 @@ interface WordDetailHeaderProps {
   japanese: string;
   hiragana: string;
   isStudying?: boolean;
+  onReport?: () => void;
 }
 
-export function WordDetailHeader({ id, japanese, hiragana, isStudying = false }: WordDetailHeaderProps) {
+export function WordDetailHeader({ id, japanese, hiragana, isStudying = false, onReport }: WordDetailHeaderProps) {
   const queryClient = useQueryClient();
   
   const mutation = useMutation({
@@ -53,6 +54,14 @@ export function WordDetailHeader({ id, japanese, hiragana, isStudying = false }:
           onClick={() => console.log("Audio playback TODO")}
         >
           <Volume2 size={24} />
+        </button>
+
+        <button 
+          className={styles.reportBtn} 
+          title="内容报错"
+          onClick={onReport}
+        >
+          <Flag size={20} />
         </button>
       </div>
     </div>

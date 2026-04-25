@@ -385,7 +385,7 @@ class LearningViewModel @Inject constructor(
             is LearningEvent.ToggleAutoPlayAudio -> toggleAutoPlayAudio(event.enabled)
             is LearningEvent.ToggleShowAnswerDelay -> toggleShowAnswerDelay(event.enabled)
             is LearningEvent.CycleShowAnswerDelayDuration -> cycleShowAnswerDelayDuration()
-            is LearningEvent.ReportContentError -> handleReportError()
+            is LearningEvent.ReportContentError -> handleReportError(event.errorType, event.description)
             is LearningEvent.OpenReportErrorDialog -> _uiState.update { it.copy(showReportErrorDialog = true) }
             is LearningEvent.CancelReportErrorDialog -> _uiState.update { it.copy(showReportErrorDialog = false) }
             is LearningEvent.ClearSuccessMessage -> _uiState.update { it.copy(successMessage = null) }
@@ -426,7 +426,7 @@ class LearningViewModel @Inject constructor(
         }
     }
 
-    private fun handleReportError() {
+    private fun handleReportError(errorType: String, description: String? = null) {
         // 关闭对话框
         _uiState.update { it.copy(showReportErrorDialog = false) }
 
@@ -440,7 +440,7 @@ class LearningViewModel @Inject constructor(
         val itemType = if (state.learningMode == LearningMode.Word) "word" else "grammar"
 
         viewModelScope.launch {
-            val result = contentReportRepository.reportContentError(itemId, itemType)
+            val result = contentReportRepository.reportContentError(itemId, itemType, errorType, description)
             if (result is Result.Success) {
                 // 使用通用的成功消息提示
                 _uiState.update { it.copy(successMessage = "反馈成功，感谢您的反馈！") }
