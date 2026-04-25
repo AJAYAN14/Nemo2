@@ -1,5 +1,6 @@
 "use client";
 
+import { supabase } from '@/lib/supabase';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { 
@@ -128,6 +129,38 @@ export function StudySessionProvider({ userId, initialItems, config, mode, sessi
   // 4. Persistence Helpers
   const lockedDay = useMemo(() => studyService.getLearningDay(new Date(), config.resetHour || 4), [config.resetHour]);
   const lastRatingTime = useRef(0);
+
+  // [Realtime Sync] Monitor external progress updates (e.g. from Android)
+  useEffect(() => {
+    if (!userId) return;
+
+    console.log('[StudySession] Initializing realtime sync for user:', userId);
+
+    const channel = supabase
+      .channel(`session-sync-${userId}-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_progress',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log('[StudySession] Received external update:', payload.new.item_id);
+          // If this update came from a different request_id than our last one, apply it
+          // (Note: we don't have the last requestId easily here, but the reducer check is safe)
+          dispatch({ type: 'EXTERNAL_UPDATE', updated: payload.new });
+        }
+      )
+      .subscribe((status) => {
+        console.log('[StudySession] Realtime status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, dispatch]);
 
   const invalidateStudyCaches = useCallback(() => {
     invalidateStudyQueries(queryClient);

@@ -22,7 +22,8 @@ export type SessionAction =
   | { type: 'NEXT_CARD'; nextPool: StudyItem[]; nextIndex: number; isCompletion: boolean; slideDirection?: SlideDirection }
   | { type: 'ROLLBACK'; wordList: StudyItem[]; currentIndex: number; completed: number; waitingUntil: number | null }
   | { type: 'SET_SYNC_CONFLICT'; itemName: string | null }
-  | { type: 'PRUNE_ITEMS'; idsToKeep: Set<string> };
+  | { type: 'PRUNE_ITEMS'; idsToKeep: Set<string> }
+  | { type: 'EXTERNAL_UPDATE'; updated: any };
 
 function sessionReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
@@ -77,11 +78,44 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
     case 'SET_SYNC_CONFLICT':
       return { ...state, syncConflictItem: action.itemName };
     case 'PRUNE_ITEMS':
-      const newPool = state.wordList.filter(item => action.idsToKeep.has(item.id));
+      const filteredPool = state.wordList.filter(item => action.idsToKeep.has(item.id));
       return {
         ...state,
-        wordList: newPool,
-        currentIndex: state.currentIndex >= newPool.length ? 0 : state.currentIndex
+        wordList: filteredPool,
+        currentIndex: state.currentIndex >= filteredPool.length ? 0 : state.currentIndex
+      };
+    case 'EXTERNAL_UPDATE':
+      const { updated } = action;
+      // Find if the item exists in our current queue
+      const itemIndex = state.wordList.findIndex(
+        item => item.content.id.toString() === updated.item_id.toString() && item.type === updated.item_type
+      );
+      
+      if (itemIndex === -1) return state;
+
+      // If it graduated (Review/Relearn state 2/3), remove it
+      if (updated.state === 2 || updated.state === 3) {
+        const nextPool = [...state.wordList];
+        nextPool.splice(itemIndex, 1);
+        return {
+          ...state,
+          wordList: nextPool,
+          currentIndex: state.currentIndex >= nextPool.length ? Math.max(0, nextPool.length - 1) : state.currentIndex,
+          completedThisSession: state.completedThisSession + 1,
+          status: nextPool.length === 0 ? LearningStatus.SessionCompleted : state.status
+        };
+      }
+
+      // Otherwise, just update its progress data
+      const updatedPool = [...state.wordList];
+      updatedPool[itemIndex] = {
+        ...updatedPool[itemIndex],
+        progress: updated,
+        dueTime: updated.due_date ? new Date(updated.due_date).getTime() : updatedPool[itemIndex].dueTime
+      };
+      return {
+        ...state,
+        wordList: updatedPool
       };
     default:
       return state;
