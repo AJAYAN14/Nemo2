@@ -363,13 +363,14 @@ export function StudySessionProvider({ userId, initialItems, config, mode, sessi
   const buryCurrent = useCallback(async () => {
      if (!currentItem || state.status === LearningStatus.Processing) return;
      dispatch({ type: 'SET_STATUS', status: LearningStatus.Processing });
-     try {
-       await studyService.buryItem(currentItem.progress.id, lockedDay);
-       const nextPool = state.wordList.filter(i => i.id !== currentItem.id);
-       if (nextPool.length === 0) {
+      try {
+        const currentLearningDay = studyService.getLearningDay(new Date(), config.resetHour);
+        await studyService.buryItem(currentItem.progress.id, currentLearningDay);
+        const nextPool = state.wordList.filter(i => i.id !== currentItem.id);
+        if (nextPool.length === 0) {
           dispatch({ type: 'SET_STATUS', status: LearningStatus.SessionCompleted });
-         sessionPersistence.clearSession(sessionStorageKey);
-       } else {
+          sessionPersistence.clearSession(sessionStorageKey);
+        } else {
           const result = selectNext(nextPool, state.currentIndex);
           const nextIdx = result.type === 'NEXT' ? (result.index >= nextPool.length ? 0 : result.index) : state.currentIndex;
           const nextWaiting = result.type === 'WAIT' ? result.waitingUntil : null;
@@ -379,12 +380,12 @@ export function StudySessionProvider({ userId, initialItems, config, mode, sessi
           if (result.type === 'WAIT') dispatch({ type: 'SET_WAITING', time: nextWaiting });
           
           persist(nextPool, nextIdx, state.completedThisSession, nextWaiting);
-       }
-       invalidateStudyCaches();
-     } catch {
-       dispatch({ type: 'SET_STATUS', status: LearningStatus.Learning });
-     }
-  }, [currentItem, state, lockedDay, selectNext, persist, dispatch, invalidateStudyCaches, sessionStorageKey]);
+        }
+        invalidateStudyCaches();
+      } catch {
+        dispatch({ type: 'SET_STATUS', status: LearningStatus.Learning });
+      }
+  }, [currentItem, state, config.resetHour, selectNext, persist, dispatch, invalidateStudyCaches, sessionStorageKey]);
 
   const value = {
     mode,

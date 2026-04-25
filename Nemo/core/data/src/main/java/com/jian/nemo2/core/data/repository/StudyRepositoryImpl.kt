@@ -121,35 +121,82 @@ class StudyRepositoryImpl @Inject constructor(
 
     override suspend fun suspendItem(itemId: Long, itemType: String) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
-        val now = com.jian.nemo2.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
+        val now = Clock.System.now().toString()
+        
+        // [Optimistic Update]
         userProgressDao.updateProgressState(itemId, itemType, -1, now)
+        
+        // [Atomic Sync]
+        syncOutboxDao.insert(
+            SyncOutboxEntity(
+                itemId = itemId,
+                itemType = itemType,
+                rating = 0,
+                actionType = "SUSPEND",
+                createdAt = now
+            )
+        )
+        
         scope.launch {
-            try {
-                supabase.postgrest["user_progress"].update({ set("state", -1); set("updated_at", now) }) { filter { eq("id", progress.id) } }
-            } catch (e: Exception) { println("暂停同步失败: ${e.message}") }
+            try { syncManager.processOutbox() } catch (e: Exception) { Log.e("StudyRepository", "暂停同步失败: ${e.message}") }
         }
     }
 
     override suspend fun unsuspendItem(itemId: Long, itemType: String) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
-        val now = com.jian.nemo2.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
-        userProgressDao.updateProgressState(itemId, itemType, 0, now)
+        val now = Clock.System.now().toString()
+        
+        // [Optimistic Update] 对齐 Web 端：恢复即重置 (Reset to New)
+        val resetProgress = progress.copy(
+            state = 0,
+            stability = 0.0,
+            difficulty = 0.0,
+            reps = 0,
+            lapses = 0,
+            lastReview = null,
+            nextReview = now,
+            updatedAt = now
+        )
+        userProgressDao.insert(resetProgress)
+        
+        // [Atomic Sync]
+        syncOutboxDao.insert(
+            SyncOutboxEntity(
+                itemId = itemId,
+                itemType = itemType,
+                rating = 0,
+                actionType = "UNSUSPEND",
+                createdAt = now
+            )
+        )
+        
         scope.launch {
-            try {
-                supabase.postgrest["user_progress"].update({ set("state", 0); set("updated_at", now) }) { filter { eq("id", progress.id) } }
-            } catch (e: Exception) { println("取消暂停同步失败: ${e.message}") }
+            try { syncManager.processOutbox() } catch (e: Exception) { Log.e("StudyRepository", "取消暂停同步失败: ${e.message}") }
         }
     }
 
     override suspend fun buryItem(itemId: Long, itemType: String, epochDay: Long) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
-        val now = com.jian.nemo2.core.common.util.DateTimeUtils.getCurrentCompensatedMillis().toString()
+        val now = Clock.System.now().toString()
         val buriedUntil = epochDay + 1
+        
+        // [Optimistic Update]
         userProgressDao.insert(progress.copy(buriedUntil = buriedUntil, updatedAt = now))
+        
+        // [Atomic Sync]
+        syncOutboxDao.insert(
+            SyncOutboxEntity(
+                itemId = itemId,
+                itemType = itemType,
+                rating = 0,
+                actionType = "BURY",
+                payload = buriedUntil.toString(),
+                createdAt = now
+            )
+        )
+        
         scope.launch {
-            try {
-                supabase.postgrest["user_progress"].update({ set("buried_until", buriedUntil); set("updated_at", now) }) { filter { eq("id", progress.id) } }
-            } catch (e: Exception) { println("Bury 同步失败: ${e.message}") }
+            try { syncManager.processOutbox() } catch (e: Exception) { Log.e("StudyRepository", "Bury 同步失败: ${e.message}") }
         }
     }
 
@@ -160,11 +207,24 @@ class StudyRepositoryImpl @Inject constructor(
     override suspend fun toggleFavorite(itemId: Long, itemType: String, isFavorite: Boolean) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
         val now = Clock.System.now().toString()
+        
+        // [Optimistic Update]
         userProgressDao.updateFavoriteStatus(itemId, itemType, isFavorite, now)
+        
+        // [Atomic Sync]
+        syncOutboxDao.insert(
+            SyncOutboxEntity(
+                itemId = itemId,
+                itemType = itemType,
+                rating = 0,
+                actionType = "FAVORITE",
+                payload = isFavorite.toString(),
+                createdAt = now
+            )
+        )
+        
         scope.launch {
-            try {
-                supabase.postgrest["user_progress"].update({ set("is_favorite", isFavorite); set("updated_at", now) }) { filter { eq("id", progress.id) } }
-            } catch (e: Exception) { println("收藏状态同步失败: ${e.message}") }
+            try { syncManager.processOutbox() } catch (e: Exception) { Log.e("StudyRepository", "收藏状态同步失败: ${e.message}") }
         }
     }
 

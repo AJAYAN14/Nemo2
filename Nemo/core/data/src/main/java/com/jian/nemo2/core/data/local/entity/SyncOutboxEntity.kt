@@ -19,8 +19,15 @@ data class SyncOutboxEntity(
     @ColumnInfo(name = "item_type")
     val itemType: String,
 
-    /** 用户评分 (1:Again, 2:Hard, 3:Good, 4:Easy) */
+    /** 用户评分 (1:Again, 2:Hard, 3:Good, 4:Easy)，非 REVIEW 操作可设为 0 */
     val rating: Int,
+
+    /** 操作类型: REVIEW, SUSPEND, UNSUSPEND, BURY, FAVORITE */
+    @ColumnInfo(name = "action_type")
+    val actionType: String = "REVIEW",
+
+    /** 附加数据 (JSON)，如 buryItem 的 epochDay 或 favorite 的布尔值 */
+    val payload: String? = null,
 
     /** 操作发生的时间戳 (ISO String) */
     @ColumnInfo(name = "created_at")

@@ -281,8 +281,8 @@ export const studyService = {
     const config = await settingsService.getStudyConfig();
 
     const effectiveResetHour = resetHour ?? 4;
-    // WEB EXCELLENCE: Lenient buffer (12 hours) to ensure daily tasks are never hidden by clock drift.
-    const nowWithBuffer = new Date(Date.now() + 12 * 3600000).toISOString();
+    // WEB EXCELLENCE: Aligned with Android (1-minute buffer) to maintain strict SRS accuracy while accommodating clock drift.
+    const nowWithBuffer = new Date(Date.now() + 60000).toISOString();
     const currentEpochDay = this.getLearningDay(new Date(), effectiveResetHour);
 
     const fetchByType = async (targetType: ItemType, targetLevel: string) => {
@@ -541,7 +541,8 @@ export const studyService = {
     const { error } = await supabase
       .from('user_progress')
       .update({
-        state: -1
+        state: -1,
+        updated_at: new Date().toISOString()
       })
       .eq('id', progressId);
 
@@ -549,7 +550,9 @@ export const studyService = {
   },
 
   /**
-   * Restore a suspended item (make it New again)
+   * Restore a suspended item (Resets it to New state).
+   * Web Excellence: This is a destructive operation that clears SRS stats 
+   * (stability, difficulty, reps) to ensure a clean slate for the re-learned item.
    */
   async restoreItem(progressId: string): Promise<void> {
     const { error } = await supabase
@@ -561,7 +564,8 @@ export const studyService = {
         stability: 0,
         difficulty: 0,
         last_review: null,
-        next_review: new Date().toISOString()
+        next_review: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .eq('id', progressId);
 
@@ -577,7 +581,8 @@ export const studyService = {
     const { error } = await supabase
       .from('user_progress')
       .update({
-        buried_until: buriedUntilDay
+        buried_until: buriedUntilDay,
+        updated_at: new Date().toISOString()
       })
       .eq('id', progressId);
 

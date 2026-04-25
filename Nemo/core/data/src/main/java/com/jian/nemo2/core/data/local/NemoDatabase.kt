@@ -27,7 +27,7 @@ import com.jian.nemo2.core.data.local.entity.*
         FavoriteQuestionEntity::class,
         GrammarQuestionEntity::class
     ],
-    version = 24,
+    version = 25,
     exportSchema = true
 )
 @androidx.room.TypeConverters(com.jian.nemo2.core.data.local.util.RoomConverters::class)

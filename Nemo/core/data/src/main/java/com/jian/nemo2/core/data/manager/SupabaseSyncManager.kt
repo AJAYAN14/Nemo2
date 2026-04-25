@@ -286,40 +286,84 @@ class SupabaseSyncManager @Inject constructor(
                 // 计算学习日 (对齐 Web 逻辑)
                 val epochDay = DateTimeUtils.getLearningDay(resetHour).toInt()
 
-                // 自动判断学习/复习字段
-                val studyField = if (progress.reps == 1) {
-                    if (task.itemType == "word") "learned_words" else "learned_grammars"
-                } else {
-                    if (task.itemType == "word") "reviewed_words" else "reviewed_grammars"
-                }
+                when (task.actionType) {
+                    "REVIEW" -> {
+                        // 自动判断学习/复习字段
+                        val studyField = if (progress.reps == 1) {
+                            if (task.itemType == "word") "learned_words" else "learned_grammars"
+                        } else {
+                            if (task.itemType == "word") "reviewed_words" else "reviewed_grammars"
+                        }
 
-                @Serializable
-                data class ReviewParams(
-                    val p_user_id: String,
-                    val p_progress_id: String,
-                    val p_rating: Int,
-                    val p_request_id: String,
-                    val p_epoch_day: Int,
-                    val p_study_field: String,
-                    val p_expected_last_review: String?
-                )
+                        @Serializable
+                        data class ReviewParams(
+                            val p_user_id: String,
+                            val p_progress_id: String,
+                            val p_rating: Int,
+                            val p_request_id: String,
+                            val p_epoch_day: Int,
+                            val p_study_field: String,
+                            val p_expected_last_review: String?
+                        )
 
-                val params = ReviewParams(
-                    p_user_id = userId,
-                    p_progress_id = progress.id,
-                    p_rating = task.rating,
-                    p_request_id = "android-${task.id}-${System.currentTimeMillis()}", // 增加时间戳防止请求 ID 碰撞
-                    p_epoch_day = epochDay,
-                    p_study_field = studyField,
-                    p_expected_last_review = task.expectedLastReview
-                )
+                        val params = ReviewParams(
+                            p_user_id = userId,
+                            p_progress_id = progress.id,
+                            p_rating = task.rating,
+                            p_request_id = "android-${task.id}-${System.currentTimeMillis()}", 
+                            p_epoch_day = epochDay,
+                            p_study_field = studyField,
+                            p_expected_last_review = task.expectedLastReview
+                        )
 
-                Log.d(TAG, "执行原子评分 RPC: ${task.itemId} (Rating=${task.rating})")
-                val result = supabaseClient.postgrest.rpc("fn_process_review_atomic_v3", params).decodeSingleOrNull<UserProgressEntity>()
+                        Log.d(TAG, "执行原子评分 RPC: ${task.itemId} (Rating=${task.rating})")
+                        val result = supabaseClient.postgrest.rpc("fn_process_review_atomic_v3", params).decodeSingleOrNull<UserProgressEntity>()
 
-                if (result != null) {
-                    userProgressDao.insert(result)
-                    Log.i(TAG, "评分上传成功: ${task.itemId}")
+                        if (result != null) {
+                            userProgressDao.insert(result)
+                            Log.i(TAG, "评分上传成功: ${task.itemId}")
+                        }
+                    }
+                    "SUSPEND" -> {
+                        supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                            .update({ set("state", -1); set("updated_at", task.createdAt) }) {
+                                filter { eq("id", progress.id) }
+                            }
+                        Log.i(TAG, "暂停状态上传成功: ${task.itemId}")
+                    }
+                    "UNSUSPEND" -> {
+                        // 取消暂停逻辑：重置为 New 状态 (state=0, stats=0)
+                        supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                            .update({
+                                set("state", 0)
+                                set("stability", 0.0)
+                                set("difficulty", 0.0)
+                                set("reps", 0)
+                                set("lapses", 0)
+                                set("last_review", null as String?)
+                                set("next_review", task.createdAt)
+                                set("updated_at", task.createdAt)
+                            }) {
+                                filter { eq("id", progress.id) }
+                            }
+                        Log.i(TAG, "取消暂停(重置)上传成功: ${task.itemId}")
+                    }
+                    "BURY" -> {
+                        val buriedUntil = task.payload?.toLongOrNull() ?: (epochDay + 1).toLong()
+                        supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                            .update({ set("buried_until", buriedUntil); set("updated_at", task.createdAt) }) {
+                                filter { eq("id", progress.id) }
+                            }
+                        Log.i(TAG, "Bury 状态上传成功: ${task.itemId}")
+                    }
+                    "FAVORITE" -> {
+                        val isFavorite = task.payload?.toBoolean() ?: false
+                        supabaseClient.postgrest[TABLE_USER_PROGRESS]
+                            .update({ set("is_favorite", isFavorite); set("updated_at", task.createdAt) }) {
+                                filter { eq("id", progress.id) }
+                            }
+                        Log.i(TAG, "收藏状态上传成功: ${task.itemId}")
+                    }
                 }
                 syncOutboxDao.deleteById(task.id)
             } catch (e: Exception) {
