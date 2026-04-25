@@ -22,7 +22,7 @@ data class SyncOutboxEntity(
     /** 用户评分 (1:Again, 2:Hard, 3:Good, 4:Easy)，非 REVIEW 操作可设为 0 */
     val rating: Int,
 
-    /** 操作类型: REVIEW, SUSPEND, UNSUSPEND, BURY, FAVORITE */
+    /** 操作类型: REVIEW, SUSPEND, UNSUSPEND, BURY, FAVORITE, UNDO */
     @ColumnInfo(name = "action_type")
     val actionType: String = "REVIEW",
 
@@ -36,6 +36,10 @@ data class SyncOutboxEntity(
     /** 用户操作时的预期 last_review 时间戳 (用于解决 STALE_DATA_CONFLICT) */
     @ColumnInfo(name = "expected_last_review")
     val expectedLastReview: String? = null,
+
+    /** 关联的请求ID (用于撤销) */
+    @ColumnInfo(name = "request_id")
+    val requestId: String? = null,
 
     /** 是否正在同步中 */
     @ColumnInfo(name = "is_syncing")

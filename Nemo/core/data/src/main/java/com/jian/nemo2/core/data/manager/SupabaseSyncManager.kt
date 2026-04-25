@@ -310,7 +310,7 @@ class SupabaseSyncManager @Inject constructor(
                             p_user_id = userId,
                             p_progress_id = progress.id,
                             p_rating = task.rating,
-                            p_request_id = "android-${task.id}-${System.currentTimeMillis()}", 
+                            p_request_id = task.requestId ?: "android-${task.id}-${System.currentTimeMillis()}", 
                             p_epoch_day = epochDay,
                             p_study_field = studyField,
                             p_expected_last_review = task.expectedLastReview
@@ -370,6 +370,65 @@ class SupabaseSyncManager @Inject constructor(
                                 filter { eq("id", progress.id) }
                             }
                         Log.i(TAG, "收藏状态上传成功: ${task.itemId}")
+                    }
+                    "UNDO" -> {
+                        val payloadJson = task.payload
+                        if (payloadJson != null) {
+                            val payload = json.decodeFromString<com.jian.nemo2.core.domain.model.sync.UndoPayload>(payloadJson)
+                            
+                            @Serializable
+                            data class UndoParams(
+                                val p_user_id: String,
+                                val p_progress_id: String,
+                                val p_epoch_day: Int,
+                                val p_field: String?,
+                                val p_stability: Double,
+                                val p_difficulty: Double,
+                                val p_reps: Int,
+                                val p_lapses: Int,
+                                val p_state: Int,
+                                val p_learning_step: Int,
+                                val p_last_review: String?,
+                                val p_next_review: String,
+                                val p_elapsed_days: Int,
+                                val p_scheduled_days: Int,
+                                val p_buried_until: Long,
+                                val p_item_type: String,
+                                val p_item_id: Long,
+                                val p_rating: Int?,
+                                val p_request_id: String?,
+                                val p_expected_last_review: String?
+                            )
+
+                            val params = UndoParams(
+                                p_user_id = userId,
+                                p_progress_id = progress.id,
+                                p_epoch_day = epochDay,
+                                p_field = payload.studyField,
+                                p_stability = payload.stability,
+                                p_difficulty = payload.difficulty,
+                                p_reps = payload.reps,
+                                p_lapses = payload.lapses,
+                                p_state = payload.state,
+                                p_learning_step = payload.learningStep,
+                                p_last_review = payload.lastReview,
+                                p_next_review = payload.nextReview,
+                                p_elapsed_days = payload.elapsedDays,
+                                p_scheduled_days = payload.scheduledDays,
+                                p_buried_until = payload.buriedUntil,
+                                p_item_type = task.itemType,
+                                p_item_id = task.itemId,
+                                p_rating = null, // We don't necessarily know the rating that was undone, RPC can handle null
+                                p_request_id = payload.requestId,
+                                p_expected_last_review = task.expectedLastReview
+                            )
+
+                            Log.d(TAG, "执行原子撤销 RPC: ${task.itemId} (RequestId=${payload.requestId})")
+                            supabaseClient.postgrest.rpc("fn_undo_review_atomic_v2", params)
+                            Log.i(TAG, "撤销操作上传成功: ${task.itemId}")
+                        } else {
+                            Log.w(TAG, "UNDO 任务缺少 payload: ${task.itemId}")
+                        }
                     }
                 }
                 syncOutboxDao.deleteById(task.id)

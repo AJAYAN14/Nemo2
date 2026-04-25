@@ -828,9 +828,20 @@ class LearningViewModel @Inject constructor(
     /**
      * 保存撤销快照
      */
-    private fun saveUndoSnapshot() {
+    private suspend fun saveUndoSnapshot(requestId: String) {
         val state = _uiState.value
         val currentItem = getCurrentItem() ?: return
+        
+        val itemType = if (currentItem is LearningItem.WordItem) "word" else "grammar"
+        val progress = studyRepository.getProgressSync(currentItem.id, itemType)
+        
+        val studyField = progress?.let {
+            if (it.reps <= 1) {
+                if (itemType == "word") "learned_words" else "learned_grammars"
+            } else {
+                if (itemType == "word") "reviewed_words" else "reviewed_grammars"
+            }
+        }
 
         val snapshot = UndoSnapshot(
             item = currentItem,
@@ -847,6 +858,9 @@ class LearningViewModel @Inject constructor(
             completedToday = state.completedToday,
             completedThisSession = state.completedThisSession,
             sessionProcessedCount = state.sessionProcessedCount,
+            requestId = requestId,
+            lastReview = progress?.lastReview,
+            studyField = studyField,
             wasNew = currentItem.isNew
         )
 
@@ -881,24 +895,36 @@ class LearningViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(status = LearningStatus.Processing) }
 
-                // 恢复数据库状态
-                when (snapshot.item) {
-                    is LearningItem.WordItem -> {
-                        snapshot.originalWord?.let { updateWordUseCase(it) }
-                        if (snapshot.wasNew) {
-                            studyRecordRepository.incrementLearnedWords(-1)
-                        } else {
-                            studyRecordRepository.incrementReviewedWords(-1)
-                        }
-                    }
-                    is LearningItem.GrammarItem -> {
-                        snapshot.originalGrammar?.let { updateGrammarUseCase(it) }
-                        if (snapshot.wasNew) {
-                            studyRecordRepository.incrementLearnedGrammars(-1)
-                        } else {
-                            studyRecordRepository.incrementReviewedGrammars(-1)
-                        }
-                    }
+                val itemType = if (snapshot.item is LearningItem.WordItem) "word" else "grammar"
+                val srsItem = if (snapshot.item is LearningItem.WordItem) snapshot.originalWord else snapshot.originalGrammar
+                
+                if (srsItem != null && snapshot.requestId != null) {
+                    val payload = com.jian.nemo2.core.domain.model.sync.UndoPayload(
+                        requestId = snapshot.requestId,
+                        lastReview = snapshot.lastReview,
+                        studyField = snapshot.studyField,
+                        stability = srsItem.stability,
+                        difficulty = srsItem.difficulty,
+                        reps = srsItem.repetitionCount,
+                        lapses = srsItem.lapses,
+                        state = srsItem.state,
+                        learningStep = _learningSteps[snapshot.item.id] ?: 0,
+                        nextReview = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis()), // A fallback, though RPC replaces this based on old state
+                        elapsedDays = 0,
+                        scheduledDays = srsItem.interval,
+                        buriedUntil = 0L // Fallback
+                    )
+                    
+                    // We need to fetch exact old values for nextReview, elapsedDays, buriedUntil 
+                    // from the old Word/Grammar object if possible, but actually we can reconstruct 
+                    // most from SrsItem.
+                    val oldNextReview = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(
+                        (srsItem.nextReviewDate * 24 * 60 * 60 * 1000L)
+                    )
+                    
+                    val updatedPayload = payload.copy(nextReview = oldNextReview)
+
+                    studyRepository.undoReview(updatedPayload, snapshot.item.id, itemType)
                 }
 
                 // 恢复 ViewModel 内部状态
@@ -965,8 +991,9 @@ class LearningViewModel @Inject constructor(
 
         ratingJob?.cancel()
         ratingJob = viewModelScope.launch {
+            val requestId = java.util.UUID.randomUUID().toString()
             // 保存撤销快照
-            saveUndoSnapshot()
+            saveUndoSnapshot(requestId)
 
             _uiState.update { it.copy(status = LearningStatus.Processing) }
 
@@ -985,7 +1012,7 @@ class LearningViewModel @Inject constructor(
                     quality == 5 -> {
                         println("熟词速通: ${currentItem.displayName}")
                         _learningSteps.remove(currentItem.id)
-                        studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", 4)
+                        studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", 4, requestId)
                         handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                     }
 
@@ -1005,7 +1032,7 @@ class LearningViewModel @Inject constructor(
                                 currentLapseCount,
                                 config
                             )
-                            handleScheduleResult(result)
+                            handleScheduleResult(result, requestId)
                         }
 
                     // 掌握 (评分 3-4)
@@ -1019,9 +1046,9 @@ class LearningViewModel @Inject constructor(
                                 if (isNew && currentStep == null) -1 else (currentStep ?: 0),
                                 config
                             )
-                            handleScheduleResult(result)
+                            handleScheduleResult(result, requestId)
                         } else {
-                            studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", quality)
+                            studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", quality, requestId)
                             handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                         }
                     }
@@ -1099,7 +1126,7 @@ class LearningViewModel @Inject constructor(
      * 不需要再次乘以 EF。
      * 但我们会应用轻微的 Fuzzing (模糊) 以防止复习尖峰。
      */
-    private suspend fun processRelearningGraduation(item: LearningItem) {
+    private suspend fun processRelearningGraduation(item: LearningItem, requestId: String) {
         val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
         val isNew = item.isNew
 
@@ -1119,6 +1146,7 @@ class LearningViewModel @Inject constructor(
                 )
                 println("重学毕业: id=${updatedWord.id}, stability=${updatedWord.stability}, next_interval=${updatedWord.interval}d")
                 val result = updateWordUseCase(updatedWord)
+                studyRepository.processReview(item.id, "word", 4, requestId)
                 handleSrsUpdateResult(result, isNew, isLapse = false)
             }
             is LearningItem.GrammarItem -> {
@@ -1134,6 +1162,7 @@ class LearningViewModel @Inject constructor(
                 )
                 println("重学毕业: id=${updatedGrammar.id}, stability=${updatedGrammar.stability}, next_interval=${updatedGrammar.interval}d")
                 val result = updateGrammarUseCase(updatedGrammar)
+                studyRepository.processReview(item.id, "grammar", 4, requestId)
                 handleSrsUpdateResult(result, isNew, isLapse = false)
             }
         }
@@ -1142,7 +1171,7 @@ class LearningViewModel @Inject constructor(
     /**
      * 处理调度结果
      */
-    private suspend fun handleScheduleResult(result: ScheduleResult) {
+    private suspend fun handleScheduleResult(result: ScheduleResult, requestId: String) {
         when (result) {
             is ScheduleResult.Leech -> handleLeech(result.item, result.totalLapses)
             is ScheduleResult.Graduate -> {
@@ -1152,10 +1181,10 @@ class LearningViewModel @Inject constructor(
                 // 区分: 新卡毕业 vs 重学毕业 (Re-learning Graduation)
                 // 重学毕业时，不应再次乘以 EF (因为 Lapse 时已经重置了间隔)，只需恢复到复习队列
                 if (!result.item.isNew && result.quality < 5) {
-                    processRelearningGraduation(result.item)
+                    processRelearningGraduation(result.item, requestId)
                 } else {
                     val finalQuality = if (result.quality == 5) 4 else result.quality
-                    studyRepository.processReview(result.item.id, if (result.item is LearningItem.WordItem) "word" else "grammar", finalQuality)
+                    studyRepository.processReview(result.item.id, if (result.item is LearningItem.WordItem) "word" else "grammar", finalQuality, requestId)
                     handleSrsUpdateResult(Result.Success(Unit), result.item.isNew, isLapse = false)
                 }
             }

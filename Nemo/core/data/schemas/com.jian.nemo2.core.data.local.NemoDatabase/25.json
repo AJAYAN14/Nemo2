@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 25,
-    "identityHash": "7deacc960061812a546aea47601dbc2a",
+    "identityHash": "080f5e55ff93893b366255932b7d3ad2",
     "entities": [
       {
         "tableName": "words",
@@ -1026,7 +1026,7 @@
       },
       {
         "tableName": "sync_outbox",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `item_id` INTEGER NOT NULL, `item_type` TEXT NOT NULL, `rating` INTEGER NOT NULL, `action_type` TEXT NOT NULL, `payload` TEXT, `created_at` TEXT NOT NULL, `expected_last_review` TEXT, `is_syncing` INTEGER NOT NULL, `attempts` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `item_id` INTEGER NOT NULL, `item_type` TEXT NOT NULL, `rating` INTEGER NOT NULL, `action_type` TEXT NOT NULL, `payload` TEXT, `created_at` TEXT NOT NULL, `expected_last_review` TEXT, `request_id` TEXT, `is_syncing` INTEGER NOT NULL, `attempts` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -1073,6 +1073,12 @@
           {
             "fieldPath": "expectedLastReview",
             "columnName": "expected_last_review",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "requestId",
+            "columnName": "request_id",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -1232,7 +1238,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7deacc960061812a546aea47601dbc2a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '080f5e55ff93893b366255932b7d3ad2')"
     ]
   }
 }

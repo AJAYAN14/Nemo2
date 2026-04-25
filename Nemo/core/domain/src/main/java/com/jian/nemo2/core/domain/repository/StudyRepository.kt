@@ -14,6 +14,11 @@ interface StudyRepository {
     fun getDueItemsFlow(): Flow<List<UserProgress>>
 
     /**
+     * 同步获取单个进度记录
+     */
+    suspend fun getProgressSync(itemId: Long, itemType: String): UserProgress?
+
+    /**
      * 数据更新信号 (当 Realtime 或同步导致本地数据变动时触发)
      */
     fun observeProgressByItemIds(itemIds: List<Long>, itemType: String): Flow<List<UserProgress>>
@@ -23,8 +28,17 @@ interface StudyRepository {
      * @param itemId 单词或语法 ID
      * @param itemType 'word' | 'grammar'
      * @param rating 1:Again, 2:Hard, 3:Good, 4:Easy
+     * @param requestId 本次评分的唯一ID（用于后续可能的撤销操作）
      */
-    suspend fun processReview(itemId: Long, itemType: String, rating: Int)
+    suspend fun processReview(itemId: Long, itemType: String, rating: Int, requestId: String? = null)
+
+    /**
+     * 撤销评分操作
+     * @param payload 撤销所需的状态数据
+     * @param itemId 单词或语法 ID
+     * @param itemType 'word' | 'grammar'
+     */
+    suspend fun undoReview(payload: com.jian.nemo2.core.domain.model.sync.UndoPayload, itemId: Long, itemType: String)
 
     /**
      * 开始实时监听云端变更

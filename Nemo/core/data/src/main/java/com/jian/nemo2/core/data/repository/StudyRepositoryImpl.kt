@@ -26,6 +26,8 @@ import android.util.Log
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.days
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 @Singleton
 class StudyRepositoryImpl @Inject constructor(
@@ -41,6 +43,10 @@ class StudyRepositoryImpl @Inject constructor(
     override fun observeProgressByItemIds(itemIds: List<Long>, itemType: String): Flow<List<UserProgress>> {
         return userProgressDao.getProgressByItemIdsFlow(itemIds, itemType)
             .map { list -> list.map { it.toDomain() } }
+    }
+
+    override suspend fun getProgressSync(itemId: Long, itemType: String): UserProgress? {
+        return userProgressDao.getByItem(itemType, itemId)?.toDomain()
     }
 
     init {
@@ -67,7 +73,7 @@ class StudyRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun processReview(itemId: Long, itemType: String, rating: Int) {
+    override suspend fun processReview(itemId: Long, itemType: String, rating: Int, requestId: String?) {
         val progress = userProgressDao.getByItem(itemType, itemId) ?: return
         val oldLastReview = progress.lastReview
         val now = Clock.System.now()
@@ -89,7 +95,8 @@ class StudyRepositoryImpl @Inject constructor(
                 itemType = itemType,
                 rating = rating,
                 createdAt = now.toString(),
-                expectedLastReview = oldLastReview
+                expectedLastReview = oldLastReview,
+                requestId = requestId
             )
         )
 
@@ -99,6 +106,73 @@ class StudyRepositoryImpl @Inject constructor(
                 syncManager.processOutbox()
             } catch (e: Exception) {
                 Log.e("StudyRepository", "即时同步评分失败，任务已在队列中: ${e.message}")
+            }
+        }
+    }
+
+    override suspend fun undoReview(payload: com.jian.nemo2.core.domain.model.sync.UndoPayload, itemId: Long, itemType: String) {
+        val now = Clock.System.now().toString()
+        
+        // [Optimistic Update] 立即在本地还原状态
+        val restoredProgress = UserProgress(
+            id = "", // Dao doesn't strictly need ID if updating by itemType and itemId, but wait, Room needs the primary key `id` for REPLACE.
+            userId = "", // Let's just fetch the existing one to get its DB ID
+            itemType = itemType,
+            itemId = itemId,
+            stability = payload.stability,
+            difficulty = payload.difficulty,
+            reps = payload.reps,
+            lapses = payload.lapses,
+            state = payload.state,
+            learningStep = payload.learningStep,
+            lastReview = payload.lastReview,
+            nextReview = payload.nextReview,
+            elapsedDays = payload.elapsedDays,
+            scheduledDays = payload.scheduledDays,
+            buriedUntil = payload.buriedUntil,
+            level = "",
+            createdAt = ""
+        )
+        // Since we need to preserve existing db ID and level, let's fetch current:
+        val existing = userProgressDao.getByItem(itemType, itemId)
+        if (existing != null) {
+            val updated = existing.copy(
+                stability = payload.stability,
+                difficulty = payload.difficulty,
+                reps = payload.reps,
+                lapses = payload.lapses,
+                state = payload.state,
+                learningStep = payload.learningStep,
+                lastReview = payload.lastReview,
+                nextReview = payload.nextReview,
+                elapsedDays = payload.elapsedDays,
+                scheduledDays = payload.scheduledDays,
+                buriedUntil = payload.buriedUntil,
+                updatedAt = now
+            )
+            userProgressDao.insert(updated)
+        }
+
+        // [Atomic Sync] 写入离线队列
+        val jsonPayload = Json.encodeToString(payload)
+        syncOutboxDao.insert(
+            SyncOutboxEntity(
+                itemId = itemId,
+                itemType = itemType,
+                rating = 0,
+                actionType = "UNDO",
+                payload = jsonPayload,
+                createdAt = now,
+                requestId = payload.requestId
+            )
+        )
+
+        // 立即触发后台上传
+        scope.launch {
+            try {
+                syncManager.processOutbox()
+            } catch (e: Exception) {
+                Log.e("StudyRepository", "撤销同步失败，任务已在队列中: ${e.message}")
             }
         }
     }

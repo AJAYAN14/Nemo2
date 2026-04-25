@@ -31,6 +31,11 @@ data class UndoSnapshot(
     val completedThisSession: Int,
     val sessionProcessedCount: Int,
 
+    // 元数据
+    val requestId: String? = null,
+    val lastReview: String? = null,
+    val studyField: String? = null,
+
     // 是否为新词（用于恢复统计）
     val wasNew: Boolean,
     val wasLeech: Boolean = false
