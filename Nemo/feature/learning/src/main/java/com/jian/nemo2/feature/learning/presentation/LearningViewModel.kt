@@ -1047,7 +1047,7 @@ class LearningViewModel @Inject constructor(
                             val result = learningScheduler.schedulePass(
                                 currentItem,
                                 quality,
-                                if (isNew && currentStep == null) -1 else (currentStep ?: 0),
+                                currentStep ?: 0,
                                 config
                             )
                             handleScheduleResult(result, requestId)
