@@ -14,11 +14,11 @@ interface SrsCalculator {
      * 计算 SRS 更新结果
      *
      * @param item 当前 SRS 项目状态（Word 或 Grammar）
-     * @param quality 回答质量 (0-5)
-     *   - 0-2: 忘记 → FSRS Again
-     *   - 3: 困难 → FSRS Hard
-     *   - 4: 良好 → FSRS Good
-     *   - 5: 简单 → FSRS Easy
+     * @param quality 回答质量 (1-4)
+     *   - 1: 重来 (Again)
+     *   - 2: 困难 (Hard)
+     *   - 3: 良好 (Good)
+     *   - 4: 简单 (Easy)
      * @param today 今天的 Epoch Day
      * @return SRS 更新后的状态（stability, difficulty, interval 等）
      */

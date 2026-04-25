@@ -39,9 +39,9 @@ class SrsIntervalPreview @Inject constructor(
         // Currently Learning: New Card OR Relearning Card
         val isLearning = isNew || currentStep != null
 
-        for (q in 0..5) {
+        for (q in 1..4) {
              // 1. Fail (Again): Show first relearning step (or learning step if new)
-             if (q < 3) {
+             if (q < 2) {
                  val firstStepMin = if (isNew) {
                      learningStepsConfig.firstOrNull() ?: 1
                  } else {
@@ -60,8 +60,8 @@ class SrsIntervalPreview @Inject constructor(
                  val config = if (isNew) learningStepsConfig else relearningStepsConfig
                  val stepIndex = currentStep ?: 0
 
-                 // Good (4) Logic:
-                 if (q == 4) {
+                 // Good (3) Logic:
+                 if (q == 3) {
                     if (stepIndex < config.size - 1) {
                         // Move to next step
                         val nextStepMin = config.getOrElse(stepIndex + 1) { 10 }
@@ -79,15 +79,15 @@ class SrsIntervalPreview @Inject constructor(
                         }
                         // 新卡毕业 -> Fall through to calculator
                     }
-                } else if (q == 3) {
-                     // Hard (3) Logic: Anki algorithm (average of first and second step if on first step)
+                } else if (q == 2) {
+                     // Hard (2) Logic: Anki algorithm (average of first and second step if on first step)
                      val delay = calculateHardDelayMin(stepIndex, config)
                      val isWhole = (delay % 1.0) == 0.0
                      val formatted = if (isWhole) delay.toInt().toString() else delay.toString()
                      intervals[q] = "${formatted}m"
                      continue
-                 } else if (q == 5) {
-                     // Easy (5): Instant Graduate
+                 } else if (q == 4) {
+                     // Easy (4): Instant Graduate
                      // Fall through to calculator
                  }
              }

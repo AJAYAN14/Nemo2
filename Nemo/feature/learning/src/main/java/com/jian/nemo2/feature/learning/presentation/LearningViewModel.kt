@@ -1010,37 +1010,36 @@ class LearningViewModel @Inject constructor(
                 // [Native Mirror] 无论什么评分，都必须提交给服务端！
                 // 本地只进行快速的界面和缓存预测（Offline Compensation）
                 val itemType = if (currentItem is LearningItem.WordItem) "word" else "grammar"
-                val finalQuality = if (quality == 5) 4 else quality
-                studyRepository.processReview(currentItem.id, itemType, finalQuality, requestId)
+                studyRepository.processReview(currentItem.id, itemType, quality, requestId)
 
                 when {
-                    // 熟词速通 (评分 = 5)
-                    quality == 5 -> {
+                    // 熟词速通 (评分 = 4)
+                    quality == 4 -> {
                         println("熟词速通: ${currentItem.displayName}")
                         _learningSteps.remove(currentItem.id)
                         handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                     }
 
-                        // 忘记 (评分 < 3)
-                        quality < 3 -> {
-                            // 1. 先应用惩罚 (更新数据库中的 Interval/EF)，确保下次毕业时基于惩罚后的值计算
-                            val penalizedItem = applyLapsePenalty(currentItem, quality) ?: currentItem
+                    // 忘记 (评分 < 2，即只有 Again=1 是失败)
+                    quality < 2 -> {
+                        // 1. 先应用惩罚 (更新数据库中的 Interval/EF)，确保下次毕业时基于惩罚后的值计算
+                        val penalizedItem = applyLapsePenalty(currentItem, quality) ?: currentItem
 
-                            // 2. 调度失败流程 (进入 Learning Queue)
-                            val currentLapseCount = _lapseCounts.value[currentItem.id] ?: 0
+                        // 2. 调度失败流程 (进入 Learning Queue)
+                        val currentLapseCount = _lapseCounts.value[currentItem.id] ?: 0
 
-                            // 新卡 Again 应该使用学习步长，复习卡 Again 使用重学步长
-                            val config = if (currentItem.isNew) _learningStepsConfig else _relearningStepsConfig
+                        // 新卡 Again 应该使用学习步长，复习卡 Again 使用重学步长
+                        val config = if (currentItem.isNew) _learningStepsConfig else _relearningStepsConfig
 
-                            val result = learningScheduler.scheduleFailure(
-                                penalizedItem, // 使用更新后的 item
-                                currentLapseCount,
-                                config
-                            )
-                            handleScheduleResult(result, requestId)
-                        }
+                        val result = learningScheduler.scheduleFailure(
+                            penalizedItem, // 使用更新后的 item
+                            currentLapseCount,
+                            config
+                        )
+                        handleScheduleResult(result, requestId)
+                    }
 
-                    // 掌握 (评分 3-4)
+                    // 掌握 (评分 2, 3, 4: Hard, Good, Easy)
                     else -> {
                         if (isLearning) {
                              // Use Relearning Config if it's NOT a New Card (i.e. has Repetitions)
@@ -1182,7 +1181,7 @@ class LearningViewModel @Inject constructor(
 
                 // 区分: 新卡毕业 vs 重学毕业 (Re-learning Graduation)
                 // 重学毕业时，不应再次乘以 EF (因为 Lapse 时已经重置了间隔)，只需恢复到复习队列
-                if (!result.item.isNew && result.quality < 5) {
+                if (!result.item.isNew && result.quality < 4) {
                     processRelearningGraduation(result.item, requestId)
                 } else {
                     handleSrsUpdateResult(Result.Success(Unit), result.item.isNew, isLapse = false)

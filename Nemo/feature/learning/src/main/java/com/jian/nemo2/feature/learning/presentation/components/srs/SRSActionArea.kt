@@ -192,41 +192,41 @@ fun SRSActionArea(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // 2. 困难 (Hard) - Quality 3
+                    // 2. 困难 (Hard) - Quality 2
                     SRSRatingButton(
                         label = "困难",
-                        time = ratingIntervals[3] ?: "-",
+                        time = ratingIntervals[2] ?: "-",
                         color = colorOrange600,
                         containerColor = colorOrange50,
                         onClick = {
                             SoundEffectPlayer.playOtherSound(context)
+                            onRate(2)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // 3. 良好 (Good) - Quality 3
+                    SRSRatingButton(
+                        label = "良好",
+                        time = ratingIntervals[3] ?: "-",
+                        color = colorBlue600,
+                        containerColor = colorBlue50,
+                        onClick = {
+                            SoundEffectPlayer.playGoodSound(context)
                             onRate(3)
                         },
                         modifier = Modifier.weight(1f)
                     )
 
-                    // 3. 良好 (Good) - Quality 4
-                    SRSRatingButton(
-                        label = "良好",
-                        time = ratingIntervals[4] ?: "-",
-                        color = colorBlue600,
-                        containerColor = colorBlue50,
-                        onClick = {
-                            SoundEffectPlayer.playGoodSound(context)
-                            onRate(4)
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // 4. 简单 (Easy) - Quality 5
+                    // 4. 简单 (Easy) - Quality 4
                     SRSRatingButton(
                         label = "简单",
-                        time = ratingIntervals[5] ?: "-",
+                        time = ratingIntervals[4] ?: "-",
                         color = colorEmerald600,
                         containerColor = colorEmerald50,
                         onClick = {
                             SoundEffectPlayer.playGoodSound(context)
-                            onRate(5)
+                            onRate(4)
                         },
                         modifier = Modifier.weight(1f)
                     )

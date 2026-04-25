@@ -50,10 +50,7 @@ class LearningScheduler @Inject constructor() {
     }
 
     /**
-     * 处理失败 (评分 < 3)
-     */
-    /**
-     * 处理失败 (评分 < 3)
+     * 处理失败 (评分 < 2)
      */
     fun scheduleFailure(
         item: LearningItem,
@@ -88,7 +85,7 @@ class LearningScheduler @Inject constructor() {
     }
 
     /**
-     * 处理通过 (评分 >= 3)
+     * 处理通过 (评分 >= 2)
      */
     fun schedulePass(
         item: LearningItem,
@@ -96,8 +93,8 @@ class LearningScheduler @Inject constructor() {
         currentStep: Int,
         stepConfig: List<Int>
     ): ScheduleResult {
-        // Hard (3): 保持当前 Step，如果是第一步则取前两步的均值，否则使用当前 Step 的时间
-        if (quality == 3) {
+        // Hard (2): 保持当前 Step，如果是第一步则取前两步的均值，否则使用当前 Step 的时间
+        if (quality == 2) {
             val delayMins = calculateHardDelayMin(currentStep, stepConfig)
             val dueTime = System.currentTimeMillis() + (delayMins * 60 * 1000.0).toLong()
 
@@ -114,15 +111,8 @@ class LearningScheduler @Inject constructor() {
             )
         }
 
-        // 如果是 Good (4)，判断是否还有下一步或是否尚未完成第一步
-        // currentStep 0 对应第一步，所以如果 currentStep < stepConfig.size，说明当前这一步还没走完（如果是第一次见）
-        // 在 Anki 中，点击 Good 会移动到下一个 Step。
-        // 如果是从外部传入的 currentStep，我们需要准确判断。
-
-        // 我们引入一个逻辑：如果当前处于 step N，且 N < stepConfig.size，
-        // 则点击 Good 应该尝试进入 step N + 1。
-        // 如果 N + 1 >= stepConfig.size，则毕业。
-        if (quality == 4) {
+        // 如果是 Good (3)，尝试进入下一个 Step
+        if (quality == 3) {
             val nextStep = currentStep + 1
             if (nextStep < stepConfig.size) {
                 val nextStepMin = stepConfig.getOrElse(nextStep) { 10 }
@@ -143,8 +133,8 @@ class LearningScheduler @Inject constructor() {
         }
 
         // 毕业 (Graduate):
-        // 1. 评分是 Easy (5)
-        // 2. 评分是 Good (4) 且已经是最后一个台阶
+        // 1. 评分是 Easy (4)
+        // 2. 评分是 Good (3) 且已经是最后一个台阶
         return ScheduleResult.Graduate(item, quality)
     }
 

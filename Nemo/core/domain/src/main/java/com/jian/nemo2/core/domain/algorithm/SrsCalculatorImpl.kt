@@ -15,11 +15,11 @@ import javax.inject.Singleton
  * 基于 FSRS 6.0 的 SRS 计算器实现
  * 遵循 rules.md: 3.D Algorithm Precision
  *
- * 评分映射 (Nemo 0-5 → FSRS 1-4):
- * - quality 0-2 → Again (1)
- * - quality 3   → Hard (2)
- * - quality 4   → Good (3)
- * - quality 5   → Easy (4)
+ * 评分映射 (1-4):
+ * - 1: Again
+ * - 2: Hard
+ * - 3: Good
+ * - 4: Easy
  */
 @Singleton
 class SrsCalculatorImpl @Inject constructor(
@@ -57,12 +57,12 @@ class SrsCalculatorImpl @Inject constructor(
         quality: Int,
         today: Long
     ): SrsUpdateResult {
-        require(quality in 0..5) {
-            "Quality must be between 0 and 5, got $quality"
+        require(quality in 1..4) {
+            "Quality must be between 1 and 4, got $quality"
         }
 
-        // 1. 映射评分 (0-2 -> 1, 3 -> 2, 4 -> 3, 5 -> 4)
-        val rating = mapQualityToRating(quality)
+        // 1. 直接使用评分 (1-4)
+        val rating = quality
 
         // 2. 构建当前记忆状态
         val currentState = if (item.stability > 0.0 && item.repetitionCount > 0) {
@@ -84,10 +84,10 @@ class SrsCalculatorImpl @Inject constructor(
         // 5. 计算新间隔 (带 Fuzz)
         // 5. 更新次数和间隔 (Logic Authority: 对齐 Supabase RPC)
         val newRepetitionCount = item.repetitionCount + 1
-        val newLapses = if (quality < 3) item.lapses + 1 else item.lapses
+        val newLapses = if (quality < 2) item.lapses + 1 else item.lapses
 
         val newInterval: Int
-        if (quality < 3) {
+        if (quality < 2) {
             newInterval = 1 // 失败后强制复习
         } else {
             // [Fuzz Seed] 使用更新前的次数 (v_current.reps) 对齐服务端
@@ -117,14 +117,7 @@ class SrsCalculatorImpl @Inject constructor(
         )
     }
 
-    private fun mapQualityToRating(quality: Int): Int {
-        return when {
-            quality < 3 -> 1 // Again
-            quality == 3 -> 2 // Hard
-            quality == 4 -> 3 // Good
-            else -> 4 // Easy
-        }
-    }
+    private fun mapQualityToRating(quality: Int): Int = quality
 
     private fun buildFuzzSeed(item: SrsItem, repetitions: Int): Long {
         // [Logic Parity] 对齐 Web/Server 的 buildFsrsDeterministicSeed
