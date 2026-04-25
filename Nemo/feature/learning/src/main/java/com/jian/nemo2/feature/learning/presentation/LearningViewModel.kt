@@ -679,7 +679,7 @@ class LearningViewModel @Inject constructor(
                         waitingUntil = result.waitingUntil
                     )
                     val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
-                val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word, today)
+                    val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word, today)
                     base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                 }
                 armShowAnswerDelay()
@@ -718,7 +718,8 @@ class LearningViewModel @Inject constructor(
                         sessionProcessedCount = 0,
                         waitingUntil = 0L
                     )
-                    val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word)
+                    val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                    val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word, today)
                     base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                 }
                 armShowAnswerDelay()
@@ -1287,7 +1288,8 @@ class LearningViewModel @Inject constructor(
                     }
                     _uiState.update {
                         val base = it.copy(wordList = newList)
-                        val (newC, relearnC, reviewC) = calculateCounts(newList, true)
+                        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                        val (newC, relearnC, reviewC) = calculateCounts(newList, true, today)
                         base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                     }
                 }
@@ -1299,7 +1301,8 @@ class LearningViewModel @Inject constructor(
                     }
                     _uiState.update {
                         val base = it.copy(grammarList = newList)
-                        val (newC, relearnC, reviewC) = calculateCounts(newList, false)
+                        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                        val (newC, relearnC, reviewC) = calculateCounts(newList, false, today)
                         base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                     }
                 }
@@ -1429,7 +1432,8 @@ class LearningViewModel @Inject constructor(
                         )
                     }
                     // Calculate categorized counts
-                    val (newC, relearnC, reviewC) = calculateCounts(newList, isWord)
+                    val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                    val (newC, relearnC, reviewC) = calculateCounts(newList, isWord, today)
                     base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                 }
                 // 保存当前进度位置，而非硬编码为 0
@@ -1469,7 +1473,8 @@ class LearningViewModel @Inject constructor(
                             slideDirection = SlideDirection.FORWARD
                         )
                         // Calculate categorized counts
-                        val (newC, relearnC, reviewC) = calculateCounts(newList, isWord)
+                        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                        val (newC, relearnC, reviewC) = calculateCounts(newList, isWord, today)
                         base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                     }
                     armShowAnswerDelay()
@@ -1488,8 +1493,8 @@ class LearningViewModel @Inject constructor(
                         dueTime = due
                     )
 
-                    _uiState.update {
-                        @Suppress("UNCHECKED_CAST")
+                        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                        val (newC, relearnC, reviewC) = calculateCounts(newList, false, today)
                         it.copy(
                             status = LearningStatus.Learning,
                             grammarList = newList as List<Grammar>,
@@ -1498,7 +1503,10 @@ class LearningViewModel @Inject constructor(
                             isAnswerShown = false,
                             isGrammarDetailVisible = false,
                             ratingIntervals = calculateRatingIntervals(nextItem),
-                            slideDirection = SlideDirection.FORWARD
+                            slideDirection = SlideDirection.FORWARD,
+                            newCount = newC,
+                            relearnCount = relearnC,
+                            reviewCount = reviewC
                         )
                     }
                     armShowAnswerDelay()
