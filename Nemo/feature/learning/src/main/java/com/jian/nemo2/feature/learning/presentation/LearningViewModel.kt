@@ -1007,12 +1007,17 @@ class LearningViewModel @Inject constructor(
                 val currentStep = _learningSteps[currentItem.id]
                 val isLearning = isNew || currentStep != null
 
+                // [Native Mirror] 无论什么评分，都必须提交给服务端！
+                // 本地只进行快速的界面和缓存预测（Offline Compensation）
+                val itemType = if (currentItem is LearningItem.WordItem) "word" else "grammar"
+                val finalQuality = if (quality == 5) 4 else quality
+                studyRepository.processReview(currentItem.id, itemType, finalQuality, requestId)
+
                 when {
                     // 熟词速通 (评分 = 5)
                     quality == 5 -> {
                         println("熟词速通: ${currentItem.displayName}")
                         _learningSteps.remove(currentItem.id)
-                        studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", 4, requestId)
                         handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                     }
 
@@ -1048,7 +1053,6 @@ class LearningViewModel @Inject constructor(
                             )
                             handleScheduleResult(result, requestId)
                         } else {
-                            studyRepository.processReview(currentItem.id, if (currentItem is LearningItem.WordItem) "word" else "grammar", quality, requestId)
                             handleSrsUpdateResult(Result.Success(Unit), isNew, isLapse = false)
                         }
                     }
@@ -1146,7 +1150,6 @@ class LearningViewModel @Inject constructor(
                 )
                 println("重学毕业: id=${updatedWord.id}, stability=${updatedWord.stability}, next_interval=${updatedWord.interval}d")
                 val result = updateWordUseCase(updatedWord)
-                studyRepository.processReview(item.id, "word", 4, requestId)
                 handleSrsUpdateResult(result, isNew, isLapse = false)
             }
             is LearningItem.GrammarItem -> {
@@ -1162,7 +1165,6 @@ class LearningViewModel @Inject constructor(
                 )
                 println("重学毕业: id=${updatedGrammar.id}, stability=${updatedGrammar.stability}, next_interval=${updatedGrammar.interval}d")
                 val result = updateGrammarUseCase(updatedGrammar)
-                studyRepository.processReview(item.id, "grammar", 4, requestId)
                 handleSrsUpdateResult(result, isNew, isLapse = false)
             }
         }
@@ -1183,8 +1185,6 @@ class LearningViewModel @Inject constructor(
                 if (!result.item.isNew && result.quality < 5) {
                     processRelearningGraduation(result.item, requestId)
                 } else {
-                    val finalQuality = if (result.quality == 5) 4 else result.quality
-                    studyRepository.processReview(result.item.id, if (result.item is LearningItem.WordItem) "word" else "grammar", finalQuality, requestId)
                     handleSrsUpdateResult(Result.Success(Unit), result.item.isNew, isLapse = false)
                 }
             }

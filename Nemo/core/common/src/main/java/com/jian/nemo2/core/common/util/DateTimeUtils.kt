@@ -46,12 +46,15 @@ object DateTimeUtils {
     fun parseIso8601(timeString: String?): Date? {
         if (timeString.isNullOrEmpty()) return null
         return try {
-            // 简单处理: 去掉毫秒和时区后缀，统一按 UTC 处理
-            // 这种方式兼容性好，且对于同步时间戳已经足够
-            val cleanTime = timeString.substringBefore('.').substringBefore('Z')
-            val sdf = SimpleDateFormat(ISO_8601_PATTERN, Locale.US)
-            sdf.timeZone = TimeZone.getTimeZone("UTC")
-            sdf.parse(cleanTime)
+            // 使用 java.time.Instant 解析，保留毫秒/微秒精度，防止 STALE_DATA_CONFLICT
+            // 如果没有 'Z' 或时区信息，手动补充 'Z' 以作为 UTC 处理
+            val normalizedTime = if (!timeString.endsWith("Z") && !timeString.contains("+") && timeString.indexOf("-", startIndex = 10) == -1) {
+                "${timeString}Z"
+            } else {
+                timeString
+            }
+            val instant = java.time.Instant.parse(normalizedTime)
+            Date.from(instant)
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -64,9 +67,8 @@ object DateTimeUtils {
      * @return ISO 8601 字符串
      */
     fun formatIso8601(date: Date): String {
-        val sdf = SimpleDateFormat(ISO_8601_PATTERN, Locale.US)
-        sdf.timeZone = TimeZone.getTimeZone("UTC")
-        return sdf.format(date) + "Z"
+        // 使用 java.time.Instant 格式化，确保带毫秒精度，与 Web 端一致
+        return date.toInstant().toString()
     }
 
     /**

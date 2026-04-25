@@ -74,7 +74,26 @@ class StudyRepositoryImpl @Inject constructor(
     }
 
     override suspend fun processReview(itemId: Long, itemType: String, rating: Int, requestId: String?) {
-        val progress = userProgressDao.getByItem(itemType, itemId) ?: return
+        var progress = userProgressDao.getByItem(itemType, itemId)
+        if (progress == null) {
+            val userId = supabase.auth.currentUserOrNull()?.id ?: return
+            try {
+                Log.d("StudyRepository", "Local progress not found for $itemType $itemId, fetching from remote to handle race condition")
+                progress = supabase.postgrest["user_progress"]
+                    .select { filter { eq("user_id", userId); eq("item_id", itemId); eq("item_type", itemType) } }
+                    .decodeSingleOrNull<UserProgressEntity>()
+                if (progress != null) {
+                    userProgressDao.insert(progress)
+                }
+            } catch (e: Exception) {
+                Log.e("StudyRepository", "Failed to fetch remote progress for review", e)
+            }
+        }
+        if (progress == null) {
+            Log.e("StudyRepository", "Progress completely missing for $itemType $itemId, aborting review")
+            return
+        }
+        
         val oldLastReview = progress.lastReview
         val now = Clock.System.now()
 

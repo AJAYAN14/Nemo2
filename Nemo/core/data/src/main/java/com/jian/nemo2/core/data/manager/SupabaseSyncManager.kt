@@ -270,7 +270,8 @@ class SupabaseSyncManager @Inject constructor(
         if (pending.isEmpty()) return
 
         Log.d(TAG, "开始处理离线任务队列, 待同步数量: ${pending.size}")
-        val resetHour = settingsRepository.learningDayResetHourFlow.first()
+        val appSettings = settingsRepository.getAppSettingsSnapshot()
+        val resetHour = appSettings.learningDayResetHour
 
         for (task in pending) {
             try {
@@ -303,17 +304,21 @@ class SupabaseSyncManager @Inject constructor(
                             val p_request_id: String,
                             val p_epoch_day: Int,
                             val p_study_field: String,
-                            val p_expected_last_review: String?
+                            val p_expected_last_review: String?,
+                            val p_learning_steps: List<Int>?,
+                            val p_relearning_steps: List<Int>?
                         )
 
                         val params = ReviewParams(
                             p_user_id = userId,
                             p_progress_id = progress.id,
                             p_rating = task.rating,
-                            p_request_id = task.requestId ?: "android-${task.id}-${System.currentTimeMillis()}", 
+                            p_request_id = task.requestId ?: java.util.UUID.randomUUID().toString(),
                             p_epoch_day = epochDay,
                             p_study_field = studyField,
-                            p_expected_last_review = task.expectedLastReview
+                            p_expected_last_review = task.expectedLastReview,
+                            p_learning_steps = appSettings.learningSteps,
+                            p_relearning_steps = appSettings.relearningSteps
                         )
 
                         Log.d(TAG, "执行原子评分 RPC: ${task.itemId} (Rating=${task.rating})")

@@ -108,8 +108,11 @@ object GrammarMapper {
      * 转换为进度实体
      */
     fun Grammar.toProgressEntity(userId: String): UserProgressEntity {
+        // [Native Mirror] 强制使用有效 UUID 或抛出异常。不允许使用 "user_grammar_id" 这种格式，会导致 Supabase RPC 失败
+        val finalProgressId = progressId ?: java.util.UUID.randomUUID().toString()
+
         return UserProgressEntity(
-            id = progressId ?: "${userId}_grammar_${id}",
+            id = finalProgressId,
             userId = userId,
             itemType = "grammar",
             itemId = id,
