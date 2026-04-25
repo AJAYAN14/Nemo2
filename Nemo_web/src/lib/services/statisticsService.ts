@@ -593,7 +593,7 @@ export const statisticsService = {
       dailyGoal: todayStats.dailyGoal + todayStats.grammarDailyGoal,
       unmasteredCount: newCount,
       studyStreak: todayStats.streak,
-      dueCount: todayStats.dueWords + todayStats.dueGrammars,
+      dueCount: todayStats.dueWords + todayStats.dueGrammars + todayStats.dueNewWords + todayStats.dueNewGrammars,
       totalStudyDays: studyRecords.data?.length || 0,
       weekStudyDays: weekStudyDays
     };
