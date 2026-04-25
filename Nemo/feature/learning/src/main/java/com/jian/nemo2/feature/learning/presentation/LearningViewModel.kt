@@ -678,7 +678,8 @@ class LearningViewModel @Inject constructor(
                         status = if (result.waitingUntil > System.currentTimeMillis()) LearningStatus.Waiting else LearningStatus.Learning,
                         waitingUntil = result.waitingUntil
                     )
-                    val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word)
+                    val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                val (newC, relearnC, reviewC) = calculateCounts(result.items, mode == LearningMode.Word, today)
                     base.copy(newCount = newC, relearnCount = relearnC, reviewCount = reviewC)
                 }
                 armShowAnswerDelay()
@@ -2002,9 +2003,11 @@ class LearningViewModel @Inject constructor(
                             if (idx == -1) currentIndex.coerceAtMost(finalGrammarList.size - 1).coerceAtLeast(0) else idx
                         }
 
+                        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
                         val (newC, relearnC, reviewC) = calculateCounts(
                             if (mode == LearningMode.Word) finalWordList else finalGrammarList,
-                            mode == LearningMode.Word
+                            mode == LearningMode.Word,
+                            today
                         )
 
                         _uiState.update {
@@ -2024,7 +2027,7 @@ class LearningViewModel @Inject constructor(
         }
     }
 
-    private fun <T> calculateCounts(list: List<T>, isWord: Boolean): Triple<Int, Int, Int> {
+    private fun <T> calculateCounts(list: List<T>, isWord: Boolean, today: Long): Triple<Int, Int, Int> {
         var newC = 0
         var relearnC = 0
         var reviewC = 0
@@ -2041,7 +2044,13 @@ class LearningViewModel @Inject constructor(
                 isLearning -> relearnC++
                 // 注意：如果已经是 Learning 状态了，就不再计入 New，即使 repetitionCount 是 0
                 isNew && !isLearning -> newC++
-                else -> reviewC++
+                else -> {
+                    // 仅当卡片已学习且已到期（或过往到期）时才计入复习数
+                    val nextReviewDate = if (isWord) (item as Word).nextReviewDate else (item as Grammar).nextReviewDate
+                    if (nextReviewDate <= today) {
+                        reviewC++
+                    }
+                }
             }
         }
         return Triple(newC, relearnC, reviewC)
