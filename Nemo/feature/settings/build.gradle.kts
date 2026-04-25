@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.jian.nemo.feature.settings"
+    namespace = "com.jian.nemo2.feature.settings"
     compileSdk = 35
 
     defaultConfig {

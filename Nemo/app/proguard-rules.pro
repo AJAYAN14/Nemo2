@@ -12,7 +12,7 @@
 -keepclassmembers class * {
     @kotlinx.serialization.Serializable *;
 }
--keep class com.jian.nemo.core.data.** { *; }
+-keep class com.jian.nemo2.core.data.** { *; }
 
 # WorkManager
 -keep class androidx.work.Worker { *; }
@@ -20,7 +20,7 @@
 
 # Hilt & Dagger
 -keep class dagger.hilt.** { *; }
--keep class com.jian.nemo.** {
+-keep class com.jian.nemo2.** {
     @javax.inject.Inject *;
     @dagger.hilt.android.AndroidEntryPoint *;
 }

@@ -25,7 +25,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Nemo"
+rootProject.name = "Nemo2"
 include(":app")
 include(":core:common")
 include(":core:domain")

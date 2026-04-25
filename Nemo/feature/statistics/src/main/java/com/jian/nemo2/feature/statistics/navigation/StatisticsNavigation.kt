@@ -1,0 +1,79 @@
+package com.jian.nemo2.feature.statistics.navigation
+
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.composable
+import com.jian.nemo2.feature.statistics.StatisticsScreen
+import com.jian.nemo2.feature.statistics.HistoricalStatisticsScreen
+import com.jian.nemo2.feature.statistics.presentation.dashboard.LeechManagementScreen
+
+/**
+ * 统计功能导航路由
+ */
+import com.jian.nemo2.core.ui.navigation.NavDestination
+
+/**
+ * 注册今日统计界面到导航图
+ */
+fun NavGraphBuilder.statisticsScreen(navController: NavHostController) {
+    composable(route = NavDestination.STATISTICS) {
+        StatisticsScreen(
+            onBack = { navController.popBackStack() },
+            onNavigateToWordDetail = { wordId ->
+                navController.navigate(NavDestination.wordDetail(wordId))
+            },
+            onNavigateToGrammarDetail = { grammarId ->
+                navController.navigate(NavDestination.grammarDetail(grammarId))
+            }
+        )
+    }
+}
+
+/**
+ * 注册历史统计界面到导航图
+ */
+fun NavGraphBuilder.historicalStatisticsScreen(navController: NavHostController) {
+    composable(route = NavDestination.HISTORICAL_STATISTICS) {
+        HistoricalStatisticsScreen(
+            onBack = { navController.popBackStack() },
+            onNavigateToWordDetail = { wordId ->
+                navController.navigate(NavDestination.wordDetail(wordId))
+            },
+            onNavigateToGrammarDetail = { grammarId ->
+                navController.navigate(NavDestination.grammarDetail(grammarId))
+            }
+        )
+    }
+}
+
+/**
+ * 注册到期复习统计界面到导航图
+ */
+fun NavGraphBuilder.leechManagementScreen(navController: NavHostController) {
+    composable(route = NavDestination.LEECH_MANAGEMENT) {
+        LeechManagementScreen(
+            onBack = { navController.popBackStack() }
+        )
+    }
+}
+
+/**
+ * 导航到今日统计界面
+ */
+fun NavHostController.navigateToStatistics() {
+    navigate(NavDestination.STATISTICS)
+}
+
+/**
+ * 导航到历史统计界面
+ */
+fun NavHostController.navigateToHistoricalStatistics() {
+    navigate(NavDestination.HISTORICAL_STATISTICS)
+}
+
+/**
+ * 导航到封禁管理界面
+ */
+fun NavHostController.navigateToLeechManagement() {
+    navigate(NavDestination.LEECH_MANAGEMENT)
+}

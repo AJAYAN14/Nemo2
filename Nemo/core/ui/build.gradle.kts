@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.jian.nemo.core.ui"
+    namespace = "com.jian.nemo2.core.ui"
     compileSdk = 35
 
     defaultConfig {

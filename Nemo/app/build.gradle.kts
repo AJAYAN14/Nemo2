@@ -15,20 +15,20 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
-val supabaseUrl: String? = localProperties.getProperty("SUPABASE_URL") 
-    ?: project.findProperty("SUPABASE_URL") as? String 
+val supabaseUrl: String? = localProperties.getProperty("SUPABASE_URL")
+    ?: project.findProperty("SUPABASE_URL") as? String
     ?: System.getenv("SUPABASE_URL")
 
-val supabaseAnonKey: String? = localProperties.getProperty("SUPABASE_ANON_KEY") 
-    ?: project.findProperty("SUPABASE_ANON_KEY") as? String 
+val supabaseAnonKey: String? = localProperties.getProperty("SUPABASE_ANON_KEY")
+    ?: project.findProperty("SUPABASE_ANON_KEY") as? String
     ?: System.getenv("SUPABASE_ANON_KEY")
 
 android {
-    namespace = "com.jian.nemo"
+    namespace = "com.jian.nemo2"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.jian.nemo"
+        applicationId = "com.jian.nemo2"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -45,15 +45,15 @@ android {
     signingConfigs {
         create("release") {
             // 优先从环境变量读取（GitHub Actions），否则尝试从 local.properties 或 默认本地相对路径读取
-            val ksPath = System.getenv("KEYSTORE_FILE") 
-                ?: localProperties.getProperty("KEYSTORE_FILE") 
+            val ksPath = System.getenv("KEYSTORE_FILE")
+                ?: localProperties.getProperty("KEYSTORE_FILE")
                 ?: "../keystore/nemo.jks"
-            
+
             val ksFile = file(ksPath)
             if (ksFile.exists()) {
                 storeFile = ksFile
             }
-            
+
             storePassword = System.getenv("KEYSTORE_PASSWORD") ?: localProperties.getProperty("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS") ?: localProperties.getProperty("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD") ?: localProperties.getProperty("KEY_PASSWORD")

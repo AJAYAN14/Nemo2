@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.jian.nemo.core.data"
+    namespace = "com.jian.nemo2.core.data"
     compileSdk = 35
 
     defaultConfig {

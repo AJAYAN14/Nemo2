@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.jian.nemo.feature.learning"
+    namespace = "com.jian.nemo2.feature.learning"
     compileSdk = 35
 
     defaultConfig {

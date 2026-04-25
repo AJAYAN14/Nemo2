@@ -1,0 +1,21 @@
+package com.jian.nemo2.core.domain.repository
+
+import com.jian.nemo2.core.domain.model.FavoriteQuestion
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * 收藏题目 Repository 接口
+ */
+interface FavoriteQuestionRepository {
+    fun getAllFavoriteQuestions(): Flow<List<FavoriteQuestion>>
+
+    suspend fun insertFavoriteQuestion(question: FavoriteQuestion)
+
+    suspend fun deleteFavoriteQuestion(id: String)
+
+    suspend fun isFavorite(grammarId: Long?, jsonId: String?): Boolean
+
+    suspend fun removeFavorite(grammarId: Long?, jsonId: String?)
+
+    suspend fun clearAll()
+}
