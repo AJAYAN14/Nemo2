@@ -351,7 +351,14 @@ class SupabaseSyncManager @Inject constructor(
                     "BURY" -> {
                         val buriedUntil = task.payload?.toLongOrNull() ?: (epochDay + 1).toLong()
                         supabaseClient.postgrest[TABLE_USER_PROGRESS]
-                            .update({ set("buried_until", buriedUntil); set("updated_at", task.createdAt) }) {
+                            .update({ 
+                                set("buried_until", buriedUntil)
+                                // [Best Practice] 如果是学习中(1)或重学中(3)，重置步长
+                                if (progress.state == 1 || progress.state == 3) {
+                                    set("learning_step", 0)
+                                }
+                                set("updated_at", task.createdAt) 
+                            }) {
                                 filter { eq("id", progress.id) }
                             }
                         Log.i(TAG, "Bury 状态上传成功: ${task.itemId}")

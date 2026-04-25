@@ -574,16 +574,22 @@ export const studyService = {
 
   /**
    * Bury an item until the next learning day.
+   * [Best Practice] Reset learning_step if the item is in Learning (1) or Relearning (3) state.
    */
-  async buryItem(progressId: string, epochDay: number): Promise<void> {
+  async buryItem(progressId: string, epochDay: number, currentState?: number): Promise<void> {
     const buriedUntilDay = epochDay + 1;
+    const updateData: any = {
+      buried_until: buriedUntilDay,
+      updated_at: new Date().toISOString()
+    };
+
+    if (currentState === 1 || currentState === 3) {
+      updateData.learning_step = 0;
+    }
 
     const { error } = await supabase
       .from('user_progress')
-      .update({
-        buried_until: buriedUntilDay,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', progressId);
 
     if (error) throw error;

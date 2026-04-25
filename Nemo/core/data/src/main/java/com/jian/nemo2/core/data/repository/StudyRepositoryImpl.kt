@@ -180,8 +180,13 @@ class StudyRepositoryImpl @Inject constructor(
         val now = Clock.System.now().toString()
         val buriedUntil = epochDay + 1
         
-        // [Optimistic Update]
-        userProgressDao.insert(progress.copy(buriedUntil = buriedUntil, updatedAt = now))
+        // [Optimistic Update] 如果是学习中(1)或重学中(3)，重置步长
+        val updatedProgress = if (progress.state == 1 || progress.state == 3) {
+            progress.copy(buriedUntil = buriedUntil, learningStep = 0, updatedAt = now)
+        } else {
+            progress.copy(buriedUntil = buriedUntil, updatedAt = now)
+        }
+        userProgressDao.insert(updatedProgress)
         
         // [Atomic Sync]
         syncOutboxDao.insert(

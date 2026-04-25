@@ -365,7 +365,7 @@ export function StudySessionProvider({ userId, initialItems, config, mode, sessi
      dispatch({ type: 'SET_STATUS', status: LearningStatus.Processing });
       try {
         const currentLearningDay = studyService.getLearningDay(new Date(), config.resetHour);
-        await studyService.buryItem(currentItem.progress.id, currentLearningDay);
+        await studyService.buryItem(currentItem.progress.id, currentLearningDay, currentItem.progress.state);
         const nextPool = state.wordList.filter(i => i.id !== currentItem.id);
         if (nextPool.length === 0) {
           dispatch({ type: 'SET_STATUS', status: LearningStatus.SessionCompleted });
