@@ -1493,6 +1493,7 @@ class LearningViewModel @Inject constructor(
                         dueTime = due
                     )
 
+                    _uiState.update {
                         val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
                         val (newC, relearnC, reviewC) = calculateCounts(newList, false, today)
                         it.copy(
