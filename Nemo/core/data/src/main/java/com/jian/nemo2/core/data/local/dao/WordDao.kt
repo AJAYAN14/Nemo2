@@ -196,9 +196,10 @@ interface WordDao {
         WHERE s.next_review <= :currentDate
         AND s.reps > 0
         AND s.state != -1
+        AND s.buried_until <= :currentEpochDay
         AND w.is_delisted = 0
     """)
-    fun getDueWordsCount(currentDate: String): Flow<Int>
+    fun getDueWordsCount(currentDate: String, currentEpochDay: Long): Flow<Int>
 
     /**
      * 获取今日首次学习的单词

@@ -75,7 +75,7 @@ class GrammarRepositoryImpl @Inject constructor(
     override fun getDueGrammarsCount(today: Long): Flow<Int> {
         val bufferMs = 1 * 60 * 1000L
         val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
-        return grammarDao.getDueGrammarsCount(nowWithBuffer)
+        return grammarDao.getDueGrammarsCount(nowWithBuffer, today)
             .catch { emit(0) }
             .flowOn(kotlinx.coroutines.Dispatchers.IO)
     }

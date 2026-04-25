@@ -391,9 +391,10 @@ interface GrammarDao {
         WHERE s.next_review <= :currentDate
         AND s.reps > 0
         AND s.state != -1
+        AND s.buried_until <= :currentEpochDay
         AND g.is_delisted = 0
     """)
-    fun getDueGrammarsCount(currentDate: String): Flow<Int>
+    fun getDueGrammarsCount(currentDate: String, currentEpochDay: Long): Flow<Int>
 
     /**
      * 获取今日学习的语法

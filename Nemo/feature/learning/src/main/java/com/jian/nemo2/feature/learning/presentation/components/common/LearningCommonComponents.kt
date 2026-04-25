@@ -165,7 +165,8 @@ fun LearnHeader(
     isDarkMode: Boolean? = null,
     onCycleDarkMode: () -> Unit = {}
 ) {
-    val progress = if (dailyGoal > 0) completedCount.toFloat() / dailyGoal else 0f
+    val totalTasks = totalCount + completedCount
+    val progress = if (totalTasks > 0) completedCount.toFloat() / totalTasks else 0f
 
 
 

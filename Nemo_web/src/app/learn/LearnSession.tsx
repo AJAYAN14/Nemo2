@@ -82,8 +82,10 @@ function LearnSessionUI({ todayStats }: { todayStats: LearningStats | undefined 
 
   const progressPercent = useMemo(() => {
     if (initialTotalCount <= 0) return 0;
-    return Math.min(100, (currentDailyStat / initialTotalCount) * 100);
-  }, [currentDailyStat, initialTotalCount]);
+    // Task progress = (Total Tasks - Remaining Tasks) / Total Tasks
+    const processedCount = initialTotalCount - wordList.length;
+    return Math.min(100, (processedCount / initialTotalCount) * 100);
+  }, [wordList.length, initialTotalCount]);
 
   // Keyboard Shortcuts
   useEffect(() => {
