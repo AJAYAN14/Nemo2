@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -83,7 +83,11 @@ export default function LearningCalendarPage() {
             stats={{
               todayLearnedWords: todayStats?.todayLearnedWords || 0,
               todayLearnedGrammars: todayStats?.todayLearnedGrammars || 0,
-              dueTotal: (todayStats?.dueWords || 0) + (todayStats?.dueGrammars || 0),
+              dueTotal: 
+                (todayStats?.dueWords || 0) + 
+                (todayStats?.dueGrammars || 0) + 
+                (todayStats?.dueNewWords || 0) + 
+                (todayStats?.dueNewGrammars || 0),
               completedTotal:
                 (todayStats?.todayLearnedWords || 0) +
                 (todayStats?.todayLearnedGrammars || 0) +

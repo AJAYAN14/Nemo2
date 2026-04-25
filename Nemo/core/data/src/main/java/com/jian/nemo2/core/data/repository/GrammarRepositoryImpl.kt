@@ -73,7 +73,11 @@ class GrammarRepositoryImpl @Inject constructor(
     }
 
     override fun getDueGrammarsCount(today: Long): Flow<Int> {
-        return getDueGrammars(today, "ALL").map { it.size }
+        val bufferMs = 1 * 60 * 1000L
+        val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+        return grammarDao.getDueGrammarsCount(nowWithBuffer)
+            .catch { emit(0) }
+            .flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getSkippedGrammars(limit: Int): Flow<List<Grammar>> {

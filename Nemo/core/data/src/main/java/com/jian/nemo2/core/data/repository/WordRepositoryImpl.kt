@@ -91,7 +91,11 @@ class WordRepositoryImpl @Inject constructor(
     }
 
     override fun getDueWordsCount(today: Long): Flow<Int> {
-        return getDueWords(today, "ALL").map { it.size }
+        val bufferMs = 1 * 60 * 1000L
+        val nowWithBuffer = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+        return wordDao.getDueWordsCount(nowWithBuffer)
+            .catch { emit(0) }
+            .flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
     override fun getTodayLearnedWords(today: Long): Flow<List<Word>> {
