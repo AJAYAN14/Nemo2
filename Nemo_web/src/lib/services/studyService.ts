@@ -366,6 +366,8 @@ export const studyService = {
   ): Promise<StudyItem[]> {
     if (!progressIds || progressIds.length === 0) return [];
 
+    const nowWithBuffer = new Date(Date.now() + 60000).toISOString();
+
     let query = supabase
       .from('user_progress')
       .select('*')
@@ -380,7 +382,14 @@ export const studyService = {
     const { data, error } = await query;
     if (error) throw error;
 
-    return resolveStudyItemsFromProgress(data || [], 'getSessionItemsByProgressIds');
+    const filteredData = (data || []).filter(item => {
+      if (item.state === 2) {
+        return !item.next_review || item.next_review <= nowWithBuffer;
+      }
+      return true;
+    });
+
+    return resolveStudyItemsFromProgress(filteredData, 'getSessionItemsByProgressIds');
   },
 
   async logActivity(

@@ -93,8 +93,15 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       
       if (itemIndex === -1) return state;
 
-      // If it graduated (Review/Relearn state 2/3), remove it
-      if (updated.state === 2 || updated.state === 3) {
+      // WEB EXCELLENCE: Realtime filtering.
+      // If the item was reviewed elsewhere and is no longer due, remove it from our active queue.
+      // Otherwise, just update its progress data so the UI shows the latest state/next_review.
+      const now = Date.now();
+      const nextReviewTime = updated.next_review ? new Date(updated.next_review).getTime() : 0;
+      const isStillDue = (updated.state === 0 || updated.state === 1 || updated.state === 3) || 
+                         (updated.state === 2 && nextReviewTime <= now + 60000);
+
+      if (!isStillDue) {
         const nextPool = [...state.wordList];
         nextPool.splice(itemIndex, 1);
         return {
@@ -111,7 +118,7 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       updatedPool[itemIndex] = {
         ...updatedPool[itemIndex],
         progress: updated,
-        dueTime: updated.due_date ? new Date(updated.due_date).getTime() : updatedPool[itemIndex].dueTime
+        dueTime: nextReviewTime
       };
       return {
         ...state,
