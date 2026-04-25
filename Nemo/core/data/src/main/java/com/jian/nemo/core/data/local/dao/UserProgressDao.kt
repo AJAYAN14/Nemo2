@@ -39,7 +39,7 @@ interface UserProgressDao {
     @Query("""
         SELECT * FROM user_progress 
         WHERE item_type = :itemType
-        AND (:level = 'ALL' OR UPPER(level) = UPPER(:level))
+        AND (state != 0 OR :level = 'ALL' OR UPPER(level) = UPPER(:level))
         AND state IN (0, 1, 2, 3) 
         AND (state = 0 OR next_review <= :nowWithBuffer)
         AND buried_until <= :currentEpochDay
@@ -50,7 +50,7 @@ interface UserProgressDao {
     @Query("""
         SELECT * FROM user_progress 
         WHERE item_type = :itemType
-        AND (:level = 'ALL' OR UPPER(level) = UPPER(:level))
+        AND (state != 0 OR :level = 'ALL' OR UPPER(level) = UPPER(:level))
         AND state IN (0, 1, 2, 3) 
         AND (state = 0 OR next_review <= :nowWithBuffer)
         AND buried_until <= :currentEpochDay

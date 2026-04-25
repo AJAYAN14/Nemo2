@@ -60,7 +60,10 @@ begin
   from public.user_progress
   where user_id = p_user_id
     and item_type = 'word'
-    and (p_word_level = 'ALL' or level = p_word_level)
+    and (
+      (state = 0 and (p_word_level = 'ALL' or level = p_word_level))
+      or (state in (1, 2, 3))
+    )
     and next_review <= (v_now + interval '24 hours')
     and coalesce(buried_until, 0) <= p_epoch_day;
 
@@ -75,7 +78,10 @@ begin
   from public.user_progress
   where user_id = p_user_id
     and item_type = 'grammar'
-    and (p_grammar_level = 'ALL' or level = p_grammar_level)
+    and (
+      (state = 0 and (p_grammar_level = 'ALL' or level = p_grammar_level))
+      or (state in (1, 2, 3))
+    )
     and next_review <= (v_now + interval '24 hours')
     and coalesce(buried_until, 0) <= p_epoch_day;
 

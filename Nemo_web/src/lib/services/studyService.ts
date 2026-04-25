@@ -297,11 +297,11 @@ export const studyService = {
         .order('next_review', { ascending: true })
         .order('id', { ascending: true });
 
-      // WEB EXCELLENCE: Simplified level filtering. 
-      // If a user is in "N1" mode, they should only see N1 items, including reviews.
-      // This is more predictable and cleaner than the Android legacy model.
+      // WEB EXCELLENCE: Review Exemption logic.
+      // To prevent knowledge decay, we only filter "New" items (state 0) by level.
+      // Already learned items (Learning/Review, states 1, 2, 3) are always shown if due.
       if (targetLevel && targetLevel !== 'ALL') {
-        query = query.eq('level', targetLevel);
+        query = query.or(`state.neq.0,level.eq.${targetLevel}`);
       }
 
       if (typeof limit === 'number' && limit > 0 && itemType === targetType) {

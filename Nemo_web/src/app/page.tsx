@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@/hooks/useUser";
 import {
   Play,
@@ -25,10 +25,14 @@ import { getLearnSessionKey } from "@/lib/services/studySessionKey";
 import { sessionPersistence } from "@/lib/services/sessionPersistence";
 import { MemoryPanorama } from "@/components/statistics/MemoryPanorama";
 import { SakuraLoader } from "@/components/common/SakuraLoader";
+import { JLPTLevel } from "@/types/dictionary";
 import styles from "./page.module.css";
+
+const LEVELS: JLPTLevel[] = ["N5", "N4", "N3", "N2", "N1"];
 
 export default function Home() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<'word' | 'grammar'>('word');
 
   const [greeting, setGreeting] = useState("");
@@ -157,8 +161,24 @@ export default function Home() {
 
     void settingsService.updateStudyConfig({
       mode: newMode === 'grammar' ? 'GRAMMAR_ONLY' : 'WORDS_ONLY'
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["study-config"] });
     });
   };
+
+  const setLevel = (newLevel: JLPTLevel) => {
+    if (isWordMode) {
+      void settingsService.updateStudyConfig({ wordLevel: newLevel }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["study-config"] });
+      });
+    } else {
+      void settingsService.updateStudyConfig({ grammarLevel: newLevel }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["study-config"] });
+      });
+    }
+  };
+
+  const currentLevel = isWordMode ? (config?.wordLevel as JLPTLevel || 'N5') : (config?.grammarLevel as JLPTLevel || 'N5');
 
   return (
     <motion.main
@@ -176,19 +196,33 @@ export default function Home() {
             <p className={styles.date}>{currentDate}</p>
           </div>
 
-          <div className={styles.modeToggleWrapper}>
-            <button
-              className={`${styles.modeButton} ${isWordMode ? styles.modeButtonActive : styles.modeButtonInactive}`}
-              onClick={() => setStudyMode('word')}
-            >
-              词汇
-            </button>
-            <button
-              className={`${styles.modeButton} ${!isWordMode ? styles.modeButtonActive : styles.modeButtonInactive}`}
-              onClick={() => setStudyMode('grammar')}
-            >
-              语法
-            </button>
+          <div className={styles.controlsRow}>
+            <div className={styles.modeToggleWrapper}>
+              <button
+                className={`${styles.modeButton} ${isWordMode ? styles.modeButtonActive : styles.modeButtonInactive}`}
+                onClick={() => setStudyMode('word')}
+              >
+                词汇
+              </button>
+              <button
+                className={`${styles.modeButton} ${!isWordMode ? styles.modeButtonActive : styles.modeButtonInactive}`}
+                onClick={() => setStudyMode('grammar')}
+              >
+                语法
+              </button>
+            </div>
+
+            <div className={styles.levelToggleWrapper}>
+              {LEVELS.map((lv) => (
+                <button
+                  key={lv}
+                  className={`${styles.levelButton} ${currentLevel === lv ? styles.levelButtonActive : styles.levelButtonInactive}`}
+                  onClick={() => setLevel(lv)}
+                >
+                  {lv}
+                </button>
+              ))}
+            </div>
           </div>
         </header>
 
