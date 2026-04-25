@@ -142,6 +142,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindSessionRemoteDataSource(
+        impl: com.jian.nemo.core.data.remote.SessionRemoteDataSourceImpl
+    ): com.jian.nemo.core.data.remote.SessionRemoteDataSource
+
+    @Binds
+    @Singleton
     abstract fun bindSyncManager(
         impl: SyncScheduler
     ): SyncManager

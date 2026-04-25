@@ -137,7 +137,8 @@ class LearningViewModel @Inject constructor(
     private val learningUndoHelper: LearningUndoHelper,
     private val audioRepository: AudioRepository,
     private val contentReportRepository: ContentReportRepository,
-    private val studyRepository: StudyRepository
+    private val studyRepository: StudyRepository,
+    private val sessionRemoteDataSource: com.jian.nemo.core.data.remote.SessionRemoteDataSource
 ) : ViewModel() {
     companion object {
         /** 钉子户阈值：连续失败次数达到此值时暂停学习 */
@@ -527,11 +528,31 @@ class LearningViewModel @Inject constructor(
     }
 
     private suspend fun loadSavedSession(mode: LearningMode, level: String): SavedSession? {
-        val restored = when (mode) {
+        val type = if (mode == LearningMode.Word) "word" else "grammar"
+        
+        // 1. Fetch remote session
+        val remoteSession = sessionRemoteDataSource.getSession(type, level)
+        
+        // 2. Fetch local session
+        val localSession = when (mode) {
             LearningMode.Word -> settingsRepository.getWordSession().first()
             LearningMode.Grammar -> settingsRepository.getGrammarSession().first()
         }
-        return restored?.let {
+        
+        // 3. Determine which to use.
+        // For simplicity, if remote exists and has items, we prefer remote to ensure cross-device sync.
+        // In a more complex scenario, we'd compare `updatedAt`.
+        if (remoteSession != null && remoteSession.itemIds.isNotEmpty()) {
+            return SavedSession(
+                ids = remoteSession.itemIds,
+                index = remoteSession.currentIndex,
+                level = remoteSession.level,
+                steps = remoteSession.steps.mapKeys { it.key.toLong() },
+                waitingUntil = remoteSession.waitingUntil
+            )
+        }
+
+        return localSession?.let {
             SavedSession(
                 ids = it.ids,
                 index = it.currentIndex,
@@ -1632,20 +1653,41 @@ class LearningViewModel @Inject constructor(
 
     private fun saveSessionState(ids: List<Long>, index: Int, level: String) {
         val waitingUntil = _uiState.value.waitingUntil
+        val mode = _uiState.value.learningMode
+        val itemType = if (mode == LearningMode.Word) "word" else "grammar"
+        
         viewModelScope.launch {
-            when (_uiState.value.learningMode) {
+            // Save to local
+            when (mode) {
                 LearningMode.Word -> settingsRepository.saveWordSession(ids, index, level, _learningSteps, waitingUntil)
                 LearningMode.Grammar -> settingsRepository.saveGrammarSession(ids, index, level, _learningSteps, waitingUntil)
             }
+            
+            // Save to remote (Supabase)
+            val session = com.jian.nemo.core.domain.model.LearningSession(
+                itemType = itemType,
+                level = level,
+                itemIds = ids,
+                currentIndex = index,
+                steps = _learningSteps.mapKeys { it.key.toString() },
+                waitingUntil = waitingUntil
+            )
+            sessionRemoteDataSource.saveSession(session)
         }
     }
 
     private fun clearSession() {
+        val mode = _uiState.value.learningMode
+        val itemType = if (mode == LearningMode.Word) "word" else "grammar"
+        val level = _uiState.value.selectedLevel
+        
         viewModelScope.launch {
-            when (_uiState.value.learningMode) {
+            when (mode) {
                 LearningMode.Word -> settingsRepository.clearWordSession()
                 LearningMode.Grammar -> settingsRepository.clearGrammarSession()
             }
+            
+            sessionRemoteDataSource.clearSession(itemType, level)
         }
     }
 
@@ -1806,6 +1848,8 @@ class LearningViewModel @Inject constructor(
                 val nowIso = DateTimeUtils.getCurrentCompensatedIso()
                 val progressMap = latestProgressList.associateBy { it.itemId }
                 val staleIds = mutableSetOf<Long>()
+                val moveToEndIds = mutableSetOf<Long>()
+                var hasContentChange = false
                 
                 for (item in currentItems) {
                     val itemId = if (mode == LearningMode.Word) (item as Word).id else (item as Grammar).id
@@ -1814,22 +1858,10 @@ class LearningViewModel @Inject constructor(
                     val progress = progressMap[itemId]
                     
                     val shouldPrune = when {
-                        // 如果卡片在数据库中被设为 暂停/钉子户 (state -1) 或 隐藏，直接剔除
                         progress?.state == -1 -> true
-                        
-                        // 场景 A: 如果数据库显示卡片正处于 学习中 (1) 或 重学中 (3)，
-                        // 说明它还在今天的学习循环内，绝对不能剔除。
                         progress != null && (progress.state == 1 || progress.state == 3) -> false
-
-                        // 场景 B: 原本是新词，但现在数据库显示已经学过了 (reps > 0) 
-                        // 且不在学习步长中 (state != 1)，说明它已经“毕业”了，剔除。
                         wasNew && (progress?.reps ?: 0) > 0 && progress?.state != 1 -> true
-
-                        // 场景 C: 原本是复习词，但现在数据库显示已经完成了复习且到期时间在未来
-                        // 且不在重学步长中 (state != 3)，剔除。
                         !wasNew && progress != null && (progress.nextReview ?: "") > nowIso && progress.state != 3 -> true
-
-                        // 场景 D: 被移出了进度表
                         !wasNew && progress == null -> true
                         else -> false
                     }
@@ -1840,164 +1872,126 @@ class LearningViewModel @Inject constructor(
                     }
                 }
                 
-                val updatedWordList = state.wordList.toMutableList()
-                val updatedGrammarList = state.grammarList.toMutableList()
-                val moveToEndIds = mutableSetOf<Long>()
-                var hasContentChange = false
+                val currentCardId = if (mode == LearningMode.Word) {
+                    state.currentWord?.id
+                } else {
+                    state.currentGrammar?.id
+                }
+                val currentIndex = if (mode == LearningMode.Word) state.currentIndex else state.currentGrammarIndex
+
+                val finalWordList = mutableListOf<Word>()
+                val finalGrammarList = mutableListOf<Grammar>()
 
                 if (mode == LearningMode.Word) {
-                    state.wordList.forEachIndexed { index, word ->
+                    val itemsToMove = mutableListOf<Word>()
+                    state.wordList.forEach { word ->
                         if (!staleIds.contains(word.id)) {
                             val p = progressMap[word.id]
+                            var updatedWord = word
                             if (p != null && (p.reps != word.repetitionCount || p.state != word.state)) {
                                 val oldState = word.state
                                 val newState = p.state
-                                val updatedWord = word.copy(repetitionCount = p.reps, state = p.state)
-                                updatedWordList[index] = updatedWord
+                                updatedWord = word.copy(repetitionCount = p.reps, state = p.state)
                                 hasContentChange = true
                                 
-                                // 如果状态变成了 1 (Learning) 或 3 (Relearning)，且之前不是这个状态
-                                // 说明发生了评分重置，需要移到末尾
                                 if ((newState == 1 || newState == 3) && (oldState != 1 && oldState != 3)) {
                                     moveToEndIds.add(word.id)
                                 }
                             }
+                            
+                            if (moveToEndIds.contains(word.id)) {
+                                itemsToMove.add(updatedWord)
+                            } else {
+                                finalWordList.add(updatedWord)
+                            }
                         }
                     }
-                    // 执行移到末尾的操作
-                    if (moveToEndIds.isNotEmpty()) {
-                        val itemsToMove = updatedWordList.filter { moveToEndIds.contains(it.id) }
-                        updatedWordList.removeAll { moveToEndIds.contains(it.id) }
-                        updatedWordList.addAll(itemsToMove)
-                    }
+                    finalWordList.addAll(itemsToMove)
                 } else {
-                    state.grammarList.forEachIndexed { index, grammar ->
+                    val itemsToMove = mutableListOf<Grammar>()
+                    state.grammarList.forEach { grammar ->
                         if (!staleIds.contains(grammar.id)) {
                             val p = progressMap[grammar.id]
+                            var updatedGrammar = grammar
                             if (p != null && (p.reps != grammar.repetitionCount || p.state != grammar.state)) {
                                 val oldState = grammar.state
                                 val newState = p.state
-                                val updatedGrammar = grammar.copy(repetitionCount = p.reps, state = p.state)
-                                updatedGrammarList[index] = updatedGrammar
+                                updatedGrammar = grammar.copy(repetitionCount = p.reps, state = p.state)
                                 hasContentChange = true
                                 
                                 if ((newState == 1 || newState == 3) && (oldState != 1 && oldState != 3)) {
                                     moveToEndIds.add(grammar.id)
                                 }
                             }
+                            
+                            if (moveToEndIds.contains(grammar.id)) {
+                                itemsToMove.add(updatedGrammar)
+                            } else {
+                                finalGrammarList.add(updatedGrammar)
+                            }
                         }
                     }
-                    if (moveToEndIds.isNotEmpty()) {
-                        val itemsToMove = updatedGrammarList.filter { moveToEndIds.contains(it.id) }
-                        updatedGrammarList.removeAll { moveToEndIds.contains(it.id) }
-                        updatedGrammarList.addAll(itemsToMove)
-                    }
+                    finalGrammarList.addAll(itemsToMove)
                 }
 
                 if (staleIds.isNotEmpty() || hasContentChange) {
-                    val finalWordList = if (mode == LearningMode.Word) updatedWordList else state.wordList
-                    val finalGrammarList = if (mode == LearningMode.Word) state.grammarList else updatedGrammarList
-                    
-                    val (newC, relearnC, reviewC) = calculateCounts(
-                        if (mode == LearningMode.Word) finalWordList else finalGrammarList,
-                        mode == LearningMode.Word
-                    )
+                    val newListSize = if (mode == LearningMode.Word) finalWordList.size else finalGrammarList.size
+                    if (newListSize == 0) {
+                        completeSession()
+                        return@collect
+                    }
 
-                    _uiState.update { current ->
-                        // 1. 记录当前正在看的卡片 ID
-                        val currentCardId = if (mode == LearningMode.Word) {
-                            current.wordList.getOrNull(current.currentIndex)?.id
+                    val currentItemNeedsJump = currentCardId != null && (staleIds.contains(currentCardId) || moveToEndIds.contains(currentCardId))
+
+                    if (currentItemNeedsJump) {
+                        println("[Reactive Sync] 当前项已处理完毕(被剔除或重新排队)，执行跳转...")
+                        val now = System.currentTimeMillis()
+                        if (mode == LearningMode.Word) {
+                            val wordSelection = learningQueueManager.selectNextItem(
+                                items = finalWordList,
+                                getDueTime = { _learningDueTimes[it.id] ?: 0L },
+                                now = now,
+                                learnAheadLimitMs = _learnAheadLimitMs,
+                                preferredIndex = currentIndex
+                            )
+                            handleSelectionResult(wordSelection, finalWordList, state.selectedLevel, isWord = true)
                         } else {
-                            current.grammarList.getOrNull(current.currentGrammarIndex)?.id
+                            val grammarSelection = learningQueueManager.selectNextItem(
+                                items = finalGrammarList,
+                                getDueTime = { _learningDueTimes[it.id] ?: 0L },
+                                now = now,
+                                learnAheadLimitMs = _learnAheadLimitMs,
+                                preferredIndex = currentIndex
+                            )
+                            handleSelectionResult(grammarSelection, finalGrammarList, state.selectedLevel, isWord = false)
                         }
-
-                        // 2. 在新列表中找到它的新位置
+                    } else {
+                        // 当前项还在原地(或仅仅前面的项被移除了导致索引变化)，只需静默更新列表
                         val newIndex = if (mode == LearningMode.Word) {
                             val idx = finalWordList.indexOfFirst { it.id == currentCardId }
-                            if (idx == -1) current.currentIndex.coerceAtMost(finalWordList.size - 1).coerceAtLeast(0)
-                            else idx
+                            if (idx == -1) currentIndex.coerceAtMost(finalWordList.size - 1).coerceAtLeast(0) else idx
                         } else {
                             val idx = finalGrammarList.indexOfFirst { it.id == currentCardId }
-                            if (idx == -1) current.currentGrammarIndex.coerceAtMost(finalGrammarList.size - 1).coerceAtLeast(0)
-                            else idx
+                            if (idx == -1) currentIndex.coerceAtMost(finalGrammarList.size - 1).coerceAtLeast(0) else idx
                         }
 
-                        current.copy(
-                            wordList = finalWordList,
-                            grammarList = finalGrammarList,
-                            currentIndex = if (mode == LearningMode.Word) newIndex else current.currentIndex,
-                            currentGrammarIndex = if (mode == LearningMode.Grammar) newIndex else current.currentGrammarIndex,
-                            newCount = newC,
-                            relearnCount = relearnC,
-                            reviewCount = reviewC
+                        val (newC, relearnC, reviewC) = calculateCounts(
+                            if (mode == LearningMode.Word) finalWordList else finalGrammarList,
+                            mode == LearningMode.Word
                         )
-                    }
-                    
-                    if (staleIds.isNotEmpty()) {
-                        performPruning(staleIds, mode == LearningMode.Word)
-                    }
-                }
-            }
-        }
-    }
 
-    private fun performPruning(staleIds: Set<Long>, isWord: Boolean) {
-        val state = _uiState.value
-        val currentIndex = if (isWord) state.currentIndex else state.currentGrammarIndex
-        val currentItem = getCurrentItem()
-        
-        val newList = if (isWord) {
-            state.wordList.filter { !staleIds.contains(it.id) }
-        } else {
-            state.grammarList.filter { !staleIds.contains(it.id) }
-        }
-        
-        if (newList.isEmpty()) {
-            completeSession()
-            return
-        }
-        
-        // 如果当前正在看的项被移除了，需要跳到下一项
-        val currentItemStillExists = currentItem?.let { 
-            val id = if (isWord) (it as? LearningItem.WordItem)?.word?.id else (it as? LearningItem.GrammarItem)?.grammar?.id
-            id != null && !staleIds.contains(id)
-        } ?: false
-        
-        if (!currentItemStillExists) {
-            println("[Reactive Sync] 当前项已失效，执行强力跳转...")
-            val now = System.currentTimeMillis()
-            if (isWord) {
-                val wordSelection = learningQueueManager.selectNextItem(
-                    items = newList as List<Word>,
-                    getDueTime = { _learningDueTimes[it.id] ?: 0L },
-                    now = now,
-                    learnAheadLimitMs = _learnAheadLimitMs,
-                    preferredIndex = currentIndex
-                )
-                handleSelectionResult(wordSelection, newList as List<Word>, state.selectedLevel, isWord = true)
-            } else {
-                val grammarSelection = learningQueueManager.selectNextItem(
-                    items = newList as List<Grammar>,
-                    getDueTime = { _learningDueTimes[it.id] ?: 0L },
-                    now = now,
-                    learnAheadLimitMs = _learnAheadLimitMs,
-                    preferredIndex = currentIndex
-                )
-                handleSelectionResult(grammarSelection, newList as List<Grammar>, state.selectedLevel, isWord = false)
-            }
-        } else {
-            // 当前项没变，只需静默更新列表
-            val newIndex = if (isWord) {
-                (newList as List<Word>).indexOfFirst { word: Word -> word.id == (currentItem as? LearningItem.WordItem)?.word?.id }
-            } else {
-                (newList as List<Grammar>).indexOfFirst { grammar: Grammar -> grammar.id == (currentItem as? LearningItem.GrammarItem)?.grammar?.id }
-            }
-            
-            _uiState.update {
-                if (isWord) {
-                    it.copy(wordList = newList as List<Word>, currentIndex = newIndex)
-                } else {
-                    it.copy(grammarList = newList as List<Grammar>, currentGrammarIndex = newIndex)
+                        _uiState.update {
+                            it.copy(
+                                wordList = if (mode == LearningMode.Word) finalWordList else it.wordList,
+                                grammarList = if (mode == LearningMode.Grammar) finalGrammarList else it.grammarList,
+                                currentIndex = if (mode == LearningMode.Word) newIndex else it.currentIndex,
+                                currentGrammarIndex = if (mode == LearningMode.Grammar) newIndex else it.currentGrammarIndex,
+                                newCount = newC,
+                                relearnCount = relearnC,
+                                reviewCount = reviewC
+                            )
+                        }
+                    }
                 }
             }
         }
