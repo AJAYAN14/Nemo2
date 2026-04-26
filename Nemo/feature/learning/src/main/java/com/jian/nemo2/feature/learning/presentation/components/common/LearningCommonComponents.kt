@@ -143,6 +143,7 @@ fun LearnHeader(
     newCount: Int = 0,
     relearnCount: Int = 0,
     reviewCount: Int = 0,
+    sessionInitialSize: Int = 0,
     isNavigating: Boolean = false,
     isAnswerShown: Boolean = false,
     onClose: () -> Unit,
@@ -165,8 +166,14 @@ fun LearnHeader(
     isDarkMode: Boolean? = null,
     onCycleDarkMode: () -> Unit = {}
 ) {
-    val totalTasks = totalCount + completedCount
-    val progress = if (totalTasks > 0) completedCount.toFloat() / totalTasks else 0f
+    // [Best Design] Session-local progress: (Initial - Remaining) / Initial
+    val progress = if (sessionInitialSize > 0) {
+        (sessionInitialSize - totalCount).toFloat() / sessionInitialSize
+    } else {
+        // Fallback for unexpected zero initial size
+        val totalTasks = totalCount + completedCount
+        if (totalTasks > 0) completedCount.toFloat() / totalTasks else 0f
+    }
 
 
 

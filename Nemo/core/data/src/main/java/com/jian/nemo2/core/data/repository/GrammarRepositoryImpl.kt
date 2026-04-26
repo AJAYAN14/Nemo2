@@ -90,7 +90,7 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override fun getTodayLearnedGrammars(today: Long): Flow<List<Grammar>> {
         val todayIso = DateTimeUtils.epochDayToIso(today)
-        return grammarDao.getTodayLearnedGrammarsWithUsages(todayIso)
+        return grammarDao.getTodayLearnedGrammarsWithUsages(todayIso, today)
             .map { it.toDomainModels() }
             .catch { e ->
                 emit(emptyList())
@@ -154,7 +154,7 @@ class GrammarRepositoryImpl @Inject constructor(
 
     override fun getTodayLearnedGrammarLevels(today: Long): Flow<List<String>> {
         val todayIso = DateTimeUtils.epochDayToIso(today)
-        return grammarDao.getTodayLearnedGrammarLevels(todayIso)
+        return grammarDao.getTodayLearnedGrammarLevels(todayIso, today)
             .catch { e ->
                 emit(emptyList())
             }

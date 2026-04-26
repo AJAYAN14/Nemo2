@@ -86,7 +86,6 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE g.id = :id
-        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getById(id: Long): Flow<GrammarEntity?>
@@ -173,12 +172,12 @@ interface GrammarDao {
     @Query("""
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
-        WHERE s.created_at >= :todayISO
-        AND s.state IN (2, -1)
+        WHERE s.updated_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
-    fun getTodayLearnedGrammarsWithUsages(todayISO: String): Flow<List<GrammarWithUsages>>
+    fun getTodayLearnedGrammarsWithUsages(todayISO: String, currentEpochDay: Long): Flow<List<GrammarWithUsages>>
 
     @Transaction
     @Query("""
@@ -187,7 +186,6 @@ interface GrammarDao {
         WHERE s.last_review >= :todayISO
         AND s.reps > 0
         AND s.created_at < :todayISO
-        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -218,7 +216,6 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.reps > 0
-        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -228,7 +225,6 @@ interface GrammarDao {
         SELECT COUNT(*) FROM user_progress s
         JOIN grammars g ON s.item_id = g.id AND s.item_type = 'grammar'
         WHERE s.reps > 0
-        AND s.state IN (2, -1)
         AND g.is_delisted = 0
     """)
     fun getLearnedGrammarCount(): Flow<Int>
@@ -242,7 +238,6 @@ interface GrammarDao {
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.reps > 0
         AND UPPER(g.grammar_level) = UPPER(:level)
-        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -263,7 +258,6 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE g.grammar LIKE '%' || :query || '%'
-        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
         ORDER BY g.id ASC
     """)
@@ -309,8 +303,7 @@ interface GrammarDao {
     @Query("""
         SELECT g.* FROM grammars g
         LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
-        WHERE (s.state != -1 OR s.state IS NULL)
-        AND g.is_delisted = 0
+        WHERE g.is_delisted = 0
     """)
     fun getAllGrammars(): Flow<List<GrammarEntity>>
 
@@ -321,7 +314,6 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE s.reps > 0
-        AND s.state IN (2, -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -340,7 +332,6 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE UPPER(g.grammar_level) IN (:levels)
-        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
     """)
     fun getAllGrammarsByLevels(levels: List<String>): Flow<List<GrammarEntity>>
@@ -402,11 +393,11 @@ interface GrammarDao {
     @Query("""
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
-        WHERE s.created_at >= :todayISO
-        AND s.state IN (2, -1)
+        WHERE s.updated_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
         ORDER BY g.id DESC
     """)
-    fun getTodayLearnedGrammars(todayISO: String): Flow<List<GrammarEntity>>
+    fun getTodayLearnedGrammars(todayISO: String, currentEpochDay: Long): Flow<List<GrammarEntity>>
 
 
     @Query("""
@@ -444,7 +435,6 @@ interface GrammarDao {
         SELECT g.* FROM grammars g
         LEFT JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
         WHERE g.grammar LIKE '%' || :query || '%'
-        AND (s.state != -1 OR s.state IS NULL)
         AND g.is_delisted = 0
         ORDER BY g.id ASC
     """)
@@ -485,9 +475,10 @@ interface GrammarDao {
         SELECT DISTINCT w.grammar_level
         FROM user_progress s
         JOIN grammars w ON s.item_id = w.id AND s.item_type = 'grammar'
-        WHERE s.created_at >= :todayISO
+        WHERE s.updated_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
     """)
-    fun getTodayLearnedGrammarLevels(todayISO: String): Flow<List<String>>
+    fun getTodayLearnedGrammarLevels(todayISO: String, currentEpochDay: Long): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.grammar_level

@@ -122,7 +122,6 @@ interface WordDao {
         SELECT w.* FROM words w
         LEFT JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE w.id = :id
-        AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
     """)
     fun getById(id: Long): Flow<WordEntity?>
@@ -167,12 +166,12 @@ interface WordDao {
     @Query("""
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
-        WHERE s.next_review <= :currentDate
-        AND (:level = 'ALL' OR UPPER(w.level) = UPPER(:level))
+        WHERE w.level = :level
         AND s.state IN (1, 2, 3)
+        AND s.next_review <= :currentDate
         AND s.buried_until <= :currentEpochDay
         AND w.is_delisted = 0
-        ORDER BY s.state ASC, s.next_review ASC
+        ORDER BY (CASE s.state WHEN 3 THEN 0 WHEN 1 THEN 1 WHEN 2 THEN 2 ELSE 3 END), s.next_review ASC
     """)
     fun getDueWordsByLevel(currentDate: String, level: String, currentEpochDay: Long): Flow<List<WordEntity>>
 
@@ -209,12 +208,12 @@ interface WordDao {
     @Query("""
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
-        WHERE s.created_at >= :todayISO
-        AND s.state IN (2, -1)
+        WHERE s.updated_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
-    fun getTodayLearnedWords(todayISO: String): Flow<List<WordEntity>>
+    fun getTodayLearnedWords(todayISO: String, currentEpochDay: Long): Flow<List<WordEntity>>
 
     /**
      * 获取今日复习过的单词
@@ -226,7 +225,6 @@ interface WordDao {
         WHERE s.last_review >= :todayISO
         AND s.reps > 0
         AND s.created_at < :todayISO
-        AND s.state IN (2, -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -239,7 +237,6 @@ interface WordDao {
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE s.reps > 0
-        AND s.state IN (2, -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -252,7 +249,6 @@ interface WordDao {
         SELECT COUNT(*) FROM user_progress s
         JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
         WHERE s.reps > 0
-        AND s.state IN (2, -1)
         AND w.is_delisted = 0
     """)
     fun getLearnedWordCount(): Flow<Int>
@@ -265,7 +261,6 @@ interface WordDao {
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE s.reps > 0
         AND w.level = :level
-        AND s.state IN (2, -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)
@@ -319,7 +314,6 @@ interface WordDao {
         SELECT w.* FROM words w
         LEFT JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
         WHERE w.level = :level
-        AND (s.state != -1 OR s.state IS NULL)
         AND w.is_delisted = 0
         ORDER BY w.id ASC
     """)
@@ -563,9 +557,10 @@ interface WordDao {
         SELECT DISTINCT w.level
         FROM user_progress s
         JOIN words w ON s.item_id = w.id AND s.item_type = 'word'
-        WHERE s.created_at >= :todayISO
+        WHERE s.updated_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
     """)
-    fun getTodayLearnedLevels(todayISO: String): Flow<List<String>>
+    fun getTodayLearnedLevels(todayISO: String, currentEpochDay: Long): Flow<List<String>>
 
     @Query("""
         SELECT DISTINCT w.level

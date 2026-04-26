@@ -100,7 +100,7 @@ class WordRepositoryImpl @Inject constructor(
 
     override fun getTodayLearnedWords(today: Long): Flow<List<Word>> {
         val todayIso = com.jian.nemo2.core.common.util.DateTimeUtils.epochDayToIso(today)
-        return wordDao.getTodayLearnedWords(todayIso)
+        return wordDao.getTodayLearnedWords(todayIso, today)
             .map { entities ->
                 mapWithStudyState(entities)
             }
@@ -264,7 +264,7 @@ class WordRepositoryImpl @Inject constructor(
 
     override fun getTodayLearnedLevels(todayEpochDay: Long): Flow<List<String>> {
         val todayIso = com.jian.nemo2.core.common.util.DateTimeUtils.epochDayToIso(todayEpochDay)
-        return wordDao.getTodayLearnedLevels(todayIso)
+        return wordDao.getTodayLearnedLevels(todayIso, todayEpochDay)
             .catch { e ->
                 emit(emptyList())
             }

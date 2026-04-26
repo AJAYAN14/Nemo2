@@ -32,7 +32,7 @@ interface UserProgressDao {
         WHERE state IN (0, 1, 2, 3)
         AND next_review <= :nowWithBuffer
         AND buried_until <= :currentEpochDay
-        ORDER BY next_review ASC, id ASC
+        ORDER BY (CASE state WHEN 3 THEN 0 WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 0 THEN 3 ELSE 4 END) ASC, next_review ASC
     """)
     fun getDueItemsFlow(nowWithBuffer: String, currentEpochDay: Long): Flow<List<UserProgressEntity>>
 
@@ -43,7 +43,7 @@ interface UserProgressDao {
         AND state IN (0, 1, 2, 3)
         AND (state = 0 OR next_review <= :nowWithBuffer)
         AND buried_until <= :currentEpochDay
-        ORDER BY state ASC, next_review ASC, id ASC
+        ORDER BY (CASE state WHEN 3 THEN 0 WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 0 THEN 3 ELSE 4 END) ASC, next_review ASC, id ASC
     """)
     fun getDueItemsByTypeAndLevelFlow(itemType: String, level: String, nowWithBuffer: String, currentEpochDay: Long): Flow<List<UserProgressEntity>>
 
@@ -54,7 +54,7 @@ interface UserProgressDao {
         AND state IN (0, 1, 2, 3)
         AND (state = 0 OR next_review <= :nowWithBuffer)
         AND buried_until <= :currentEpochDay
-        ORDER BY state ASC, next_review ASC, id ASC
+        ORDER BY (CASE state WHEN 3 THEN 0 WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 0 THEN 3 ELSE 4 END) ASC, next_review ASC, id ASC
     """)
     suspend fun getDueItemsByTypeAndLevelSync(itemType: String, level: String, nowWithBuffer: String, currentEpochDay: Long): List<UserProgressEntity>
 

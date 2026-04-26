@@ -106,32 +106,38 @@ class SessionLoader @Inject constructor(
         seedNewItems: suspend () -> Unit
     ): SessionLoadResult<T> {
 
-        // 1. 尝试恢复会话 (保持优先级最高，避免重复播种导致队列变动)
+        // 1. Fetch current due items pool (this contains state 0, 1, 2, 3)
+        val currentDueItems = getDueItems()
+        val currentDueIds = currentDueItems.map { getItemId(it) }.toSet()
+
+        // 2. 尝试恢复会话 (保持优先级最高)
         if (savedSession != null && savedSession.level == level) {
             val (ids, index, _, steps) = savedSession
             val allItems = getItemsByIds(ids)
-
             val itemMap = allItems.associateBy { getItemId(it) }
-            // [Duolingo-style] 恢复时进行有效性过滤：剔除已在其他设备复习过的项目
-            val restoredItems = ids.mapNotNull { id ->
+            
+            var adjustedIndex = index
+            val restoredItems = mutableListOf<T>()
+            
+            ids.forEachIndexed { i, id ->
                 val item = itemMap[id]
-                if (item != null) {
-                    // 如果项目已经学习过 (isLearned) 且不再处于待复习池 (allItems 不包含它)
-                    // 则认为它已经不再属于当前学习计划，应该剔除
-                    if (isLearned(item) && !allItems.contains(item)) {
-                        println("⚠️ 自动过滤已复习项: $id")
-                        null
-                    } else {
-                        item
+                // 仅保留仍然在待学池中的项 (未在其他设备提前完成)
+                if (item != null && currentDueIds.contains(id)) {
+                    restoredItems.add(item)
+                } else {
+                    // 如果前面的项被剔除了，索引需要前移
+                    if (i < index) {
+                        adjustedIndex--
                     }
-                } else null
+                }
             }
 
-            if (restoredItems.isNotEmpty() && index < restoredItems.size) {
-                println("✅ 恢复上次学习会话: Index $index / ${restoredItems.size}")
+            if (restoredItems.isNotEmpty()) {
+                val finalIndex = adjustedIndex.coerceIn(0, restoredItems.size - 1)
+                println("✅ 恢复并调整学习会话: Index $finalIndex / ${restoredItems.size} (原索引 $index)")
                 return SessionLoadResult.Restored(
                     items = restoredItems,
-                    index = index,
+                    index = finalIndex,
                     steps = steps,
                     dailyGoal = dailyGoal,
                     completedToday = completedToday,
@@ -140,17 +146,13 @@ class SessionLoader @Inject constructor(
             }
         }
 
-        // 2. 播种今日新词 (如果恢复失败，则进行播种)
-        // 注意：seedNewItems 内部应包含 RPC 调用和后续的同步逻辑
+        // 3. 播种今日新词 (如果恢复失败，则进行播种)
         seedNewItems()
 
-        // 3. 获取所有待学项目 (从 user_progress 表获取 state IN (0,1,2,3))
-        // 这里的 getDueItems 应当返回包含新播种的新词 (state=0) 和到期复习项 (state=2) 的集合
+        // 4. 获取所有待学项目 (刷新后的全量列表)
         val allItems = getDueItems()
 
-        // 4. 分离新词和到期项
-        // 新词：reps = 0 (state = 0)
-        // 到期项：reps > 0 (state = 1, 2, 3)
+        // 5. 分离新词和到期项
         val newPool = allItems.filter { !isLearned(it) }
         val duePool = allItems.filter { isLearned(it) }
 

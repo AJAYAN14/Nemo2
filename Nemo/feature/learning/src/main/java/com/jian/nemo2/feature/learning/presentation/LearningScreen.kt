@@ -147,6 +147,7 @@ fun LearningScreen(
                     newCount = uiState.newCount,
                     relearnCount = uiState.relearnCount,
                     reviewCount = uiState.reviewCount,
+                    sessionInitialSize = uiState.sessionInitialSize,
                     isNavigating = uiState.isNavigating,
                     isAnswerShown = uiState.isAnswerShown,
                     onClose = onNavigateBack,
