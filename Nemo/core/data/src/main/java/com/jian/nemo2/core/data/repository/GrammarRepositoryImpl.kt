@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,14 +61,14 @@ class GrammarRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    override fun getDueGrammars(level: String, today: Long): Flow<List<Grammar>> {
-        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
-            val bufferMs = learnAheadMinutes * 60 * 1000L
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getDueGrammars(today: Long, level: String): Flow<List<Grammar>> {
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes: Int ->
+            val bufferMs: Long = learnAheadMinutes.toLong() * 60 * 1000L
             val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
             val currentEpochDay = today
 
-            grammarDao.getDueGrammarsByLevelWithUsages(nowWithBuffer, level.lowercase(), currentEpochDay)
+            grammarDao.getDueGrammarsByLevel(nowWithBuffer, level.lowercase(), currentEpochDay)
                 .map { it.toDomainModels().filter { g -> !g.isDelisted } }
         }
             .catch { e ->
@@ -74,10 +76,10 @@ class GrammarRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun getDueGrammarsCount(today: Long): Flow<Int> {
-        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
-            val bufferMs = learnAheadMinutes * 60 * 1000L
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes: Int ->
+            val bufferMs: Long = learnAheadMinutes.toLong() * 60 * 1000L
             val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
             grammarDao.getDueGrammarsCount(nowWithBuffer, today)
         }

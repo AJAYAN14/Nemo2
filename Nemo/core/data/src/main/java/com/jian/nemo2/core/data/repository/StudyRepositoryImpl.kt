@@ -362,13 +362,18 @@ class StudyRepositoryImpl @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun getDueItemsByTypeAndLevelFlow(itemType: String, level: String): Flow<List<UserProgress>> {
-        return settingsRepository.learningDayResetHourFlow.flatMapLatest { resetHour ->
-            // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
-            val bufferMs = 1 * 60 * 1000L
+        return combine(
+            settingsRepository.learningDayResetHourFlow,
+            settingsRepository.learnAheadLimitFlow
+        ) { resetHour, learnAheadMinutes ->
+            resetHour to learnAheadMinutes
+        }.flatMapLatest { (resetHour, learnAheadMinutes) ->
+            // 使用用户设置的提前学习时间
+            val bufferMs = learnAheadMinutes * 60 * 1000L
             val nowWithBuffer = Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds() + bufferMs).toString()
             val currentEpochDay = DateTimeUtils.getLearningDay(resetHour)
 
-            Log.d("StudyRepository", "getDueItemsByTypeAndLevelFlow: Type=$itemType, Level=$level, EpochDay=$currentEpochDay")
+            Log.d("StudyRepository", "getDueItemsByTypeAndLevelFlow: Type=$itemType, Level=$level, Buffer=$learnAheadMinutes min, EpochDay=$currentEpochDay")
 
             userProgressDao.getDueItemsByTypeAndLevelFlow(itemType, level, nowWithBuffer, currentEpochDay).map { list ->
                 list.map { it.toDomain() }

@@ -14,8 +14,10 @@ import com.jian.nemo2.core.domain.repository.WordRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -75,10 +77,10 @@ class WordRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    override fun getDueWords(level: String, today: Long): Flow<List<Word>> {
-        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
-            val bufferMs = learnAheadMinutes * 60 * 1000L
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getDueWords(today: Long, level: String): Flow<List<Word>> {
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes: Int ->
+            val bufferMs: Long = learnAheadMinutes.toLong() * 60 * 1000L
             val nowWithBuffer = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
             val currentEpochDay = today
 
@@ -93,10 +95,10 @@ class WordRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun getDueWordsCount(today: Long): Flow<Int> {
-        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
-            val bufferMs = learnAheadMinutes * 60 * 1000L
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes: Int ->
+            val bufferMs: Long = learnAheadMinutes.toLong() * 60 * 1000L
             val nowWithBuffer = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
             wordDao.getDueWordsCount(nowWithBuffer, today)
         }
