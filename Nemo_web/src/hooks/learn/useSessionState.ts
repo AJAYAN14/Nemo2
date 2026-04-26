@@ -111,11 +111,15 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       if (!isStillDue) {
         const nextPool = [...state.wordList];
         nextPool.splice(itemIndex, 1);
+        
+        // Only increment completed count if it was a real review (not buried/suspended)
+        const isRealCompletion = !isBuried && !isSuspended;
+
         return {
           ...state,
           wordList: nextPool,
           currentIndex: state.currentIndex >= nextPool.length ? Math.max(0, nextPool.length - 1) : state.currentIndex,
-          completedThisSession: state.completedThisSession + 1,
+          completedThisSession: isRealCompletion ? state.completedThisSession + 1 : state.completedThisSession,
           status: nextPool.length === 0 ? LearningStatus.SessionCompleted : state.status
         };
       }
