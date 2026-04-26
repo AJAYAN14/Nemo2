@@ -208,8 +208,8 @@ interface WordDao {
     @Query("""
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
-        WHERE s.updated_at >= :todayISO
-        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
+        WHERE s.created_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay OR s.state = -1)
         AND w.is_delisted = 0
         ORDER BY w.id DESC
     """)

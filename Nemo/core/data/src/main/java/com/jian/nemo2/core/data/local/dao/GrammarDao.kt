@@ -172,8 +172,8 @@ interface GrammarDao {
     @Query("""
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
-        WHERE s.updated_at >= :todayISO
-        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
+        WHERE s.created_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay OR s.state = -1)
         AND g.is_delisted = 0
         ORDER BY g.id DESC
     """)
@@ -393,8 +393,8 @@ interface GrammarDao {
     @Query("""
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
-        WHERE s.updated_at >= :todayISO
-        AND (s.state != 0 OR s.buried_until > :currentEpochDay)
+        WHERE s.created_at >= :todayISO
+        AND (s.state != 0 OR s.buried_until > :currentEpochDay OR s.state = -1)
         ORDER BY g.id DESC
     """)
     fun getTodayLearnedGrammars(todayISO: String, currentEpochDay: Long): Flow<List<GrammarEntity>>
