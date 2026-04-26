@@ -16,8 +16,8 @@ import javax.inject.Inject
  * 获取到期复习单词 Use Case
  *
  * 业务规则:
- * 1. 筛选已学习的单词 (repetitionCount > 0)
- * 2. 筛选到期复习的单词 (nextReviewDate <= today)
+ * 1. 筛选已学习的单词 (reps > 0, state IN (1, 2, 3))
+ * 2. 筛选到期复习的单词 (nextReviewDate <= now)
  * 3. 按下次复习日期排序（最早的优先）
  * 4. 这里的“今日”遵循设置中的重置时间
  */

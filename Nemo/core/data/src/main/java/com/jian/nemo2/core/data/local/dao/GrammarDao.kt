@@ -365,9 +365,9 @@ interface GrammarDao {
     @Query("""
         SELECT g.* FROM grammars g
         JOIN user_progress s ON g.id = s.item_id AND s.item_type = 'grammar'
-        WHERE (s.state = 0 OR s.next_review <= :currentDate)
+        WHERE s.next_review <= :currentDate
         AND (:level = 'ALL' OR UPPER(g.grammar_level) = UPPER(:level))
-        AND s.state IN (0, 1, 2, 3)
+        AND s.state IN (1, 2, 3)
         AND s.buried_until <= :currentEpochDay
         AND g.is_delisted = 0
         ORDER BY s.state ASC, s.next_review ASC

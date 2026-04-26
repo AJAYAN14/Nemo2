@@ -167,9 +167,9 @@ interface WordDao {
     @Query("""
         SELECT w.* FROM words w
         JOIN user_progress s ON w.id = s.item_id AND s.item_type = 'word'
-        WHERE (s.state = 0 OR s.next_review <= :currentDate)
+        WHERE s.next_review <= :currentDate
         AND (:level = 'ALL' OR UPPER(w.level) = UPPER(:level))
-        AND s.state IN (0, 1, 2, 3)
+        AND s.state IN (1, 2, 3)
         AND s.buried_until <= :currentEpochDay
         AND w.is_delisted = 0
         ORDER BY s.state ASC, s.next_review ASC
