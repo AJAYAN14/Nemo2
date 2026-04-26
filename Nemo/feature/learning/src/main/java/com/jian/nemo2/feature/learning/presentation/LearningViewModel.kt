@@ -1249,8 +1249,8 @@ class LearningViewModel @Inject constructor(
                         )
                     }
 
-                    // 移出队列并前进
-                    removeCurrentAndMoveNext()
+                    // 移出队列并前进 (Reactive Sync 会通过 Observer 自动处理，无需手动触发)
+                    // removeCurrentAndMoveNext()
                 }
             }
             is Result.Error -> {
@@ -1817,8 +1817,8 @@ class LearningViewModel @Inject constructor(
                 it.copy(error = "已暂缓: ${currentItem.displayName} (今日不再出现)")
             }
 
-            // 4. 移出队列并前进
-            removeCurrentAndMoveNext()
+            // 4. 移出队列并前进 (Reactive Sync 会通过 Observer 自动处理，无需手动触发)
+            // removeCurrentAndMoveNext()
         }
     }
 
@@ -1838,8 +1838,8 @@ class LearningViewModel @Inject constructor(
         _learningSteps.remove(item.id)
         _learningDueTimes.remove(item.id)
 
-        // 3. 移出队列并前进
-        removeCurrentAndMoveNext()
+        // 3. 移出队列并前进 (Reactive Sync 会通过 Observer 自动处理，无需手动触发)
+        // removeCurrentAndMoveNext()
     }
 
     private fun parseSteps(stepsStr: String): List<Int> {
@@ -1894,8 +1894,12 @@ class LearningViewModel @Inject constructor(
 
                     val progress = progressMap[itemId]
 
+                    val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                    val isBuried = progress != null && progress.buriedUntil > today
+
                     val shouldPrune = when {
                         progress?.state == -1 -> true
+                        isBuried -> true
                         progress != null && (progress.state == 1 || progress.state == 3) -> false
                         wasNew && (progress?.reps ?: 0) > 0 && progress?.state != 1 -> true
                         !wasNew && progress != null && (progress.nextReview ?: "") > nowIso && progress.state != 3 -> true
@@ -2043,8 +2047,14 @@ class LearningViewModel @Inject constructor(
 
         list.forEach { item ->
             val id = if (isWord) (item as Word).id else (item as Grammar).id
-            // 优先检查服务器返回的 state (1: Learning, 3: Relearning)
+            // 优先检查服务器返回的 state (1: Learning, 3: Relearning, -1: Suspended)
             val serverState = if (isWord) (item as Word).state else (item as Grammar).state
+            val buriedUntil = if (isWord) (item as Word).buriedUntilDay else (item as Grammar).buriedUntilDay
+
+            // 过滤掉已暂停或已暂缓的项目
+            if (serverState == -1 || buriedUntil > today) {
+                return@forEach
+            }
 
             val isLearning = serverState == 1 || serverState == 3 || _learningSteps.containsKey(id)
             val isNew = serverState == 0 || (if (isWord) (item as Word).repetitionCount == 0 else (item as Grammar).repetitionCount == 0)
