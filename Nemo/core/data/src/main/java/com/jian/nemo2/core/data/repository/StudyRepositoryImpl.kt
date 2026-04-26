@@ -378,8 +378,10 @@ class StudyRepositoryImpl @Inject constructor(
 
     override suspend fun getDueItemsByTypeAndLevel(itemType: String, level: String): List<UserProgress> {
         val resetHour = settingsRepository.learningDayResetHourFlow.first()
-        // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
-        val bufferMs = 1 * 60 * 1000L
+        val learnAheadMinutes = settingsRepository.learnAheadLimitFlow.first()
+        
+        // 使用用户设置的提前学习时间
+        val bufferMs = learnAheadMinutes * 60 * 1000L
         val nowWithBuffer = Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds() + bufferMs).toString()
         val currentEpochDay = DateTimeUtils.getLearningDay(resetHour)
 

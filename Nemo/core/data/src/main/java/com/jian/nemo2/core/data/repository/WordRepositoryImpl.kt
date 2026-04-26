@@ -25,6 +25,7 @@ class WordRepositoryImpl @Inject constructor(
     private val userProgressDao: UserProgressDao,
     private val testRecordDao: TestRecordDao,
     private val studyRepository: com.jian.nemo2.core.domain.repository.StudyRepository,
+    private val settingsRepository: com.jian.nemo2.core.domain.repository.SettingsRepository,
     private val syncManager: com.jian.nemo2.core.data.manager.SupabaseSyncManager
 ) : WordRepository {
 
@@ -74,26 +75,31 @@ class WordRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override fun getDueWords(today: Long, level: String): Flow<List<Word>> {
-        // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
-        val bufferMs = 1 * 60 * 1000L
-        val nowWithBuffer = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
-        val currentEpochDay = today
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    override fun getDueWords(level: String, today: Long): Flow<List<Word>> {
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
+            val bufferMs = learnAheadMinutes * 60 * 1000L
+            val nowWithBuffer = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+            val currentEpochDay = today
 
-        return wordDao.getDueWordsByLevel(nowWithBuffer, level.lowercase(), currentEpochDay)
-            .map { entities ->
-                mapWithStudyState(entities).filter { w -> !w.isDelisted }
-            }
+            wordDao.getDueWordsByLevel(nowWithBuffer, level.lowercase(), currentEpochDay)
+                .map { entities ->
+                    mapWithStudyState(entities).filter { w -> !w.isDelisted }
+                }
+        }
             .catch { e ->
                 Log.e("WordRepository", "获取到期单词失败: ${e.message}", e)
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     override fun getDueWordsCount(today: Long): Flow<Int> {
-        val bufferMs = 1 * 60 * 1000L
-        val nowWithBuffer = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
-        return wordDao.getDueWordsCount(nowWithBuffer, today)
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
+            val bufferMs = learnAheadMinutes * 60 * 1000L
+            val nowWithBuffer = com.jian.nemo2.core.common.util.DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+            wordDao.getDueWordsCount(nowWithBuffer, today)
+        }
             .catch { emit(0) }
             .flowOn(kotlinx.coroutines.Dispatchers.IO)
     }

@@ -20,6 +20,7 @@ class GrammarRepositoryImpl @Inject constructor(
     private val grammarDao: GrammarDao,
     private val userProgressDao: UserProgressDao,
     private val studyRepository: com.jian.nemo2.core.domain.repository.StudyRepository,
+    private val settingsRepository: com.jian.nemo2.core.domain.repository.SettingsRepository,
     private val syncManager: com.jian.nemo2.core.data.manager.SupabaseSyncManager
 ) : GrammarRepository {
 
@@ -58,24 +59,28 @@ class GrammarRepositoryImpl @Inject constructor(
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
-    override fun getDueGrammars(today: Long, level: String): Flow<List<Grammar>> {
-        // 与 Web 端对齐：移除 12 小时超前缓冲，仅保留 1 分钟容错
-        val bufferMs = 1 * 60 * 1000L
-        val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
-        val currentEpochDay = today
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    override fun getDueGrammars(level: String, today: Long): Flow<List<Grammar>> {
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
+            val bufferMs = learnAheadMinutes * 60 * 1000L
+            val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+            val currentEpochDay = today
 
-        return grammarDao.getDueGrammarsByLevel(nowWithBuffer, level, currentEpochDay)
-            .map { it.toDomainModels().filter { g -> !g.isDelisted } }
+            grammarDao.getDueGrammarsByLevelWithUsages(nowWithBuffer, level.lowercase(), currentEpochDay)
+                .map { it.toDomainModels().filter { g -> !g.isDelisted } }
+        }
             .catch { e ->
-                android.util.Log.e("GrammarRepository", "获取到期语法失败: ${e.message}", e)
                 emit(emptyList())
             }.flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     override fun getDueGrammarsCount(today: Long): Flow<Int> {
-        val bufferMs = 1 * 60 * 1000L
-        val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
-        return grammarDao.getDueGrammarsCount(nowWithBuffer, today)
+        return settingsRepository.learnAheadLimitFlow.flatMapLatest { learnAheadMinutes ->
+            val bufferMs = learnAheadMinutes * 60 * 1000L
+            val nowWithBuffer = DateTimeUtils.millisToIso(System.currentTimeMillis() + bufferMs)
+            grammarDao.getDueGrammarsCount(nowWithBuffer, today)
+        }
             .catch { emit(0) }
             .flowOn(kotlinx.coroutines.Dispatchers.IO)
     }
