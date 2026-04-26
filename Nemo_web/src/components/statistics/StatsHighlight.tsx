@@ -59,7 +59,7 @@ export function StatsHighlight({
         <div className={styles.content}>
           <span className={styles.label}>累计活跃</span>
           <span className={styles.value} style={{ color: '#4F46E5' }}>{totalActiveDays} 天</span>
-          <span className={styles.subLabel}>持续进步中</span>
+          <span className={styles.subLabel}>持续进步</span>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export function StatsHighlight({
         </div>
         <div className={styles.content}>
           <span className={styles.label}>单日最佳</span>
-          <span className={styles.value} style={{ color: '#10B981' }}>{bestDayCount} 次复习</span>
+          <span className={styles.value} style={{ color: '#10B981' }}>{bestDayCount} 项</span>
           <span className={styles.subLabel}>{formatDate(bestDayDate)}</span>
         </div>
       </div>
@@ -82,9 +82,9 @@ export function StatsHighlight({
         </div>
         <div className={styles.content}>
           <span className={styles.label}>日均学习</span>
-          <span className={styles.value} style={{ color: '#111827' }}>{dailyAverage} 次复习</span>
+          <span className={styles.value} style={{ color: '#111827' }}>{dailyAverage} 词</span>
           <span className={styles.subLabel}>
-            {todayCount >= dailyAverage && dailyAverage > 0 ? "今天状态极佳！" : "保持节奏"}
+            {todayCount >= dailyAverage && dailyAverage > 0 ? "状态极佳" : "保持节奏"}
           </span>
         </div>
       </div>

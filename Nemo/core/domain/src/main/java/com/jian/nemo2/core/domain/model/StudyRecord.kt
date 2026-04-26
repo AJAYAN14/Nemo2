@@ -8,6 +8,8 @@ package com.jian.nemo2.core.domain.model
  * 用于记录用户每日的学习情况
  */
 data class StudyRecord(
+    val id: String = "", // UUID from Supabase
+    val userId: String = "",
     /**
      * 学习日期 (Epoch Day)
      * 作为主键，每天只有一条记录

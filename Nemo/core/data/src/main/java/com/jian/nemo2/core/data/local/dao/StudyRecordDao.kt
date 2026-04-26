@@ -80,6 +80,12 @@ interface StudyRecordDao {
     suspend fun markDeletedByDate(date: Long, time: Long)
 
     /**
+     * 根据 ID 删除记录
+     */
+    @Query("DELETE FROM study_records WHERE id = :id")
+    suspend fun deleteById(id: String)
+
+    /**
      * 逻辑删除所有学习记录
      */
     @Query("UPDATE study_records SET is_deleted = 1, deleted_time = :time, timestamp = :time")

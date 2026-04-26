@@ -31,7 +31,8 @@ import javax.inject.Singleton
 @Singleton
 class StudyRecordRepositoryImpl @Inject constructor(
     private val studyRecordDao: StudyRecordDao,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val authRepository: com.jian.nemo2.core.domain.repository.AuthRepository
 ) : StudyRecordRepository {
 
     // ========== 查询实现 ==========
@@ -110,12 +111,17 @@ class StudyRecordRepositoryImpl @Inject constructor(
     private suspend fun getOrCreateTodayRecord(): StudyRecord {
         val resetHour = settingsRepository.learningDayResetHourFlow.first()
         val today = DateTimeUtils.getLearningDay(resetHour)
+        val userId = authRepository.getCurrentUser()?.id ?: ""
 
         runCatching { settingsRepository.updateDailyStreak() }
             .onFailure { e -> println("⚠️ 更新连续学习天数失败: ${e.message}") }
 
         return studyRecordDao.getByDate(today).first()?.toDomainModel()
-            ?: StudyRecord(date = today)
+            ?: StudyRecord(
+                id = java.util.UUID.randomUUID().toString(),
+                userId = userId,
+                date = today
+            )
     }
 
     override suspend fun incrementLearnedWords(count: Int): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {

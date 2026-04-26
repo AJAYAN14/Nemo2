@@ -20,19 +20,16 @@ interface UndoReviewMeta {
   expectedLastReview?: string | null;
 }
 
-type StudyDeltaField = 'learned_words' | 'learned_grammars' | 'reviewed_words' | 'reviewed_grammars';
-
+/**
+ * Determines which study record field should be incremented based on item state.
+ * [Internal] Used primarily for preparing Undo snapshots.
+ */
 function getCompletionStudyDeltaField(
   itemType: ItemType,
-  stateBeforeAnswer: number,
-  repsBeforeAnswer: number,
-  actionType: RatingAction['type']
+  stateBeforeAnswer: number
 ): StudyDeltaField | null {
-  void repsBeforeAnswer;
-  void actionType;
-
-  // Align with Anki studied-today semantics: every answer contributes once,
-  // bucketed by the pre-answer queue family (learning vs review-like).
+  // state 0: NEW, state 1: LEARNING -> count as LEARNED
+  // state 2: REVIEW, state 3: RELEARNING -> count as REVIEWED
   const isLearningLike = stateBeforeAnswer === 0 || stateBeforeAnswer === 1;
   const isReviewLike = stateBeforeAnswer === 2 || stateBeforeAnswer === 3;
 
@@ -45,6 +42,9 @@ function getCompletionStudyDeltaField(
   }
   return isLearningLike ? 'learned_grammars' : 'reviewed_grammars';
 }
+
+// DEPRECATED: Study field resolution for reviews is now handled server-side in fn_process_review_atomic_v3.
+// This function remains for client-side use (like Undo snapshots).
 
 async function resolveStudyItemsFromProgress(progressList: UserProgress[], sourceTag: string): Promise<StudyItem[]> {
   if (!progressList || progressList.length === 0) return [];
@@ -95,10 +95,10 @@ export const studyService = {
   getCompletionStudyDeltaField(
     itemType: ItemType,
     stateBeforeAnswer: number,
-    repsBeforeAnswer: number,
-    actionType: RatingAction['type']
+    _repsBeforeAnswer?: number,
+    _actionType?: RatingAction['type']
   ): StudyDeltaField | null {
-    return getCompletionStudyDeltaField(itemType, stateBeforeAnswer, repsBeforeAnswer, actionType);
+    return getCompletionStudyDeltaField(itemType, stateBeforeAnswer);
   },
 
   async applyStudyRecordDelta(
@@ -433,25 +433,20 @@ export const studyService = {
           })
     );
 
-    // 确定统计字段
-    const action = srsService.evaluateRatingAction(item, rating, config);
-    const studyField = getCompletionStudyDeltaField(item.type, progress.state, progress.reps, action.type);
-
     const rpcParams = {
       p_user_id: userId,
       p_progress_id: progress.id,
       p_rating: rating,
       p_request_id: requestId,
-      p_epoch_day: studyField ? epochDay : null,
-      p_study_field: studyField ?? null,
+      p_epoch_day: epochDay,
+      p_study_field: null, // Resolved by RPC using fn_get_study_field
       p_expected_last_review: progress.last_review ?? null,
       p_learning_steps: config.learningSteps ?? [1, 10],
       p_relearning_steps: config.relearningSteps ?? [10]
     };
 
-    console.log('[StudyService.processReview] Calling RPC fn_process_review_atomic_v3 with:', rpcParams);
-
-    const rpcResult = await supabase.rpc('fn_process_review_atomic_v3', rpcParams);
+    console.log('[StudyService.processReview] Calling RPC fn_process_review_atomic_v4 with:', rpcParams);
+    const rpcResult = await supabase.rpc('fn_process_review_atomic_v4', rpcParams);
 
     if (rpcResult.error) {
       console.error('[StudyService.processReview] RPC Error details:', JSON.stringify(rpcResult.error, null, 2));

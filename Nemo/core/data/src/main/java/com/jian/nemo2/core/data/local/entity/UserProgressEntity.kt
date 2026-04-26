@@ -22,48 +22,48 @@ import kotlinx.serialization.SerialName
 )
 data class UserProgressEntity(
     @PrimaryKey
-    val id: String, // Supabase UUID
+    val id: String = "", // Supabase UUID
 
     @SerialName("user_id")
     @ColumnInfo(name = "user_id")
-    val userId: String,
+    val userId: String = "",
 
     @SerialName("item_type")
     @ColumnInfo(name = "item_type")
-    val itemType: String, // 'word' | 'grammar'
+    val itemType: String = "", // 'word' | 'grammar'
 
     @SerialName("item_id")
     @ColumnInfo(name = "item_id")
-    val itemId: Long,
+    val itemId: Long = 0,
 
     // ========== FSRS State (Calculated by Server RPC) ==========
 
     /** 记忆稳定性 (FSRS, 必须使用 Double 对齐 Web) */
-    val stability: Double,
+    val stability: Double = 0.0,
 
     /** 难度 (FSRS, 必须使用 Double 对齐 Web) */
-    val difficulty: Double,
+    val difficulty: Double = 0.0,
 
     @SerialName("elapsed_days")
     @ColumnInfo(name = "elapsed_days")
-    val elapsedDays: Int,
+    val elapsedDays: Int = 0,
 
     @SerialName("scheduled_days")
     @ColumnInfo(name = "scheduled_days")
-    val scheduledDays: Int,
+    val scheduledDays: Int = 0,
 
     /** 重复次数 */
-    val reps: Int,
+    val reps: Int = 0,
 
     /** 遗忘次数 */
-    val lapses: Int,
+    val lapses: Int = 0,
 
     /** 状态: 0:New, 1:Learning, 2:Review, 3:Relearning */
-    val state: Int,
+    val state: Int = 0,
 
     @SerialName("learning_step")
     @ColumnInfo(name = "learning_step")
-    val learningStep: Int,
+    val learningStep: Int = 0,
 
     // ========== Dates (ISO String as per Web) ==========
 
@@ -83,11 +83,11 @@ data class UserProgressEntity(
     @ColumnInfo(name = "is_favorite")
     val isFavorite: Boolean = false,
 
-    val level: String,
+    val level: String = "",
 
     @SerialName("created_at")
     @ColumnInfo(name = "created_at")
-    val createdAt: String,
+    val createdAt: String = "",
 
     @SerialName("updated_at")
     @ColumnInfo(name = "updated_at")

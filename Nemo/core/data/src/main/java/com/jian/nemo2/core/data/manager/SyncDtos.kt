@@ -51,6 +51,7 @@ data class SyncGrammarStateDto(
 
 @Serializable
 data class SyncStudyRecordDto(
+    @SerialName("id") val id: String = "",
     @SerialName("user_id") val userId: String,
     @SerialName("date") val date: Long,
     @SerialName("learned_words") val learnedWords: Int,
@@ -62,7 +63,8 @@ data class SyncStudyRecordDto(
     @SerialName("test_count") val testCount: Int,
     @SerialName("is_deleted") val isDeleted: Boolean,
     @SerialName("deleted_time") val deletedTime: Long,
-    @SerialName("timestamp") val timestamp: Long
+    @SerialName("timestamp") val timestamp: Long,
+    @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable
@@ -132,20 +134,7 @@ data class SyncAppSettingsDto(
 
 // Mappers for old state entities removed
 fun SyncStudyRecordDto.toEntity() = StudyRecordEntity(
-    date = date,
-    learnedWords = learnedWords,
-    learnedGrammars = learnedGrammars,
-    reviewedWords = reviewedWords,
-    reviewedGrammars = reviewedGrammars,
-    skippedWords = skippedWords,
-    skippedGrammars = skippedGrammars,
-    testCount = testCount,
-    isDeleted = isDeleted,
-    deletedTime = deletedTime,
-    timestamp = timestamp
-)
-
-fun StudyRecordEntity.toSyncDto(userId: String) = SyncStudyRecordDto(
+    id = id,
     userId = userId,
     date = date,
     learnedWords = learnedWords,
@@ -157,7 +146,25 @@ fun StudyRecordEntity.toSyncDto(userId: String) = SyncStudyRecordDto(
     testCount = testCount,
     isDeleted = isDeleted,
     deletedTime = deletedTime,
-    timestamp = timestamp
+    timestamp = timestamp,
+    updatedAt = updatedAt
+)
+
+fun StudyRecordEntity.toSyncDto(userId: String) = SyncStudyRecordDto(
+    id = id,
+    userId = userId,
+    date = date,
+    learnedWords = learnedWords,
+    learnedGrammars = learnedGrammars,
+    reviewedWords = reviewedWords,
+    reviewedGrammars = reviewedGrammars,
+    skippedWords = skippedWords,
+    skippedGrammars = skippedGrammars,
+    testCount = testCount,
+    isDeleted = isDeleted,
+    deletedTime = deletedTime,
+    timestamp = timestamp,
+    updatedAt = updatedAt
 )
 
 fun SyncTestRecordDto.toEntity() = TestRecordEntity(

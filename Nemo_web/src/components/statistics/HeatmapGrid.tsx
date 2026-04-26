@@ -15,7 +15,7 @@ interface HeatmapGridProps {
   isLoading?: boolean;
 }
 
-const WEEKDAYS = ['周日', '一', '二', '三', '四', '五', '六'];
+const WEEKDAYS = ['', '二', '', '四', '', '六', ''];
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
 export function HeatmapGrid({ data, isLoading }: HeatmapGridProps) {
@@ -27,9 +27,10 @@ export function HeatmapGrid({ data, isLoading }: HeatmapGridProps) {
     // First day in the 365-day range
     const firstEpoch = data[0].date;
     const firstDate = new Date(firstEpoch * 86400000);
-    const firstDayOfWeek = firstDate.getDay(); // 0-6 (Sun-Sat)
+    // Monday start: (day + 6) % 7 -> Mon=0, Sun=6
+    const firstDayOfWeek = (firstDate.getDay() + 6) % 7;
 
-    // Fill leading empty cells if start doesn't begin on Sunday
+    // Fill leading empty cells if start doesn't begin on Monday
     const paddedData: (HeatmapDay | null)[] = Array(firstDayOfWeek).fill(null);
     paddedData.push(...data);
 
@@ -44,29 +45,38 @@ export function HeatmapGrid({ data, isLoading }: HeatmapGridProps) {
   const monthLabels = useMemo(() => {
     if (!data.length) return [];
     const labels: { name: string; weekIndex: number }[] = [];
-    let currentMonth = -1;
+    let currentMonthKey = '';
 
     // Find the week where each month starts
     const firstEpoch = data[0].date;
     const firstDate = new Date(firstEpoch * 86400000);
-    const dayPadding = firstDate.getDay();
+    const dayPadding = (firstDate.getDay() + 6) % 7;
 
     data.forEach((day, index) => {
       const date = new Date(day.date * 86400000);
       const month = date.getMonth();
+      const year = date.getFullYear();
+      const monthKey = `${year}-${month}`;
       const weekIndex = Math.floor((index + dayPadding) / 7);
 
-      if (month !== currentMonth) {
-        // Only add if we're not too close to the previous label
-        if (labels.length === 0 || weekIndex > labels[labels.length - 1].weekIndex + 3) {
+      if (monthKey !== currentMonthKey) {
+        if (labels.length === 0 || weekIndex > labels[labels.length - 1].weekIndex + 2) {
           labels.push({ name: MONTHS[month], weekIndex });
-          currentMonth = month;
+          currentMonthKey = monthKey;
         }
       }
     });
 
     return labels;
   }, [data]);
+
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [grid]);
 
   if (isLoading) {
     return (
@@ -78,31 +88,34 @@ export function HeatmapGrid({ data, isLoading }: HeatmapGridProps) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.scrollWrapper}>
-        <div className={styles.gridHeader}>
-          {monthLabels.map((label, i) => (
-            <span 
-              key={i} 
-              className={styles.monthLabel}
-              style={{ gridColumnStart: label.weekIndex + 1 }}
-            >
-              {label.name}
+      <div className={styles.gridBody}>
+        <div className={styles.weekdayLabels}>
+          {WEEKDAYS.map((day, i) => (
+            <span key={i} className={styles.weekdayLabel}>
+              {day}
             </span>
           ))}
         </div>
-        
-        <div className={styles.gridBody}>
-          <div className={styles.weekdayLabels}>
-            {WEEKDAYS.map((day, i) => (
-              <span key={i} className={styles.weekdayLabel}>
-                {i % 2 === 0 ? day : ''}
+
+        <div className={styles.scrollWrapper} ref={scrollRef}>
+          <div 
+            className={styles.gridHeader}
+            style={{ gridTemplateColumns: `repeat(${grid.length}, 15px)`, gap: '3px' }}
+          >
+            {monthLabels.map((label, i) => (
+              <span 
+                key={i} 
+                className={styles.monthLabel}
+                style={{ gridColumnStart: label.weekIndex + 1 }}
+              >
+                {label.name}
               </span>
             ))}
           </div>
 
           <div 
             className={styles.heatmapGrid}
-            style={{ gridTemplateColumns: `repeat(${grid.length}, 1fr)` }}
+            style={{ gridTemplateColumns: `repeat(${grid.length}, 15px)`, gap: '3px' }}
           >
             {grid.map((week, weekIdx) => (
               <div key={weekIdx} className={styles.weekColumn}>
@@ -113,7 +126,7 @@ export function HeatmapGrid({ data, isLoading }: HeatmapGridProps) {
                       styles.dayCell,
                       day && styles[`level${day.level}`]
                     )}
-                    title={day ? `${new Date(day.date * 86400000).toLocaleDateString()}: ${day.count} 次复习` : undefined}
+                    title={day ? `${new Date(day.date * 86400000).toLocaleDateString()}: ${day.count} 次学习` : undefined}
                   />
                 ))}
               </div>

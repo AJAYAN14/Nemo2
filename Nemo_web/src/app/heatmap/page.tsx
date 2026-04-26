@@ -81,7 +81,7 @@ export default function HeatmapPage() {
         </section>
 
         <footer className={styles.footer}>
-          <p>每一天都在进步，保持节奏！</p>
+          <p>每一天都在进步，保持连胜！</p>
         </footer>
       </div>
     </main>

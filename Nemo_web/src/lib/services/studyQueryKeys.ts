@@ -7,6 +7,8 @@ const DUE_ITEMS_KEY = 'due-items';
 const REVIEW_SESSION_ITEMS_KEY = 'review-session-items';
 const MEMORY_PANORAMA_KEY = 'memory-panorama';
 const PROGRESS_SUMMARY_KEY = 'progress-summary';
+const HEATMAP_DATA_KEY = 'heatmap-data';
+const ACTIVITY_HIGHLIGHTS_KEY = 'activity-highlights';
 
 export const studyQueryKeys = {
   todayStatsPrefix: [TODAY_STATS_KEY] as const,
@@ -14,6 +16,8 @@ export const studyQueryKeys = {
   reviewSessionItemsPrefix: [REVIEW_SESSION_ITEMS_KEY] as const,
   memoryPanoramaPrefix: [MEMORY_PANORAMA_KEY] as const,
   progressSummaryPrefix: [PROGRESS_SUMMARY_KEY] as const,
+  heatmapDataPrefix: [HEATMAP_DATA_KEY] as const,
+  activityHighlightsPrefix: [ACTIVITY_HIGHLIGHTS_KEY] as const,
 
   todayStats: (
     userId: Optional<string>,
@@ -33,6 +37,12 @@ export const studyQueryKeys = {
 
   progressSummary: (userId: Optional<string>) =>
     [PROGRESS_SUMMARY_KEY, userId ?? undefined] as const,
+
+  heatmapData: (userId: Optional<string>) =>
+    [HEATMAP_DATA_KEY, userId ?? undefined] as const,
+
+  activityHighlights: (userId: Optional<string>) =>
+    [ACTIVITY_HIGHLIGHTS_KEY, userId ?? undefined] as const,
 };
 
 export interface QueryInvalidator {
@@ -54,4 +64,6 @@ export function invalidateStudyQueries(
   queryClient.invalidateQueries({ queryKey: studyQueryKeys.reviewSessionItemsPrefix });
   queryClient.invalidateQueries({ queryKey: studyQueryKeys.memoryPanoramaPrefix });
   queryClient.invalidateQueries({ queryKey: studyQueryKeys.progressSummaryPrefix });
+  queryClient.invalidateQueries({ queryKey: studyQueryKeys.heatmapDataPrefix });
+  queryClient.invalidateQueries({ queryKey: studyQueryKeys.activityHighlightsPrefix });
 }

@@ -63,6 +63,7 @@ class SupabaseSyncManager @Inject constructor(
     companion object {
         private const val TAG = "SupabaseSyncManager"
         private const val TABLE_USER_PROGRESS = "user_progress"
+        private const val TABLE_STUDY_RECORDS = "study_records"
     }
 
     fun getCurrentUserId(): String? {
@@ -150,7 +151,6 @@ class SupabaseSyncManager @Inject constructor(
                 if (batch.size < pageSize) break
                 offset += pageSize
             }
-
             database.withTransaction {
                 // 这里使用 insertAll (OnConflictStrategy.REPLACE) 确保本地状态与服务器一致
                 if (remoteProgress.isNotEmpty()) {
@@ -159,6 +159,45 @@ class SupabaseSyncManager @Inject constructor(
                 } else {
                     Log.d(TAG, "fetchRemoteProgress: No new items to insert")
                 }
+            }
+            // 5.5 [NEW] 学习记录同步 (Study Records Sync) - 为了热力图对齐
+            emit(SyncProgress.Running("正在同步热力图数据...", 0, 0))
+            try {
+                val studyRecordDao = database.studyRecordDao()
+                var studyOffset = 0
+                val remoteStudyRecords = mutableListOf<StudyRecordEntity>()
+                
+                while (true) {
+                    val batch = if (lastSyncTime > 0L) {
+                        val safeTime = lastSyncTime - 60 * 1000L
+                        val lastSyncIso = kotlinx.datetime.Instant.fromEpochMilliseconds(safeTime).toString()
+                        supabaseClient.postgrest[TABLE_STUDY_RECORDS]
+                            .select {
+                                filter {
+                                    eq("user_id", userId)
+                                    gte("updated_at", lastSyncIso)
+                                }
+                                range(studyOffset.toLong(), (studyOffset + pageSize - 1).toLong())
+                            }.decodeList<StudyRecordEntity>()
+                    } else {
+                        supabaseClient.postgrest[TABLE_STUDY_RECORDS]
+                            .select {
+                                filter { eq("user_id", userId) }
+                                range(studyOffset.toLong(), (studyOffset + pageSize - 1).toLong())
+                            }.decodeList<StudyRecordEntity>()
+                    }
+                    
+                    remoteStudyRecords.addAll(batch)
+                    if (batch.size < pageSize) break
+                    studyOffset += pageSize
+                }
+                
+                if (remoteStudyRecords.isNotEmpty()) {
+                    studyRecordDao.insertAll(remoteStudyRecords)
+                    Log.d(TAG, "StudyRecordSync: Inserted/Updated ${remoteStudyRecords.size} records")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "学习记录同步失败, 但继续同步", e)
             }
 
             settingsRepository.setLastSyncTime(DateTimeUtils.getCurrentCompensatedMillis())
@@ -213,6 +252,11 @@ class SupabaseSyncManager @Inject constructor(
             filter(FilterOperation("user_id", FilterOperator.EQ, userId))
         }
 
+        val studyRecordsChangeFlow = realtimeChannel!!.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = TABLE_STUDY_RECORDS
+            filter(FilterOperation("user_id", FilterOperator.EQ, userId))
+        }
+
         realtimeJob = scope.launch {
             launch {
                 progressChangeFlow.collect { action ->
@@ -225,6 +269,12 @@ class SupabaseSyncManager @Inject constructor(
                     Log.d(TAG, "收到 UserSettings Realtime 变更: $action")
                     // 设置变更时直接触发设置同步逻辑
                     syncSettings(userId)
+                }
+            }
+            launch {
+                studyRecordsChangeFlow.collect { action ->
+                    Log.d(TAG, "收到 StudyRecord Realtime 变更: $action")
+                    handleStudyRecordRealtimeAction(action)
                 }
             }
         }
@@ -289,12 +339,8 @@ class SupabaseSyncManager @Inject constructor(
 
                 when (task.actionType) {
                     "REVIEW" -> {
-                        // 自动判断学习/复习字段
-                        val studyField = if (progress.reps == 1) {
-                            if (task.itemType == "word") "learned_words" else "learned_grammars"
-                        } else {
-                            if (task.itemType == "word") "reviewed_words" else "reviewed_grammars"
-                        }
+                        // Logic Authority: 委托服务器 fn_process_review_atomic_v3 自动处理统计字段 (Learned vs Reviewed)
+                        // 客户端只需传递 epochDay
 
                         @Serializable
                         data class ReviewParams(
@@ -303,7 +349,7 @@ class SupabaseSyncManager @Inject constructor(
                             val p_rating: Int,
                             val p_request_id: String,
                             val p_epoch_day: Int,
-                            val p_study_field: String,
+                            val p_study_field: String? = null,
                             val p_expected_last_review: String?,
                             val p_learning_steps: List<Int>?,
                             val p_relearning_steps: List<Int>?
@@ -315,14 +361,14 @@ class SupabaseSyncManager @Inject constructor(
                             p_rating = task.rating,
                             p_request_id = task.requestId ?: java.util.UUID.randomUUID().toString(),
                             p_epoch_day = epochDay,
-                            p_study_field = studyField,
+                            p_study_field = null, // 让服务器自动判断
                             p_expected_last_review = task.expectedLastReview,
                             p_learning_steps = appSettings.learningSteps,
                             p_relearning_steps = appSettings.relearningSteps
                         )
 
-                        Log.d(TAG, "执行原子评分 RPC: ${task.itemId} (Rating=${task.rating})")
-                        val result = supabaseClient.postgrest.rpc("fn_process_review_atomic_v3", params).decodeSingleOrNull<UserProgressEntity>()
+                        Log.d(TAG, "执行原子评分 RPC (v4): ${task.itemId} (Rating=${task.rating})")
+                        val result = supabaseClient.postgrest.rpc("fn_process_review_atomic_v4", params).decodeSingleOrNull<UserProgressEntity>()
 
                         if (result != null) {
                             userProgressDao.insert(result)
@@ -480,6 +526,32 @@ class SupabaseSyncManager @Inject constructor(
             _dataUpdatedEvent.emit(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "处理 Realtime 变更失败", e)
+        }
+    }
+
+    private suspend fun handleStudyRecordRealtimeAction(action: PostgresAction) {
+        try {
+            val studyRecordDao = database.studyRecordDao()
+            when (action) {
+                is PostgresAction.Insert -> {
+                    val entity = json.decodeFromJsonElement<StudyRecordEntity>(action.record)
+                    studyRecordDao.insert(entity)
+                }
+                is PostgresAction.Update -> {
+                    val entity = json.decodeFromJsonElement<StudyRecordEntity>(action.record)
+                    studyRecordDao.insert(entity) // REPLACE 策略
+                }
+                is PostgresAction.Delete -> {
+                    val id = action.oldRecord["id"]?.toString()?.replace("\"", "")
+                    if (id != null) {
+                        studyRecordDao.deleteById(id)
+                    }
+                }
+                else -> {}
+            }
+            _dataUpdatedEvent.emit(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "处理 StudyRecord Realtime 变更失败", e)
         }
     }
 

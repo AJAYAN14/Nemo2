@@ -10,6 +10,8 @@ object StudyRecordMapper {
 
     fun StudyRecordEntity.toDomainModel(): StudyRecord {
         return StudyRecord(
+            id = id,
+            userId = userId,
             date = date,
             learnedWords = learnedWords,
             learnedGrammars = learnedGrammars,
@@ -24,6 +26,8 @@ object StudyRecordMapper {
 
     fun StudyRecord.toEntity(): StudyRecordEntity {
         return StudyRecordEntity(
+            id = id,
+            userId = userId,
             date = date,
             learnedWords = learnedWords,
             learnedGrammars = learnedGrammars,
@@ -32,7 +36,8 @@ object StudyRecordMapper {
             skippedWords = skippedWords,
             skippedGrammars = skippedGrammars,
             testCount = testCount,
-            timestamp = timestamp
+            timestamp = timestamp,
+            updatedAt = null // Will be set by sync or keep null for local
         )
     }
 
