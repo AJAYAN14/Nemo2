@@ -1041,7 +1041,6 @@ class LearningViewModel @Inject constructor(
                         handleScheduleResult(result, requestId)
                     }
 
-                    // 掌握 (评分 2, 3, 4: Hard, Good, Easy)
                     else -> {
                         if (isLearning) {
                              // Use Relearning Config if it's NOT a New Card (i.e. has Repetitions)
@@ -1249,8 +1248,8 @@ class LearningViewModel @Inject constructor(
                         )
                     }
 
-                    // 移出队列并前进 (Reactive Sync 会通过 Observer 自动处理，无需手动触发)
-                    // removeCurrentAndMoveNext()
+                    // 移出队列并前进
+                    removeCurrentAndMoveNext()
                 }
             }
             is Result.Error -> {
@@ -1817,8 +1816,8 @@ class LearningViewModel @Inject constructor(
                 it.copy(error = "已暂缓: ${currentItem.displayName} (今日不再出现)")
             }
 
-            // 4. 移出队列并前进 (Reactive Sync 会通过 Observer 自动处理，无需手动触发)
-            // removeCurrentAndMoveNext()
+            // 4. 移出队列并前进
+            removeCurrentAndMoveNext()
         }
     }
 
@@ -1838,8 +1837,8 @@ class LearningViewModel @Inject constructor(
         _learningSteps.remove(item.id)
         _learningDueTimes.remove(item.id)
 
-        // 3. 移出队列并前进 (Reactive Sync 会通过 Observer 自动处理，无需手动触发)
-        // removeCurrentAndMoveNext()
+        // 3. 移出队列并前进
+        removeCurrentAndMoveNext()
     }
 
     private fun parseSteps(stepsStr: String): List<Int> {
