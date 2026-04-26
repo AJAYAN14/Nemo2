@@ -1794,15 +1794,15 @@ class LearningViewModel @Inject constructor(
      */
     fun buryCurrentItem() {
         val currentItem = getCurrentItem() ?: return
-        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
-        println("今日暂缓 (Bury): ${currentItem.displayName} (Day: $today)")
+        val currentLearningDay = DateTimeUtils.getLearningDay(_resetHour)
+        println("今日暂缓 (Bury): ${currentItem.displayName} (Day: $currentLearningDay)")
 
         viewModelScope.launch {
             try {
                 studyRepository.buryItem(
                     itemId = currentItem.id,
                     itemType = if (currentItem is LearningItem.WordItem) "word" else "grammar",
-                    epochDay = today.toLong()
+                    epochDay = currentLearningDay.toLong()
                 )
             } catch (e: Exception) {
                 println("Bury 失败: ${e.message}")

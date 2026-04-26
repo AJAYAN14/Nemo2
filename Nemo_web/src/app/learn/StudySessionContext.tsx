@@ -150,7 +150,7 @@ export function StudySessionProvider({ userId, initialItems, config, mode, sessi
           console.log('[StudySession] Received external update:', payload.new.item_id);
           // If this update came from a different request_id than our last one, apply it
           // (Note: we don't have the last requestId easily here, but the reducer check is safe)
-          dispatch({ type: 'EXTERNAL_UPDATE', updated: payload.new });
+          dispatch({ type: 'EXTERNAL_UPDATE', updated: payload.new, lockedDay });
         }
       )
       .subscribe((status) => {

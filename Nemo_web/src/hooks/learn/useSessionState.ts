@@ -23,7 +23,8 @@ export type SessionAction =
   | { type: 'ROLLBACK'; wordList: StudyItem[]; currentIndex: number; completed: number; waitingUntil: number | null }
   | { type: 'SET_SYNC_CONFLICT'; itemName: string | null }
   | { type: 'PRUNE_ITEMS'; idsToKeep: Set<string> }
-  | { type: 'EXTERNAL_UPDATE'; updated: any };
+  | { type: 'PRUNE_ITEMS'; idsToKeep: Set<string> }
+  | { type: 'EXTERNAL_UPDATE'; updated: any; lockedDay: number };
 
 function sessionReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
@@ -98,8 +99,14 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       // Otherwise, just update its progress data so the UI shows the latest state/next_review.
       const now = Date.now();
       const nextReviewTime = updated.next_review ? new Date(updated.next_review).getTime() : 0;
-      const isStillDue = (updated.state === 0 || updated.state === 1 || updated.state === 3) || 
-                         (updated.state === 2 && nextReviewTime <= now + 60000);
+      
+      const isBuried = updated.buried_until && Number(updated.buried_until) > action.lockedDay;
+      const isSuspended = updated.state === -1;
+      
+      const isStillDue = !isBuried && !isSuspended && (
+                         (updated.state === 0 || updated.state === 1 || updated.state === 3) || 
+                         (updated.state === 2 && nextReviewTime <= now + (state.waitingUntil ? 0 : 60000))
+      );
 
       if (!isStillDue) {
         const nextPool = [...state.wordList];
