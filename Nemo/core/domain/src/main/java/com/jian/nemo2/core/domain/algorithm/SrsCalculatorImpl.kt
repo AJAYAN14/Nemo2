@@ -81,15 +81,21 @@ class SrsCalculatorImpl @Inject constructor(
         // 4. 执行 FSRS step
         val newState = fsrs.step(currentState, rating, elapsedDays)
 
-        // 5. 更新次数和间隔 (Logic Authority: 对齐 Supabase RPC)
-        val newRepetitionCount = item.repetitionCount + 1
+        // 5. 更新次数 (Logic Parity: 与 Web/Supabase RPC 保持一致)
+        // 只有当评分不是 Again (1) 时，repetitionCount 才会增加
+        // 注意：如果是重学阶段点 Again，reps 也不增加。
+        val newRepetitionCount = if (rating >= 2) item.repetitionCount + 1 else item.repetitionCount
         val newLapses = if (quality < 2) item.lapses + 1 else item.lapses
 
-        // [Fuzz Seed] 使用更新前的次数 (v_current.reps) 对齐服务端
-        val seed = buildFuzzSeed(item, item.repetitionCount)
+        // 6. [Fuzz Seed] 使用更新前的次数 (v_current.reps) 对齐服务端
+        val seed = if (item.progressId != null) {
+            fsrs.buildFsrsDeterministicSeed(item.progressId!!, item.repetitionCount)
+        } else {
+            fsrs.buildFsrsDeterministicSeed(item.id, item.repetitionCount)
+        }
         val newInterval = fsrs.nextIntervalDaysWithFuzz(newState.stability, seed)
 
-        // 6. 计算日期
+        // 7. 计算日期
         val nextReviewDate = today + newInterval
 
         val firstLearnedDate = when {
@@ -107,27 +113,8 @@ class SrsCalculatorImpl @Inject constructor(
             interval = newInterval,
             nextReviewDate = nextReviewDate,
             lastReviewedDate = lastReviewedDate,
-            firstLearnedDate = firstLearnedDate
+            firstLearnedDate = firstLearnedDate,
+            state = if (newInterval > 0) 2 else (if (item.repetitionCount == 0) 1 else item.state)
         )
-    }
-
-    private fun mapQualityToRating(quality: Int): Int = quality
-
-    private fun buildFuzzSeed(item: SrsItem, repetitions: Int): Long {
-        // [Logic Parity] 对齐 Web/Server 的 buildFsrsDeterministicSeed
-        val cardId = item.progressId ?: ""
-        val cardSeed = hashStringToUint32(cardId)
-        return (cardSeed + repetitions.toLong()) and 0xFFFFFFFFL
-    }
-
-    private fun hashStringToUint32(input: String): Long {
-        // FNV-1a 32-bit 对齐 Web 版 hashStringToUint32
-        var hash = 2166136261L
-        for (char in input) {
-            hash = hash xor char.code.toLong()
-            // 在 Kotlin 中使用 Int 乘法模拟 imul，然后转回 Long 并截断
-            hash = (hash.toInt() * 16777619).toLong() and 0xFFFFFFFFL
-        }
-        return hash
     }
 }

@@ -11,7 +11,7 @@ package com.jian.nemo2.core.domain.model
  * 3. 包含业务逻辑方法和向后兼容方法
  */
 data class Grammar(
-    val id: Long,
+    override val id: Long,
     val rawId: String? = null,
     override val progressId: String? = null,
 

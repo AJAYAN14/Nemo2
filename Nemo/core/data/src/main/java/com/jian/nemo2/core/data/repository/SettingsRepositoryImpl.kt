@@ -1263,7 +1263,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override val relearningStepsFlow: Flow<String> = dataStore.data.map { preferences ->
-        preferences[PreferencesKeys.RELEARNING_STEPS] ?: "10"
+        preferences[PreferencesKeys.RELEARNING_STEPS] ?: "1 10"
     }
 
     override suspend fun setRelearningSteps(steps: String) {
@@ -1549,7 +1549,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 .filter { it.isNotBlank() }
                 .mapNotNull { it.toIntOrNull() },
             learnAheadLimit = prefs[PreferencesKeys.LEARN_AHEAD_LIMIT] ?: 20,
-            relearningSteps = (prefs[PreferencesKeys.RELEARNING_STEPS] ?: "10")
+            relearningSteps = (prefs[PreferencesKeys.RELEARNING_STEPS] ?: "1 10")
                 .split(" ")
                 .filter { it.isNotBlank() }
                 .mapNotNull { it.toIntOrNull() },
@@ -1557,7 +1557,10 @@ class SettingsRepositoryImpl @Inject constructor(
 
             isSyncOnLearningComplete = prefs[PreferencesKeys.SYNC_ON_LEARNING_COMPLETE] ?: true,
             isSyncOnTestComplete = prefs[PreferencesKeys.SYNC_ON_TEST_COMPLETE] ?: true,
-            fsrsTargetRetention = (prefs[PreferencesKeys.FSRS_TARGET_RETENTION] ?: 0.9f).toDouble(),
+            fsrsTargetRetention = (prefs[PreferencesKeys.FSRS_TARGET_RETENTION] ?: 0.9f).toDouble().let { 
+                // Fix float precision issue (0.899999976... -> 0.9)
+                if (Math.abs(it - 0.9) < 0.0001) 0.9 else it
+            },
             leechThreshold = prefs[PreferencesKeys.LEECH_THRESHOLD] ?: 8,
             leechAction = prefs[PreferencesKeys.LEECH_ACTION] ?: "skip",
             isShowAnswerDelayEnabled = prefs[PreferencesKeys.IS_SHOW_ANSWER_DELAY_ENABLED] ?: false,

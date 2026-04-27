@@ -59,6 +59,7 @@ class SupabaseSyncManager @Inject constructor(
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
+        encodeDefaults = true
     }
     companion object {
         private const val TAG = "SupabaseSyncManager"

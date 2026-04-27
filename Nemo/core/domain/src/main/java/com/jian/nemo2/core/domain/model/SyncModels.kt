@@ -63,7 +63,7 @@ data class AppSettings(
     // 高级学习策略
     @SerialName("learningSteps") val learningSteps: List<Int> = listOf(1, 10),
     @SerialName("learnAheadLimit") val learnAheadLimit: Int = 20,
-    @SerialName("relearningSteps") val relearningSteps: List<Int> = listOf(10),
+    @SerialName("relearningSteps") val relearningSteps: List<Int> = listOf(1, 10),
     @SerialName("isRandom") val isRandomNewContentEnabled: Boolean = true,
 
     // 同步触发策略

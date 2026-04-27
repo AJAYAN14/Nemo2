@@ -25,7 +25,6 @@ import kotlinx.serialization.Serializable
 import android.util.Log
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.time.Duration.Companion.days
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 
@@ -65,8 +64,7 @@ class StudyRepositoryImpl @Inject constructor(
         val userId = supabase.auth.currentUserOrNull()?.id ?: return
         
         // 1. 立即写入本地 Outbox (保证离线可用)
-        val now = DateTimeUtils.getCurrentCompensatedMillis()
-        val updatedAt = DateTimeUtils.formatIso(now)
+        val now = Clock.System.now().toString()
         
         @Serializable
         data class ReviewPayload(val rating: Int, val requestId: String?)
@@ -75,9 +73,11 @@ class StudyRepositoryImpl @Inject constructor(
         val outbox = SyncOutboxEntity(
             itemType = itemType,
             itemId = itemId,
-            action = "review",
+            rating = rating,
+            actionType = "REVIEW",
             payload = payload,
-            createdAt = updatedAt
+            createdAt = now,
+            requestId = requestId
         )
         syncOutboxDao.insert(outbox)
 
@@ -92,18 +92,15 @@ class StudyRepositoryImpl @Inject constructor(
     }
 
     override suspend fun undoReview(payload: com.jian.nemo2.core.domain.model.sync.UndoPayload, itemId: Long, itemType: String) {
-        val userId = supabase.auth.currentUserOrNull()?.id ?: return
-        
-        // 1. 写入本地 Outbox
-        val now = DateTimeUtils.getCurrentCompensatedMillis()
-        val updatedAt = DateTimeUtils.formatIso(now)
+        val now = Clock.System.now().toString()
         
         val outbox = SyncOutboxEntity(
             itemType = itemType,
             itemId = itemId,
-            action = "undo",
+            rating = 0,
+            actionType = "UNDO",
             payload = Json.encodeToString(payload),
-            createdAt = updatedAt
+            createdAt = now
         )
         syncOutboxDao.insert(outbox)
 
@@ -124,59 +121,77 @@ class StudyRepositoryImpl @Inject constructor(
     }
 
     override suspend fun syncPendingTasks() {
-        val userId = supabase.auth.currentUserOrNull()?.id ?: return
-        syncManager.performSync(userId, force = false, mode = SyncMode.TWO_WAY).collect()
+        syncManager.processOutbox()
     }
 
     override suspend fun suspendItem(itemId: Long, itemType: String) {
-        val now = DateTimeUtils.formatIso(DateTimeUtils.getCurrentCompensatedMillis())
+        val now = Clock.System.now().toString()
         userProgressDao.updateProgressState(itemId, itemType, -1, now)
         
-        val outbox = SyncOutboxEntity(itemType = itemType, itemId = itemId, action = "suspend", payload = "{}", createdAt = now)
+        val outbox = SyncOutboxEntity(
+            itemType = itemType, 
+            itemId = itemId, 
+            rating = 0,
+            actionType = "SUSPEND", 
+            payload = "{}", 
+            createdAt = now
+        )
         syncOutboxDao.insert(outbox)
         scope.launch { syncPendingTasks() }
     }
 
     override suspend fun unsuspendItem(itemId: Long, itemType: String) {
-        val now = DateTimeUtils.formatIso(DateTimeUtils.getCurrentCompensatedMillis())
+        val now = Clock.System.now().toString()
         userProgressDao.updateProgressState(itemId, itemType, 0, now)
 
-        val outbox = SyncOutboxEntity(itemType = itemType, itemId = itemId, action = "unsuspend", payload = "{}", createdAt = now)
+        val outbox = SyncOutboxEntity(
+            itemType = itemType, 
+            itemId = itemId, 
+            rating = 0,
+            actionType = "UNSUSPEND", 
+            payload = "{}", 
+            createdAt = now
+        )
         syncOutboxDao.insert(outbox)
         scope.launch { syncPendingTasks() }
     }
 
     override suspend fun buryItem(itemId: Long, itemType: String, epochDay: Long) {
-        val now = DateTimeUtils.getCurrentCompensatedMillis()
-        val updatedAt = DateTimeUtils.formatIso(now)
+        val progress = userProgressDao.getByItem(itemType, itemId) ?: return
+        val now = Clock.System.now().toString()
+        val buriedUntil = epochDay + 1
         
-        // 本地更新
-        val progress = userProgressDao.getProgressByItemId(itemId, itemType)
-        if (progress != null) {
-            userProgressDao.insert(progress.copy(buriedUntil = epochDay, updatedAt = updatedAt))
+        // [Optimistic Update] 如果是学习中(1)或重学中(3)，重置步长
+        val updatedProgress = if (progress.state == 1 || progress.state == 3) {
+            progress.copy(buriedUntil = buriedUntil, learningStep = 0, updatedAt = now)
+        } else {
+            progress.copy(buriedUntil = buriedUntil, updatedAt = now)
         }
+        userProgressDao.insert(updatedProgress)
 
         // 写入 Outbox
         val outbox = SyncOutboxEntity(
             itemType = itemType,
             itemId = itemId,
-            action = "bury",
-            payload = "{\"epochDay\": $epochDay}",
-            createdAt = updatedAt
+            rating = 0,
+            actionType = "BURY",
+            payload = buriedUntil.toString(),
+            createdAt = now
         )
         syncOutboxDao.insert(outbox)
         scope.launch { syncPendingTasks() }
     }
 
     override suspend fun toggleFavorite(itemId: Long, itemType: String, isFavorite: Boolean) {
-        val now = DateTimeUtils.formatIso(DateTimeUtils.getCurrentCompensatedMillis())
+        val now = Clock.System.now().toString()
         userProgressDao.updateFavoriteStatus(itemId, itemType, isFavorite, now)
 
         val outbox = SyncOutboxEntity(
             itemType = itemType,
             itemId = itemId,
-            action = "favorite",
-            payload = "{\"isFavorite\": $isFavorite}",
+            rating = 0,
+            actionType = "FAVORITE",
+            payload = isFavorite.toString(),
             createdAt = now
         )
         syncOutboxDao.insert(outbox)
@@ -184,22 +199,22 @@ class StudyRepositoryImpl @Inject constructor(
     }
 
     override suspend fun resetAllProgress(itemType: String) {
-        val now = DateTimeUtils.formatIso(DateTimeUtils.getCurrentCompensatedMillis())
+        val now = Clock.System.now().toString()
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
         userProgressDao.resetAllProgress(itemType, now)
         
-        val userId = supabase.auth.currentUserOrNull()?.id ?: return
         scope.launch {
             try {
-                supabase.postgrest["user_progress"].delete { filter { eq("user_id", userId); eq("item_type", itemType) } }
+                supabase.postgrest["user_progress"].update({ set("state", 0); set("stability", 0.0); set("difficulty", 0.0); set("reps", 0); set("lapses", 0); set("learning_step", 0); set("last_review", null as String?); set("next_review", now); set("updated_at", now) }) { filter { eq("user_id", userId); eq("item_type", itemType) } }
             } catch (e: Exception) { println("重置进度同步失败: ${e.message}") }
         }
     }
 
     override suspend fun clearAllFavorites(itemType: String) {
-        val now = DateTimeUtils.formatIso(DateTimeUtils.getCurrentCompensatedMillis())
+        val now = Clock.System.now().toString()
+        val userId = supabase.auth.currentUserOrNull()?.id ?: return
         userProgressDao.clearAllFavorites(itemType, now)
         
-        val userId = supabase.auth.currentUserOrNull()?.id ?: return
         scope.launch {
             try {
                 supabase.postgrest["user_progress"].update({ set("is_favorite", false); set("updated_at", now) }) { filter { eq("user_id", userId); eq("item_type", itemType) } }
@@ -259,3 +274,43 @@ class StudyRepositoryImpl @Inject constructor(
         syncManager.performSync(userId, force = true, mode = SyncMode.TWO_WAY).first { it is SyncProgress.Completed || it is SyncProgress.Failed }
     }
 }
+
+fun UserProgressEntity.toDomain() = UserProgress(
+    id = this.id,
+    userId = this.userId,
+    itemType = this.itemType,
+    itemId = this.itemId,
+    stability = this.stability,
+    difficulty = this.difficulty,
+    elapsedDays = this.elapsedDays,
+    scheduledDays = this.scheduledDays,
+    reps = this.reps,
+    lapses = this.lapses,
+    state = this.state,
+    learningStep = this.learningStep,
+    lastReview = this.lastReview,
+    nextReview = this.nextReview,
+    buriedUntil = this.buriedUntil,
+    level = this.level,
+    createdAt = this.createdAt
+)
+
+fun UserProgress.toEntity() = UserProgressEntity(
+    id = this.id,
+    userId = this.userId,
+    itemType = this.itemType,
+    itemId = this.itemId,
+    stability = this.stability,
+    difficulty = this.difficulty,
+    elapsedDays = this.elapsedDays,
+    scheduledDays = this.scheduledDays,
+    reps = this.reps,
+    lapses = this.lapses,
+    state = this.state,
+    learningStep = this.learningStep,
+    lastReview = this.lastReview,
+    nextReview = this.nextReview,
+    buriedUntil = this.buriedUntil,
+    level = this.level,
+    createdAt = this.createdAt
+)

@@ -182,7 +182,7 @@ class LearningViewModel @Inject constructor(
     private var _learningStepsConfig: List<Int> = listOf(1, 10)
 
     /** 重学步进配置 (分钟列表) */
-    private var _relearningStepsConfig: List<Int> = listOf(10)
+    private var _relearningStepsConfig: List<Int> = listOf(1, 10)
 
     /** 提前学习限制 (毫秒) */
     private var _learnAheadLimitMs: Long = 20 * 60 * 1000L
@@ -1018,12 +1018,10 @@ class LearningViewModel @Inject constructor(
                 val currentStep = _learningSteps[currentItem.id] ?: 0
                 val lapses = _lapseCounts.value[currentItem.id] ?: if (currentItem is LearningItem.WordItem) currentItem.word.lapses else (currentItem as LearningItem.GrammarItem).grammar.lapses
 
-                // Determine State (0: New, 1: Learning, 2: Review, 3: Relearning)
-                val state = when {
-                    isNew -> 0
-                    currentItem.repetitionCount > 0 && _learningSteps.containsKey(currentItem.id) -> 3 // Relearning
-                    currentItem.repetitionCount > 0 -> 2 // Review
-                    else -> 1 // Learning
+                // [Native Mirror]: 直接使用数据库返回的真实 state，严禁根据 reps 瞎猜
+                val state = when (currentItem) {
+                    is LearningItem.WordItem -> currentItem.word.state
+                    is LearningItem.GrammarItem -> currentItem.grammar.state
                 }
 
                 val action = fsrs6Algorithm.evaluateRatingAction(
@@ -1053,7 +1051,8 @@ class LearningViewModel @Inject constructor(
                                 nextReviewDate = srsResult.nextReviewDate,
                                 lastReviewedDate = srsResult.lastReviewedDate,
                                 firstLearnedDate = srsResult.firstLearnedDate,
-                                lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
+                                state = 2, // 毕业进入复习状态
+                                lastModifiedTime = System.currentTimeMillis()
                             )
                             updateWordUseCase(word)
                             word
@@ -1069,7 +1068,8 @@ class LearningViewModel @Inject constructor(
                                 nextReviewDate = srsResult.nextReviewDate,
                                 lastReviewedDate = srsResult.lastReviewedDate,
                                 firstLearnedDate = srsResult.firstLearnedDate,
-                                lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
+                                state = 2, // 毕业进入复习状态
+                                lastModifiedTime = System.currentTimeMillis()
                             )
                             updateGrammarUseCase(grammar)
                             grammar
@@ -1087,10 +1087,33 @@ class LearningViewModel @Inject constructor(
                         _learningDueTimes[currentItem.id] = newDueTime
                         _requeuedItems.add(currentItem.id)
                         
-                        // 同步更新 Item 对象的内部属性，确保 reQueueToEnd 不会用旧数据覆盖状态
-                        val updatedItem = when(currentItem) {
-                            is LearningItem.WordItem -> currentItem.copy(step = action.nextStep, dueTime = newDueTime)
-                            is LearningItem.GrammarItem -> currentItem.copy(step = action.nextStep, dueTime = newDueTime)
+                        val newState = when (state) {
+                            0 -> 1 // New -> Learning
+                            2 -> 3 // Review -> Relearning
+                            else -> state
+                        }
+
+                        // Update local item state to prevent UI flicker/incorrect badge
+                        val updatedItem = if (currentItem is LearningItem.WordItem) {
+                            currentItem.copy(
+                                word = currentItem.word.copy(
+                                    state = newState,
+                                    lastReviewedDate = DateTimeUtils.getLearningDay(_resetHour),
+                                    lastModifiedTime = System.currentTimeMillis()
+                                ),
+                                step = action.nextStep,
+                                dueTime = newDueTime
+                            )
+                        } else {
+                            (currentItem as LearningItem.GrammarItem).copy(
+                                grammar = currentItem.grammar.copy(
+                                    state = newState,
+                                    lastReviewedDate = DateTimeUtils.getLearningDay(_resetHour),
+                                    lastModifiedTime = System.currentTimeMillis()
+                                ),
+                                step = action.nextStep,
+                                dueTime = newDueTime
+                            )
                         }
 
                         // Update lapses if it was a failure
@@ -1757,7 +1780,7 @@ class LearningViewModel @Inject constructor(
             stepsStr.trim().split(Regex("\\s+")).map { it.toInt() }
         } catch (e: Exception) {
             println("解析学习步进失败: $stepsStr, 使用默认值")
-            listOf(10)
+            listOf(1, 10)
         }
     }
 

@@ -53,9 +53,6 @@ class Fsrs6Algorithm(
     }
 
     private fun initStability(rating: Int): Double {
-        if (rating == 2) { // Hard: (Again + Good) / 2
-            return (initStability(1) + initStability(3)) / 2.0
-        }
         return max(S_MIN, min(S_MAX, w[rating - 1]))
     }
 
@@ -282,20 +279,20 @@ class Fsrs6Algorithm(
 
         return when (rating) {
             1 -> { // Again
-                RatingAction.Requeue(nextStep = 0, delayMins = steps.firstOrNull() ?: 1)
+                RatingAction.Requeue(nextStep = 0, delayMins = maybeRoundInDaysMinutes(steps.firstOrNull() ?: 1))
             }
             2 -> { // Hard
                 val currentDelay = steps.getOrNull(safeCurrentStep) ?: steps.firstOrNull() ?: 1
                 val delay = if (safeCurrentStep == 0) {
                     hardDelayMinsForFirstStep(currentDelay, steps.getOrNull(1))
                 } else {
-                    currentDelay
+                    maybeRoundInDaysMinutes(currentDelay)
                 }
                 RatingAction.Requeue(nextStep = safeCurrentStep, delayMins = delay)
             }
             3 -> { // Good
                 if (safeCurrentStep < steps.size - 1) {
-                    RatingAction.Requeue(nextStep = safeCurrentStep + 1, delayMins = steps[safeCurrentStep + 1])
+                    RatingAction.Requeue(nextStep = safeCurrentStep + 1, delayMins = maybeRoundInDaysMinutes(steps[safeCurrentStep + 1]))
                 } else {
                     RatingAction.Graduate
                 }

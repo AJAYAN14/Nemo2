@@ -11,7 +11,7 @@ package com.jian.nemo2.core.domain.model
  * 5. 实现SrsItem接口,用于SRS算法计算
  */
 data class Word(
-    val id: Long,
+    override val id: Long,
     override val progressId: String? = null,
 
     // ========== 核心内容 ==========

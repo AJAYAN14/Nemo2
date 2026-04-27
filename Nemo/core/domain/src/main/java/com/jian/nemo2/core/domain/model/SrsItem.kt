@@ -11,6 +11,11 @@ package com.jian.nemo2.core.domain.model
  */
 interface SrsItem {
     /**
+     * ID
+     */
+    val id: Long
+
+    /**
      * 唯一 ID (如 user_progress.id)，用于确定性抖动计算
      */
     val progressId: String?
@@ -78,5 +83,6 @@ data class SrsUpdateResult(
     val interval: Int,
     val nextReviewDate: Long,
     val lastReviewedDate: Long?,
-    val firstLearnedDate: Long?
+    val firstLearnedDate: Long?,
+    val state: Int
 )
