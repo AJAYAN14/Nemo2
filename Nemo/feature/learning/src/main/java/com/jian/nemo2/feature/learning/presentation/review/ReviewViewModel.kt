@@ -13,9 +13,7 @@ import com.jian.nemo2.core.domain.repository.StudyRepository
 import com.jian.nemo2.core.domain.usecase.word.GetDueWordsUseCase
 import com.jian.nemo2.core.domain.usecase.word.UpdateWordUseCase
 import com.jian.nemo2.feature.learning.domain.LearningQueueManager
-import com.jian.nemo2.feature.learning.domain.LearningScheduler
 import com.jian.nemo2.feature.learning.domain.QueueSelectionResult
-import com.jian.nemo2.feature.learning.domain.ScheduleResult
 import com.jian.nemo2.feature.learning.domain.SrsIntervalPreview
 import com.jian.nemo2.feature.learning.presentation.LearningItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -64,7 +62,6 @@ class ReviewViewModel @Inject constructor(
     private val studyRepository: StudyRepository,
     private val srsCalculator: SrsCalculator,
     private val settingsRepository: SettingsRepository,
-    private val learningScheduler: LearningScheduler,
     private val srsIntervalPreview: SrsIntervalPreview,
     private val updateWordUseCase: UpdateWordUseCase,
     private val updateGrammarUseCase: UpdateGrammarUseCase
@@ -94,6 +91,8 @@ class ReviewViewModel @Inject constructor(
     private var _learnAheadLimitMinutes: Int = 20
     private var _leechThreshold: Int = 8
     private var _leechAction: String = LEECH_ACTION_SKIP
+
+    private val fsrs6Algorithm = com.jian.nemo2.core.domain.algorithm.Fsrs6Algorithm()
 
     init {
         loadData()
@@ -189,28 +188,94 @@ class ReviewViewModel @Inject constructor(
                 val itemId = currentItem.itemId
                 val isRelearning = _relearningSteps.containsKey(itemId)
 
-                when {
-                    // Easy (5): 无论状态，直接毕业/SRS更新
-                    quality == 5 -> {
+                // Native mirror: submit to server
+                studyRepository.processReview(
+                    itemId = itemId,
+                    itemType = if (currentItem is ReviewPreviewItem.WordItem) "word" else "grammar",
+                    rating = quality,
+                    requestId = java.util.UUID.randomUUID().toString()
+                )
+
+                val currentStep = _relearningSteps[itemId] ?: 0
+                val lapses = when (currentItem) {
+                    is ReviewPreviewItem.WordItem -> settingsRepository.wordLapsesFlow.first()[itemId] ?: currentItem.word.lapses
+                    is ReviewPreviewItem.GrammarItem -> settingsRepository.grammarLapsesFlow.first()[itemId] ?: currentItem.grammar.lapses
+                }
+
+                val state = if (isRelearning) 3 else 2 // Relearning or Review
+
+                val action = fsrs6Algorithm.evaluateRatingAction(
+                    state = state,
+                    lapses = lapses,
+                    currentStep = currentStep,
+                    rating = quality,
+                    learningSteps = emptyList(), // Not used for Review
+                    relearningSteps = _relearningStepsConfig,
+                    leechThreshold = _leechThreshold,
+                    leechAction = _leechAction
+                )
+
+                when (action) {
+                    is com.jian.nemo2.core.domain.model.RatingAction.Graduate -> {
+                        println("复习毕业 (Graduate): ${currentItem.displayName}")
                         _relearningSteps.remove(itemId)
                         _relearningDueTimes.remove(itemId)
-                        processDirectSrs(currentItem, quality)
-                    }
-
-                    // Again (< 3): 失败 → 进入/重新进入 Relearning
-                    quality < 3 -> {
-                        handleFailure(currentItem, quality)
-                    }
-
-                    // Hard/Good (3-4)
-                    else -> {
-                        if (isRelearning) {
-                            // 在重学中 → 用 LearningScheduler 处理 Step 流转
-                            handleRelearningPass(currentItem, quality)
+                        
+                        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
+                        
+                        if (currentItem is ReviewPreviewItem.WordItem) {
+                            val srsResult = srsCalculator.calculate(currentItem.word, quality, today)
+                            val word = currentItem.word.copy(
+                                interval = srsResult.interval,
+                                repetitionCount = srsResult.repetitionCount,
+                                lapses = if (quality == 1) currentItem.word.lapses + 1 else currentItem.word.lapses,
+                                stability = srsResult.stability,
+                                difficulty = srsResult.difficulty,
+                                nextReviewDate = srsResult.nextReviewDate,
+                                lastReviewedDate = srsResult.lastReviewedDate,
+                                lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
+                            )
+                            updateWordUseCase(word)
+                            studyRecordRepository.incrementReviewedWords(1)
                         } else {
-                            // 正常复习 → 直接 SRS 更新 + 移出
-                            processDirectSrs(currentItem, quality)
+                            val grammarItem = currentItem as ReviewPreviewItem.GrammarItem
+                            val srsResult = srsCalculator.calculate(grammarItem.grammar, quality, today)
+                            val grammar = grammarItem.grammar.copy(
+                                interval = srsResult.interval,
+                                repetitionCount = srsResult.repetitionCount,
+                                lapses = if (quality == 1) grammarItem.grammar.lapses + 1 else grammarItem.grammar.lapses,
+                                stability = srsResult.stability,
+                                difficulty = srsResult.difficulty,
+                                nextReviewDate = srsResult.nextReviewDate,
+                                lastReviewedDate = srsResult.lastReviewedDate,
+                                lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
+                            )
+                            updateGrammarUseCase(grammar)
+                            studyRecordRepository.incrementReviewedGrammars(1)
                         }
+                        
+                        _uiState.update { it.copy(totalCompleted = it.totalCompleted + 1) }
+                        removeCurrentAndMoveNext()
+                    }
+                    is com.jian.nemo2.core.domain.model.RatingAction.Requeue -> {
+                        println("重学 (Requeue): ${currentItem.displayName}, nextStep=${action.nextStep}, delay=${action.delayMins}m")
+                        _relearningSteps[itemId] = action.nextStep
+                        _relearningDueTimes[itemId] = System.currentTimeMillis() + action.delayMins * 60 * 1000L
+                        
+                        if (quality == 1) {
+                            when (currentItem) {
+                                is ReviewPreviewItem.WordItem -> settingsRepository.incrementWordLapse(itemId)
+                                is ReviewPreviewItem.GrammarItem -> settingsRepository.incrementGrammarLapse(itemId)
+                            }
+                        }
+                        
+                        reQueueToEnd(currentItem)
+                    }
+                    is com.jian.nemo2.core.domain.model.RatingAction.Leech -> {
+                        println("钉子户 (Leech): ${currentItem.displayName}")
+                        _relearningSteps.remove(itemId)
+                        _relearningDueTimes.remove(itemId)
+                        handleLeech(currentItem.toLearningItem())
                     }
                 }
             } catch (e: Exception) {
@@ -220,223 +285,6 @@ class ReviewViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    // ========== 失败处理 (Again) ==========
-
-    /**
-     * 处理失败 (Again)
-     *
-     * 1. Lapse Penalty → 更新 DB 中的 interval/stability (FSRS 惩罚)
-     * 2. 用 LearningScheduler 调度 → Requeue 或 Leech
-     */
-    private suspend fun handleFailure(item: ReviewPreviewItem, quality: Int) {
-        val itemId = item.itemId
-
-        // 1. Lapse Penalty (更新 DB 中的 interval/stability)
-        val penalizedItem = applyLapsePenalty(item, quality)
-
-        // 2. 读取累计 lapse（跨会话），再写回 +1
-        val currentLapseCount = when (item) {
-            is ReviewPreviewItem.WordItem -> settingsRepository.wordLapsesFlow.first()[itemId] ?: 0
-            is ReviewPreviewItem.GrammarItem -> settingsRepository.grammarLapsesFlow.first()[itemId] ?: 0
-        }
-        when (item) {
-            is ReviewPreviewItem.WordItem -> settingsRepository.incrementWordLapse(itemId)
-            is ReviewPreviewItem.GrammarItem -> settingsRepository.incrementGrammarLapse(itemId)
-        }
-
-        // 3. 用 LearningScheduler 调度
-        val penalizedLearningItem = penalizedItem.toLearningItem(
-            step = _relearningSteps[itemId] ?: 0,
-            dueTime = _relearningDueTimes[itemId] ?: 0L
-        )
-        val result = learningScheduler.scheduleFailure(
-            item = penalizedLearningItem,
-            currentLapseCount = currentLapseCount,
-            stepConfig = _relearningStepsConfig,
-            leechThreshold = _leechThreshold
-        )
-
-        // 4. 处理调度结果
-        handleScheduleResult(result)
-    }
-
-    // ========== 重学中通过 (Hard/Good) ==========
-
-    /**
-     * 处理重学中的通过 (Hard/Good)
-     */
-    private suspend fun handleRelearningPass(item: ReviewPreviewItem, quality: Int) {
-        val itemId = item.itemId
-        val currentStep = _relearningSteps[itemId] ?: 0
-
-        val learningItem = item.toLearningItem(
-            step = currentStep,
-            dueTime = _relearningDueTimes[itemId] ?: 0L
-        )
-        val result = learningScheduler.schedulePass(
-            item = learningItem,
-            quality = quality,
-            currentStep = currentStep,
-            stepConfig = _relearningStepsConfig
-        )
-
-        handleScheduleResult(result)
-    }
-
-    // ========== 调度结果处理 ==========
-
-    /**
-     * 处理 LearningScheduler 的调度结果
-     */
-    private suspend fun handleScheduleResult(result: ScheduleResult) {
-        when (result) {
-            is ScheduleResult.Leech -> {
-                println("🩸 复习钉子户 (Leech): ${result.item.displayName} (Lapses: ${result.totalLapses})")
-                _relearningSteps.remove(result.item.id)
-                _relearningDueTimes.remove(result.item.id)
-                handleLeech(result.item)
-            }
-
-            is ScheduleResult.Graduate -> {
-                println("🎓 重学毕业: ${result.item.displayName}")
-                _relearningSteps.remove(result.item.id)
-                _relearningDueTimes.remove(result.item.id)
-                processRelearningGraduation(result.item)
-            }
-
-            is ScheduleResult.Requeue -> {
-                val item = result.updatedItem
-                _relearningSteps[item.id] = result.nextStepIndex
-                _relearningDueTimes[item.id] = result.dueTime
-
-                if (result.isLapse) {
-                    println("❌ 复习失败 (Again): ${item.displayName}, Step ${result.nextStepIndex}, Due in ${(result.dueTime - System.currentTimeMillis()) / 1000}s")
-                } else {
-                    println("🔄 复习重学进阶: ${item.displayName}, Step ${result.nextStepIndex}")
-                }
-
-                // 重入队到末尾并前进
-                reQueueToEnd(item.toReviewPreviewItem())
-            }
-        }
-    }
-
-    // ========== SRS 更新 ==========
-
-    /**
-     * 直接 SRS 更新 (正常复习通过 / Easy 直接毕业)
-     *
-     * 使用 ProcessReviewResultUseCase 完成完整的 SRS + 统计 + 日志
-     */
-    private suspend fun processDirectSrs(item: ReviewPreviewItem, quality: Int) {
-        studyRepository.processReview(
-            itemId = item.itemId,
-            itemType = if (item is ReviewPreviewItem.WordItem) "word" else "grammar",
-            rating = quality
-        )
-
-        println("📝 复习SRS更新: ${item.displayName}, quality=$quality")
-
-        _uiState.update {
-            it.copy(totalCompleted = it.totalCompleted + 1)
-        }
-
-        removeCurrentAndMoveNext()
-    }
-
-    /**
-     * 应用失败惩罚 (Lapse Penalty)
-     *
-     * 当用户点 Again 时，立即通过 FSRS 计算惩罚后的 interval/stability 并更新 DB。
-     * 重学毕业时基于这个惩罚后的值调度。
-     */
-    private suspend fun applyLapsePenalty(item: ReviewPreviewItem, quality: Int): ReviewPreviewItem {
-        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
-
-        val penalizedItem = when (item) {
-            is ReviewPreviewItem.WordItem -> {
-                val srsResult = srsCalculator.calculate(item.word, quality, today)
-                val updatedWord = item.word.copy(
-                    interval = srsResult.interval,
-                    repetitionCount = srsResult.repetitionCount,
-                    stability = srsResult.stability,
-                    difficulty = srsResult.difficulty,
-                    nextReviewDate = srsResult.nextReviewDate,
-                    lastReviewedDate = srsResult.lastReviewedDate,
-                    firstLearnedDate = srsResult.firstLearnedDate,
-                    lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
-                )
-                updateWordUseCase(updatedWord)
-                ReviewPreviewItem.WordItem(updatedWord)
-            }
-            is ReviewPreviewItem.GrammarItem -> {
-                val srsResult = srsCalculator.calculate(item.grammar, quality, today)
-                val updatedGrammar = item.grammar.copy(
-                    interval = srsResult.interval,
-                    repetitionCount = srsResult.repetitionCount,
-                    stability = srsResult.stability,
-                    difficulty = srsResult.difficulty,
-                    nextReviewDate = srsResult.nextReviewDate,
-                    lastReviewedDate = srsResult.lastReviewedDate,
-                    firstLearnedDate = srsResult.firstLearnedDate,
-                    lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
-                )
-                updateGrammarUseCase(updatedGrammar)
-                ReviewPreviewItem.GrammarItem(updatedGrammar)
-            }
-        }
-
-        println("⚡ Lapse Penalty 已应用: ${item.displayName}")
-        return penalizedItem
-    }
-
-    /**
-     * 重学毕业 (Relearning Graduation)
-     *
-     * 此时卡片的 interval 已在 Lapse 时被 FSRS 惩罚过。
-     * 毕业时只需将其移回复习队列，设定 nextReviewDate = today + penalized_interval。
-     */
-    private suspend fun processRelearningGraduation(learningItem: LearningItem) {
-        val today = _sessionLockedDay ?: DateTimeUtils.getLearningDay(_resetHour)
-
-        when (learningItem) {
-            is LearningItem.WordItem -> {
-                val word = learningItem.word
-                val interval = word.interval.coerceAtLeast(1)
-                val updatedWord = word.copy(
-                    interval = interval,
-                    repetitionCount = word.repetitionCount + 1,
-                    lastReviewedDate = today,
-                    nextReviewDate = today + interval,
-                    lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
-                )
-                updateWordUseCase(updatedWord)
-                studyRecordRepository.incrementReviewedWords(1)
-            }
-            is LearningItem.GrammarItem -> {
-                val grammar = learningItem.grammar
-                val interval = grammar.interval.coerceAtLeast(1)
-                val updatedGrammar = grammar.copy(
-                    interval = interval,
-                    repetitionCount = grammar.repetitionCount + 1,
-                    lastReviewedDate = today,
-                    nextReviewDate = today + interval,
-                    lastModifiedTime = DateTimeUtils.getCurrentCompensatedMillis()
-                )
-                updateGrammarUseCase(updatedGrammar)
-                studyRecordRepository.incrementReviewedGrammars(1)
-            }
-        }
-
-        println("🎓 重学毕业完成: ${learningItem.displayName}")
-
-        _uiState.update {
-            it.copy(totalCompleted = it.totalCompleted + 1)
-        }
-
-        removeCurrentAndMoveNext()
     }
 
     /**

@@ -81,19 +81,13 @@ class SrsCalculatorImpl @Inject constructor(
         // 4. 执行 FSRS step
         val newState = fsrs.step(currentState, rating, elapsedDays)
 
-        // 5. 计算新间隔 (带 Fuzz)
         // 5. 更新次数和间隔 (Logic Authority: 对齐 Supabase RPC)
         val newRepetitionCount = item.repetitionCount + 1
         val newLapses = if (quality < 2) item.lapses + 1 else item.lapses
 
-        val newInterval: Int
-        if (quality < 2) {
-            newInterval = 1 // 失败后强制复习
-        } else {
-            // [Fuzz Seed] 使用更新前的次数 (v_current.reps) 对齐服务端
-            val seed = buildFuzzSeed(item, item.repetitionCount)
-            newInterval = fsrs.nextIntervalDaysWithFuzz(newState.stability, seed)
-        }
+        // [Fuzz Seed] 使用更新前的次数 (v_current.reps) 对齐服务端
+        val seed = buildFuzzSeed(item, item.repetitionCount)
+        val newInterval = fsrs.nextIntervalDaysWithFuzz(newState.stability, seed)
 
         // 6. 计算日期
         val nextReviewDate = today + newInterval
